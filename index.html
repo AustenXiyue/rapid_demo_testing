@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>骰迹 · 玩法测试</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ========== 设置界面 ========== -->
+<section id="setup" class="setup">
+  <div class="setup-card">
+    <h1>骰迹</h1>
+    <p class="subtitle">玩法快速测试 · 原型版</p>
+
+    <div class="setup-row">
+      <label>玩家人数</label>
+      <div id="playerCountBtns" class="btn-group"></div>
+    </div>
+
+    <div class="setup-row">
+      <label>玩家名字</label>
+      <div id="nameInputs" class="name-inputs"></div>
+    </div>
+
+    <div class="setup-row">
+      <label>获胜星星数</label>
+      <div id="targetStarBtns" class="btn-group"></div>
+    </div>
+
+    <button id="startBtn" class="primary-btn">开始游戏</button>
+
+    <p class="setup-note">
+      多人线下共用一个窗口:每轮自动投出所有骰子,各玩家依次在自己的面板上
+      把两颗不同的骰子放入「移动槽 / 资源槽」并确认,全部确认后自动结算。
+    </p>
+  </div>
+</section>
+
+<!-- ========== 游戏界面 ========== -->
+<section id="game" class="game hidden">
+  <header class="topbar">
+    <div class="topbar-title">骰迹 <span class="tag">玩法测试</span></div>
+    <div id="roundInfo" class="round-info"></div>
+    <div class="topbar-actions">
+      <button id="rulesBtn" class="ghost-btn">规则速查</button>
+      <button id="resetBtn" class="ghost-btn">重新开始</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="board-wrap">
+      <svg id="board" viewBox="0 0 720 720"></svg>
+      <div class="legend">
+        <span><i class="lg lg-start"></i>START</span>
+        <span><i class="lg lg-workshop"></i>工坊格</span>
+        <span><i class="lg lg-cand"></i>星星候选位</span>
+        <span><i class="lg lg-star"></i>当前星星</span>
+      </div>
+    </div>
+
+    <div class="side">
+      <div id="phaseHint" class="phase-hint"></div>
+      <div id="panels" class="panels"></div>
+      <div class="log-wrap">
+        <div class="log-title">日志</div>
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ========== 规则速查抽屉 ========== -->
+<aside id="rulesDrawer" class="rules-drawer hidden">
+  <div class="rules-head">
+    <b>规则速查</b>
+    <button id="rulesCloseBtn" class="ghost-btn">关闭</button>
+  </div>
+  <div class="rules-body">
+    <p><b>每轮流程:</b>投全部骰子 → 每人选两颗不同的骰子放入移动槽/资源槽 → 全部确认后公开 → 先得资源 → 严格移动 → 只结算最终落点 → 轮末移星并检查胜利。</p>
+    <p><b>移动:</b>点数是多少就前进多少格,顺时针,经过工坊/星星不触发,走完第 18 格回到第 1 格,玩家可重叠。</p>
+    <p><b>资源:</b>资源槽点数 = 立刻获得的资源;可储存,无上限;本轮新资源可立刻消费。</p>
+    <p><b>工坊(精确停靠,限 1 次操作):</b>购买 D4(6 资源)/ D4→D6(4 资源)/ D6→D8(7 资源);可不操作。新骰下一轮生效。</p>
+    <p><b>当前星星(精确停靠):</b>支付 8 资源获得 1 颗星;多人同轮命中且都能支付,每人都得 1 颗。有人购买后,轮末把星星随机移到另一个候选位。</p>
+    <p><b>胜利:</b>先获得目标星星数者获胜;同轮达成则共享胜利。</p>
+  </div>
+</aside>
+
+<!-- ========== 通用弹窗 ========== -->
+<div id="modal" class="modal hidden">
+  <div class="modal-card">
+    <div id="modalTitle" class="modal-title"></div>
+    <div id="modalBody" class="modal-body"></div>
+    <div id="modalBtns" class="modal-btns"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
