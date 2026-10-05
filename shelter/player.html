@@ -229,6 +229,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .reveal-bar { display: flex; align-items: center; gap: 8px; justify-content: space-between; flex-wrap: wrap; background: var(--orange-soft); border: 1px solid #eccaa6; color: #6a3205; padding: 6px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
 
 @media (max-width: 640px) {
+  /* 英文按钮文字较长：窄屏上允许换行，而不是把页面撑宽 */
+  .btn { white-space: normal; max-width: 100%; text-align: center; }
+  .btn.small, .btn.icon-btn, .lang-btn { white-space: nowrap; }
   .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
   .card { padding: 13px; }
 }
@@ -262,6 +265,33 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .m-warn { background: var(--orange-soft); } .m-warn .meter2-fill { background: var(--orange); }
 .m-crit { background: var(--red-soft); } .m-crit .meter2-fill { background: var(--red); }
 .m-info { background: var(--surface-3); } .m-info .meter2-fill { background: var(--muted); }
+
+/* ---------- 语言切换 ---------- */
+.lang-btn { min-width: 44px; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap; flex: 0 0 auto; }
+
+/* ---------- 守夜候选卡（两端共用） ---------- */
+.watch-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 8px 0; }
+.watch-card {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; padding: 12px 14px;
+  border-radius: 12px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit;
+}
+button.watch-card { cursor: pointer; }
+button.watch-card:hover { border-color: var(--teal); }
+button.watch-card:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+.watch-card.on { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); background: #f6fbf9; }
+.watch-card-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.watch-card-label { display: inline-flex; min-width: 26px; height: 26px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface-3); color: var(--ink); font-weight: 700; }
+.watch-card.on .watch-card-label { background: var(--teal); color: #fff; }
+.watch-card-title { flex: 1 1 auto; min-width: 0; }
+.watch-card-picked { display: inline-flex; align-items: center; gap: 3px; color: var(--teal-strong); font-weight: 650; }
+.watch-card-picked .icon svg { width: 14px; height: 14px; }
+.watch-card-who { font-size: 17px; font-weight: 700; line-height: 1.35; }
+.watch-card-tend { font-size: 14px; padding-left: 8px; border-left: 3px solid var(--line-strong); }
+.watch-card-tend.tend-rescue { border-left-color: var(--teal); color: var(--teal-strong); }
+.watch-card-tend.tend-danger { border-left-color: var(--orange); color: #8a3f08; }
+.watch-card-fx { display: flex; flex-wrap: wrap; gap: 4px; }
+.watch-card-fx .fx { font-size: 13px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.code-reader { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--surface-2); margin-bottom: 10px; }
 </style>
 <style>
 /* src/player/player.css */
@@ -278,6 +308,7 @@ body.player { min-width: 300px; }
 .p-top-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .p-name { font-size: 16px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .p-day { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; white-space: nowrap; }
+.p-top-tools { display: inline-flex; align-items: center; gap: 6px; }
 /* 简要面板：6 格等宽（手机 3×2），每格 名称 / 数值 / 小进度；点格子去对应页 */
 .p-vitals { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .p-top.on-dashboard .p-vitals { display: none; }
@@ -351,7 +382,7 @@ body.player { min-width: 300px; }
     position: sticky; top: calc(var(--top-h, 0px) + 16px); align-self: start; margin-top: 16px;
     flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; overflow: visible;
   }
-  .tabs .tab { justify-content: flex-start; border-bottom: 0; border-left: 3px solid transparent; border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 15.5px; }
+  .tabs .tab { justify-content: flex-start; border-bottom: 0; border-left: 3px solid transparent; border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 15.5px; white-space: normal; text-align: left; }
   .tabs .tab.on { border-left-color: var(--teal); background: var(--teal-soft); }
   .tabs .tab:hover { background: var(--surface-2); }
   .p-main { max-width: none; margin: 0; padding: 16px 0 48px; }
@@ -589,10 +620,16 @@ details.card > summary { cursor: pointer; }
   .big-num { font-size: 44px; }
   .tile.hero .tile-value { font-size: 48px; }
 }
+
+/* 守夜名单区 */
+.watch-section h3 { font-size: 15px; margin: 4px 0 2px; }
+.pick-part { margin-top: 6px; border-top: 1px dashed var(--line-strong); padding-top: 10px; }
+.pick-part > summary { cursor: pointer; padding: 4px 0; }
+.pick-part > .stack { margin-top: 8px; }
 </style>
 </head>
 <body class="player">
-<noscript><p style="padding:16px">本页面需要启用 JavaScript。</p></noscript>
+<noscript><p style="padding:16px">本页面需要启用 JavaScript。This page needs JavaScript.</p></noscript>
 <div id="banner"></div>
 <header id="topbar" class="topbar"></header>
 <div class="p-shell">
@@ -601,6 +638,147 @@ details.card > summary { cursor: pointer; }
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="modal-root"></div>
+<script>
+/* src/shared/i18n/*.tsv（1394 条） */
+window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host decides","待配置":"To configure","已确认":"Confirmed","暂定":"Tentative","待定":"TBD","实现建议":"Implementation note","草案":"Draft","自定义":"Custom","补给":"Supplies","医疗":"Medical","财富":"Wealth","装备":"Gear","特殊":"Special","普通水":"Water","补水；恢复多少档待定。":"Restores thirst; how many levels is TBD.","补水幅度待定":"Thirst restored: TBD","补水":"Hydration","功能饮料":"Energy drink","补水；下一次行动判定视为充盈，实际饥饿值不填满。":"Restores thirst; your next action counts as Full, but your hunger value isn't filled.","面包":"Bread","恢复饥饿值，恢复量待定。":"Restores hunger; amount TBD.","恢复量待定":"Amount TBD","食物":"Food","普通食物":"Plain food","奶油汤":"Cream soup","恢复饥饿值并补水，数值待定。":"Restores hunger and thirst; amounts TBD.","能量棒":"Energy bar","使用3次，每次约等于普通食物／面包；整个实例未用完仍占0.5。":"3 uses, each about one plain food / bread; a partly used bar still takes 0.5.","每次恢复量同面包，待定":"Each use restores the same as bread (TBD)","绷带":"Bandage","止血或恢复1生命，二选一。":"Stop bleeding or restore 1 HP (pick one).","医疗箱":"Medkit","清除伤病类负面状态，并恢复2生命；不处理饥饿、口渴及脱水昏迷。":"Clears injury/illness statuses and restores 2 HP; does not treat hunger, thirst or dehydration coma.","钞票":"Cash","每件1分。":"1 pt each.","名画":"Painting","每件6分。":"6 pts each.","珠宝":"Jewel","1～5件总分依次1、4、8、11、15；0件0分，超过5件未定。":"1–5 jewels score 1, 4, 8, 11, 15 in total; 0 jewels score 0; more than 5 is TBD.","超过5件的计分未定":"Scoring above 5 jewels TBD","军用折刀":"Army knife","攻击力+1；切绳、内藏铁丝开锁。":"Attack +1; cuts rope; hidden wire picks locks.","武器":"Weapon","切绳":"Cut rope","开锁":"Pick locks","消防斧":"Fire axe","攻击力+2；破门、清除封锁道路。":"Attack +2; breaks doors and clears blocked roads.","破门":"Break doors","清障":"Clear roads","军用步枪":"Army rifle","需携带子弹才能发挥+6攻击力；无弹仍可恐吓。":"Needs ammo for +6 attack; can still intimidate without ammo.","多武器是否叠加未定":"Whether multiple weapons stack is TBD","子弹何时扣除未定":"When ammo is spent is TBD","恐吓":"Intimidate","子弹":"Ammo","支持步枪；部分交易事件有额外价值。每份使用次数未定。":"Feeds the rifle; extra value in some trade events. Uses per ammo TBD.","每份使用次数未定":"Uses per ammo TBD","弹药":"Ammo","交易":"Trade","防弹背心":"Bulletproof vest","防止任务中一次负面状态或生命损失；损坏时点、伤害范围待定。":"Blocks one negative status or HP loss during a mission; when it breaks and what it covers is TBD.","损坏时点待定":"When it breaks is TBD","伤害范围待定":"Coverage TBD","防护":"Protection","跳棋":"Checkers","外交、娱乐；特定售货机事件中冒充硬币，获得食物或水。":"Diplomacy, fun; poses as a coin at a certain vending machine to get food or water.","使用次数未定":"Number of uses TBD","外交":"Diplomacy","娱乐":"Fun","售货机":"Vending machine","地图":"Map","提供地点、时间与可能回报信息；降低队伍探路危险；携带参加一次任务加1笔记，每笔记1分；可能损坏。":"Gives places, timing and possible rewards; lowers scouting risk; +1 note per mission it is carried on, 1 pt per note; may get damaged.","转移后笔记归属、损坏后及死亡后的地图分数由主持人裁定":"Who owns the notes after a transfer, and map points after damage or death, are up to the host","探路":"Scouting","军用水壶":"Army canteen","水源或下雨条件下可获得1份水，最多储存2份。":"Collects 1 water at a water source or in rain; holds up to 2.","内部水是否额外占容量未定":"Whether stored water takes extra space is TBD","饮用后是否生成普通水物品未定":"Whether drinking creates a Water item is TBD","取水频率未定":"Refill frequency TBD","酒":"Liquor","事件中使用：临时攻击力+2，并承担一次口渴消耗。":"Use during an event: temporary attack +2, at the cost of one thirst step.","事件":"Event","信号枪":"Flare gun","适当地点与时机推进营救；其他事件中使用获得随机军方补给。":"Advances the rescue at the right place and time; in other events, gets random military supplies.","营救":"Rescue","（未知物品）":"(Unknown item)","字典里找不到这个物品：可能是已删除的自定义物品。":"This item isn't in the dictionary: maybe a custom item that was deleted.","未命名物品":"Unnamed item","主持人自定义物品，效果见备注。":"Host-defined custom item; see remark for effect.","流血伤口":"Bleeding wound","每两个回合失去1生命，直到清除。":"Lose 1 HP every two turns until cleared.","获得当天是否计入两回合待定":"Whether the day it's received counts toward the two turns is TBD","重复流血是否叠加待定":"Whether repeated bleeding stacks is TBD","感染":"Infection","候选状态，效果未被确认。":"Candidate status; effect not confirmed.","腹泻":"Diarrhea","虚弱":"Weakness","拉伤":"Strain","眩晕":"Dizziness","医生":"Doctor","用医疗箱治疗别人，消耗医疗箱并获得1份绷带；绷带可不消耗。":"Treats others with a medkit, consuming it and gaining 1 bandage; the bandage may be kept.","是否能自疗、技能具体作用范围未定。":"Self-treatment and the exact scope of the skill are TBD.","军人":"Soldier","持枪用两个回合制造1份子弹；用两个回合修复破损背心。可为他人服务，所需物品先交给军人。":"With a rifle, makes 1 ammo in two turns; repairs a damaged vest in two turns. Can work for others — hand the items over first.","两回合是否各耗行动未定。":"Whether each of the two turns costs an action is TBD.","背包客":"Backpacker","帮助他人整理：携带／带回额度+1，或保护一件物品在下一事件不损坏。":"Helps others pack: +1 carry/bring-back allowance, or protects one item from damage in the next event.","加成范围、持续时间和叠加未定。":"Scope, duration and stacking TBD.","厨师":"Chef","一次行动将0.5普通食物加工成0.5料理，恢复量相同；选择下次行动免一次负面、免一次伤害或减少饥饿消耗。":"One action turns 0.5 plain food into 0.5 dish with the same restore; choose to avoid one negative, avoid one hit, or reduce hunger cost on the next action.","具体触发未定。":"Exact trigger TBD.","冒险家":"Adventurer","亲自参与至少7件不同公共事件。":"Personally take part in at least 7 different public events.","圣母":"Saint","营救结算时死亡人数不超过初始人数的三分之二；6人即最多4人死亡。":"At rescue settlement, deaths do not exceed two-thirds of the starting players (at most 4 of 6).","囤积者":"Hoarder","持有3件相同物品时秘密消耗1件记进度，面包和普通水除外；累计3次。":"When holding 3 identical items, secretly use 1 to log progress (bread and water excluded); 3 times in total.","联络员":"Liaison","以任意形式亲自参与推进游戏进程3次。":"Personally help move the game forward 3 times, in any form.","厌世者":"Misanthrope","累计有3人死亡。无爱人、继承仇恨等早期规则不自动加入。":"3 deaths in total. Early rules like \"no loved one\" or inherited hatred are not added automatically.","爱财者（旧版）":"Wealth lover (old)","旧版财富额外加分尚未完成改写，置于停用草案，不可选择。":"The old wealth bonus hasn't been rewritten yet; parked as a retired draft and can't be chosen.","计划人数":"Planned players","约6人，可配置":"About 6, configurable","个人总库存上限":"Personal inventory limit","10单位（暂定）；超出只警告":"10 units (tentative); exceeding only warns","每次搜刮自留额度":"Keep allowance per scavenge","4单位；与总库存分开计算":"4 units; counted separately from inventory","事件携带上限（默认值）":"Event carry limit (default)","由具体事件规定，一般1～2单位；不是个人总库存":"Set by each event, usually 1–2 units; not your total inventory","守夜携带上限":"Watch carry limit","待定；不会默认沿用事件上限":"TBD; does not default to the event limit","水壶内每份水额外占位":"Extra space per water in canteen","未定时只独立显示水量":"Until decided, water is shown on its own","初始生命":"Starting HP","基础战斗力＝当前生命":"Base combat = current HP","生命上限":"Max HP","0生命处理与死亡时点":"Handling 0 HP and time of death","饥饿值上限":"Max hunger value","充盈阈值（≥）":"Full threshold (≥)","与饥饿阈值都填写后才启用自动判定":"Auto-detection turns on once both this and the Hungry threshold are filled","饥饿阈值（≤）":"Hungry threshold (≤)","饥荒阈值（≤）":"Starving threshold (≤)","填写后低于等于此值自动判为饥荒；未填时饥荒只能手动选择":"Once filled, values at or below it count as Starving; until then Starving can only be set by hand","初始饥饿值":"Starting hunger value","每日事件触发概率（%）":"Daily event chance (%)","80%有事件、20%无；只控制是否触发":"80% event, 20% none; only decides whether one triggers","公共事件位置":"Public event position","阶段2（资源补给）之前":"Before Phase 2 (Resupply)","阶段6（确认守夜）之后":"After Phase 6 (Confirm watch)","未选时由主持人手动触发":"If unset, the host triggers it by hand","每人换位请求上限":"Swap requests per player","最多3次；主持人可覆盖":"Up to 3; the host can override","营救阈值":"Rescue threshold","阈值未知：不自动结束，主持人点击结算":"Threshold unknown: the game doesn't end on its own; the host clicks settle","基础生存分":"Base survival score","爱分值":"Love points","恨分值":"Hate points","秘密任务固定奖励":"Secret mission reward","搜刮轮数":"Scavenge rounds","3轮":"3 rounds","每轮选项数":"Options per round","3个":"3","每轮秒数":"Seconds per round","7秒，超时选默认项":"7 s; on timeout the default is picked","每组合上限":"Combo cap","2单位；每组在「上限−0.5」到上限之间，不会超出":"2 units; each combo is between cap − 0.5 and the cap, never over","启用职业草案":"Enable profession drafts","默认停用，主持人明确启用后使用":"Off by default; use only after the host enables it","启用秘密任务草案":"Enable secret mission drafts","与职业独立开关":"Separate switch from professions","启用候选负面状态":"Enable candidate negative statuses","感染、腹泻、虚弱、拉伤、眩晕：效果未确认":"Infection, diarrhea, weakness, strain, dizziness: effects not confirmed","能量棒使用次数":"Energy bar uses","子弹每份使用次数":"Uses per ammo","跳棋使用次数":"Checkers uses","信号枪使用次数":"Flare gun uses","充盈":"Full","饥荒":"Starving","饥饿":"Hungry","普通":"Normal","数量必须是正整数":"Quantity must be a positive integer","找不到该物品":"Item not found","数量不足：现有 ":"Not enough: have ","，要扣 ":", need ","（剩":" (","次）":" uses left)","（笔记":" (notes: ","·损坏":" · damaged","（储水":" (water: ","（破损）":" (damaged)","（完好）":" (intact)","看不懂：「":"Can't read: “","未知物品：「":"Unknown item: “","数量为0：「":"Quantity is 0: “","抽取数量必须是正整数":"Draw count must be a positive integer","公共池只有 ":"The pool only has "," 件，不足 ":" pcs, short of "," 件":" pcs","剩余物品的权重都为 0，无法抽取":"All remaining items have weight 0; nothing can be drawn","每日补给":"Daily supply","该批次已结束":"This batch is closed","该玩家不在本批领取名单中":"This player isn't on this batch's pick list","该玩家本批已领取过":"This player already picked in this batch","该物品已被选走或不在本批候选中":"That item was taken or isn't in this batch","该玩家本批尚未领取":"This player hasn't picked in this batch yet","该批次已撤销":"This batch was undone","开局准备":"Setup","登记玩家、设计开局物资：每名玩家先领取两次，方式由主持人决定。":"Register players and design opening supplies: each player picks twice first; the host decides how.","昨夜结果":"Last night's result","公布前一晚的守夜结果，主持人确认状态与营救进度变化。首日无结果可跳过。":"Announce last night's watch result; the host confirms status and rescue changes. Skip on day 1.","资源补给":"Resupply","按当前座次领取物资。":"Pick supplies in the current seating order.","自由交流":"Free talk","讨论、交易、赠予及预先协商换位，均不收费；尚不锁定个人行动。":"Discussion, trades, gifts and pre-arranged swaps are free; personal actions aren't locked yet.","每日轮换":"Daily rotation","当前末位移到首位，其余人后移。每日只执行一次。":"The last seat moves to the first; everyone else shifts back. Once per day.","个人行动":"Personal actions","按轮换后的固定顺序逐人决定并结算；每人一次行动：使用技能、尝试换位或计划守夜名单。":"Players act one by one in the fixed post-rotation order; one action each: use a skill, try a seat swap, or plan the watch roster.","确认守夜":"Confirm watch","多人提交时，由实际换位后的末位玩家选择最终名单。":"If several rosters were submitted, the player in the last seat (after swaps) picks the final one.","公共事件":"Public event","每日一次判定：80%触发需要投票的公共事件，20%无事件。":"Rolled once a day: 80% triggers a public event to vote on, 20% no event.","阶段":"Phase ","换位双方必须都在座次中":"Both players must be in the seating order to swap","今日已轮换过，不会重复轮换":"Already rotated today; it won't rotate twice","尚未进入个人行动阶段":"Personal actions phase hasn't started","该玩家不在本轮行动顺序中":"This player isn't in this round's action order","该玩家本轮已行动":"This player already acted this round","该玩家今日已发起 ":"This player has already made "," 次换位请求（上限 ":" swap requests today (limit ","不能和自己换位":"You can't swap with yourself","换位请求→":"Swap request → ","（同意）":" (accepted)","（拒绝）":" (declined)","更可能获得营救信息":"More likely to get rescue info","更可能遭遇不测":"More likely to meet danger","单条（不混合）":"Single (no mixing)","叠加：人员取并集":"Stack: union of people","组合方式待定：主持人预览确认":"Mixing TBD: host previews and confirms","中性":"Neutral","指定":"Pick ","新名单模板":"New roster template","该名单没有指定对象：请主持人指定守夜人员。":"This roster names nobody: the host picks the watchers.","多条目的组合方式未定：已按并集预览，请主持人确认。":"How multiple entries combine is TBD: previewed as a union; please confirm.","按当日记录解析后没有人：请主持人裁定。":"No one left after applying today's records: host decides.","参与":"Join","拒绝":"Decline","没有结果":"No outcomes"," 个结果未填概率":" outcomes have no probability","概率合计 ":"Probabilities total ","%，不是100%":"%, not 100%"," 少了 ":" is missing "," 件（可能已被发放）":" pcs (maybe already handed out)","生命":"HP","饥饿值":"Hunger value","口渴：":"Thirst: ","状态：":"Status: ","物品：":"Items: ","地图笔记":"Map notes","缺少名称":"Name is missing","至少需要一个选项":"Needs at least one option","选项":"Option","死亡后不保留财富分":"Wealth points are lost on death","珠宝超过5件：需主持人计分":"More than 5 jewels: the host must score","财富分":"Wealth pts","地图分":"Map pts","爱恨分":"Love/hate pts","生存分":"Survival pts","任务分":"Mission pts","无弹，仅可恐吓":"no ammo, intimidation only","已标记死亡：财富分不保留，爱恨与任务分保留":"Marked dead: wealth points are lost; love/hate and mission points stay","生命为 0：处理方式与死亡时点待主持人裁定":"HP is 0: how to handle it and time of death are up to the host","脱水":"Dehydrated","脱水：直接昏迷":"Dehydrated: falls unconscious","口渴":"Thirsty","口渴：补水幅度待定，饮水后手动调整":"Thirsty: how much water restores is TBD; adjust by hand after drinking","昏迷":"Unconscious","昏迷中：如何解除尚未确定":"Unconscious: how it wears off is TBD","饥荒：比饥饿更严重，后果待主持人裁定":"Starving: worse than hungry; consequences up to the host","饥饿：相关成功率降低":"Hungry: related success rates drop","库存超出上限 ":"Inventory over the limit by "," 单位（只警告，由主持人裁定）":" units (warning only; the host decides)","守夜":"Watch","携带超出上限 ":"Carrying over the limit by "," 单位":" units","携带中：":" carry: "," 单位；结果出来后处理高亮物品，再点「结束携带」":" units; when the result is in, update the highlighted items, then tap “End carry”","正在挑选":"Choosing ","携带：已选 ":" carry: "," 单位，确认后才生效":" units chosen; takes effect after you confirm","搜刮进行中：第 ":"Scavenging: round "," 轮，超时会自动选默认项":", defaults are picked on timeout","搜刮三轮已完成：待整理并一次性提交":"Scavenge finished 3 rounds: sort and submit once","（已移除）":"(removed)","还没有登记玩家":"No players registered yet","开局领取完成 ":"Opening pickups done: ","／2 次":"/2","不在座次：":"Not seated: ","已死亡仍在座次：":"Dead but still seated: ","（是否移出由主持人决定）":" (the host decides whether to remove)","有一条昨夜结果待公布":"A night result is waiting to be announced","昨夜结果还没有公布":"Last night's result hasn't been announced","」还有 ":"” still has "," 人未领取":" players to pick","」已全部领取，可以结束批次":"” fully picked; you can close the batch","今天还没有发放批次":"No supply batch today yet","今日尚未轮换":"Not rotated today","尚未生成本轮行动顺序":"This round's action order isn't generated yet","轮到 ":" "," 行动（还剩 ":"'s turn (left: "," 人）":" players)","守夜名单未确认（已收到 ":"Watch roster not confirmed ("," 份提交）":" submitted)","守夜名单已确认，尚未公开":"Watch roster confirmed, not public yet","今晚的守夜结果还没有保存为草稿":"Tonight's watch result isn't saved as a draft yet","今日事件尚未判定":"Today's event roll not done","今日触发了公共事件，尚未选择事件":"A public event triggered today; no event chosen yet","事件已选定，尚未公布到公开页":"Event chosen, not yet shown on the public page","事件已公布，等待录入投票并结算":"Event shown; waiting for the vote and resolution","事件已结算，结果尚未公开":"Event resolved; result not public yet","营救进度已达阈值 ":"Rescue progress reached the threshold ","：何时结算由主持人决定":": the host decides when to settle","规则配置未完成 ":"Rules not fully configured: "," 项":" items left","示例搜刮模板":"Sample scavenge template","实现假设：候选只从本模板生成，不扣公共池。补给之外的物品每组最多一件，同类物品不容易同时出现。物品与权重都可编辑，也可导入主持人给的模板。":"Implementation note: options come only from this template and don't take from the pool. Non-supply items appear at most once per combo, and same-category items rarely appear together. Items and weights are editable; you can also import the host's template.","该轮已超时，已按默认项记录":"That round timed out; the default was recorded","选项不存在":"Option doesn't exist","不渴":"Not thirsty","清醒":"Conscious","不是有效的存档对象":"Not a valid save object","主持人存档":"Host save","玩家存档":"Player save","规则包":"Rules pack","存档类型不符：这里需要":"Wrong save type: expected ","，文件是":", file is ","未知类型":"Unknown type","缺少有效的 schemaVersion":"Missing a valid schemaVersion","存档版本 ":"Save version "," 比本页面（":" is newer than this page (","）新，无法导入":"); can't import","缺少 rules":"Missing rules","缺少 log":"Missing log","customItems 必须是数组":"customItems must be an array","缺少数组字段 ":"Missing array field ","缺少 today":"Missing today","day 必须是整数":"day must be an integer","玩家":"Player","缺少 id 或姓名":"Missing id or name","玩家 id 重复：":"Duplicate player id: ","座次中有不存在的玩家：":"Seating has unknown players: ","公共池里有无效物品（数量须为正整数）":"The pool has invalid items (quantity must be a positive integer)","缺少 inventory":"Missing inventory","库存里有无效物品（数量须为正整数）":"Inventory has invalid items (quantity must be a positive integer)","hp 必须是数字":"hp must be a number","缺少 statuses":"Missing statuses","缺少 playerId":"Missing playerId","不是规则包（kind 应为 shelter-rules）":"Not a rules pack (kind should be shelter-rules)","规则包缺少 rules":"Rules pack is missing rules","守夜人数（随机抽人时）":"Watch size (for random draws)","留空＝存活人数的三分之一，向上取整（6人2人、7人3人）；特殊条件可改":"Empty = one third of the living players, rounded up (6 → 2, 7 → 3); can change for special conditions","守夜卡片提前显示可能遭遇":"Show possible outcomes on watch cards","风险后果是否提前可见尚未确定：暂定显示；关闭后卡片上只写「主持人确认后公布」":"Whether risk outcomes are visible in advance is TBD: shown for now; when off, cards only say “announced after the host confirms”","随机抽人":"Random draw","按行动指定：今天使用行动计划守夜名单的人守夜":"By action: whoever used their action to plan the watch roster today keeps watch","按行动指定：今天使用职业技能的人守夜":"By action: whoever used a profession skill today keeps watch","全体指定：所有人今晚守夜":"Everyone: all players keep watch tonight","收益倾向":"Reward tendency","风险倾向":"Risk tendency","这份守夜名单似乎能获得更多获救信息":"This roster seems likely to get more rescue information","这份守夜名单或许在今晚会遭遇更多不测":"This roster may run into more trouble tonight","额外饥饿":"Extra hunger","受伤":"Injury","无事发生":"Nothing happens","获得营救信息／关键物资":"Rescue info / key supplies","随机 ":" "," 人守夜":" random players watch"," 守夜":" watch"," 人守夜（主持人收到代码后按存活名单抽出）":" random players watch (the host draws them from the living players on receiving the code)","今天使用行动计划守夜名单的人守夜":"Whoever used their action to plan the watch roster today keeps watch","今天使用职业技能的人守夜":"Whoever used a profession skill today keeps watch","所有人今晚守夜":"All players keep watch tonight"," 名守夜者":" watcher(s)","可能遭遇：主持人确认后公布":"Possible outcomes: announced after the host confirms","没有找到代码：请粘贴以 SHELTER- 开头的整段内容":"No code found: paste the whole message starting with SHELTER-","代码不完整或已损坏：请重新复制整段":"The code is incomplete or damaged: copy the whole thing again","守夜候选卡还没选：选一张后把代码发给主持人":"Watch card not chosen yet: pick one and send the code to the host","主持台":"Console","日志":"Log","计划守夜名单":"Plan watch roster","使用技能":"Use skill","其他行动":"Other action","放弃行动":"Pass","参与者":"Participants","A·老陈":"A·Old Chen","E·二狗":"E·Doggo","载入演示存档（与正式存档完全分开）":"Load demo save (fully separate from the real save)","读取时校验失败：":"Validation failed on load: ","本地存档无法读取（":"Can't read the local save (","存档损坏":"Save corrupted","本地存档已损坏。原数据已另存为备份，当前是空白存档。":"The local save is corrupted. The original data was saved as a backup; this is now a blank save.","自动保存失败（":"Auto-save failed (","未知错误":"unknown error","），可能是存储空间已满：请立即导出 JSON。":"), maybe storage is full: export JSON now.","撤销：":"Undo: ","已撤销：":"Undone: ","隐藏":"Hide","显示":"Show","空":"Empty","（占":" (takes ","演示存档":"Demo save","返回正式存档":"Back to the real save","清空演示数据":"Clear demo data","关闭":"Close","你正在通过上游部署地址访问。正式入口是 www.xxxmnalx.com/game/shelter ——两个地址的存档互不相通。":"You're on the upstream deployment address. The official entry is www.xxxmnalx.com/game/shelter — the two addresses don't share saves.","避难所 Playtest":"Shelter Playtest","主持人":"Host","天数":"Day","存活":"Alive","营救进度":"Rescue","配置未完成 ":"Config incomplete: ","撤销":"Undo","手动调整":"Manual adjust","设置":"Settings","座次":"Seating","已死亡":"Dead","末位":"Last seat","轮到":"Up next","阈值 ":"Threshold ","昨夜":"Last night","结算":"Settlement","公开":"Public","暂停":"Pause","开始":"Start","重置":"Reset","秒数":"Seconds","设定":"Set","待办":"To-do","存活人数":"Alive count","座次 ":"Seating ","跳转":"Jump","继续":"Continue","每日轮换：":"Daily rotation: ","阶段：":"Phase: ","还有 ":"There are still ","回退：":"Back: ","回退":"Back","跨日回退":"Cross-day rollback","尚未轮换":"Not rotated yet","已收到 ":"Received "," 份提交":" submissions","昨夜结果待公布":"Last night's result to announce","已完成":"Done","未完成":"Not done","今日已轮换":"Rotated today","执行每日轮换":"Do daily rotation","换位请求":"Swap request","状态":"Status","实际座次":"Actual seat","操作":"Actions","等待":"Waiting","不在座次":"Not seated","备注":"Note","记录":"Record","为 ":"Drew watch options for ","已发起 ":"Requested ","结果":"Result","已达阈值":"Threshold reached","公共池":"Common pool","共 ":"Total "," 件 · ":" pcs · ","加入公共池":"Add to pool","加入":"Add","未知物品":"Unknown item","标记完好":"Mark intact","标记破损":"Mark damaged","公共池：":"Pool: ","剩余次数":"Uses left","储水":"Water","储水（0～":"Water (0–","保存":"Save","最多储存 ":"Holds at most ","公共池不足":"Not enough in pool","删除":"Delete","权重需为非负数字":"Weight must be a non-negative number","已撤销":"Undone","已结束":"Closed"," 件。":" pcs.","类型":"Type","（已死亡）":" (dead)","抽取":"Draw","发放":"Handout","开局":"Opening","顺序":"Order","选择":"Pick","已选：":"Picked: ","交接文本":"Handoff text","撤回":"Withdraw","给 ":"DM text for ","撤销整个批次":"Undo the whole batch","结束批次":"Close batch","开局物资":"Opening supplies","标记完成":"Mark done","取消完成标记":"Unmark done","生成交接文本":"Create handoff text","提交":"Submit","系统随机":"System random","收到 ":"Received ","名单：":"Roster: ","最终名单":"Final roster","未公开":"Not public","来源：":"Source: ","（权重":" (weight "," 携带":" carries"," 条":" ","手动选择":"Chosen by hand","按权重抽取":"Draw by weight","待公布":"To announce","覆盖":"Overwrite","名单模板":"Roster templates","名称":"Name","权重":"Weight","启用":"Enabled","组合方式":"Combine","未填":"Unset","倾向":"Tendency","营救信息":"Rescue info","遭遇不测":"Danger","每日一次判定：":"Rolled once a day: ","无事件":"No event","触发":"Triggered","每日事件判定":"Daily event roll","主持人裁定":"Host ruling","（草案）":" (draft)","已公布":"Announced","公布到公开页":"Publish to public page","修改":"Edit","录入":"Enter","放弃":"Abandon","不变":"unchanged","由主持人宣布":"announced by the host","无":"None","公共池增减":"Pool changes","应用":"Apply","导出 JSON":"Export JSON","正式":"Real","编辑":"Edit","导入失败":"Import failed","导入":"Import","未命名":"Unnamed","选项 ":"Option ","地点":"Location","条件":"Conditions","请输入数字或留空":"Enter a number or leave empty","裁定调整":"Ruling adjustment","合计":"Total","部分分数／待裁定":"Partial score / pending rulings","最终排名":"Final ranking"," 分":" pts","爱的人":"Loved one","恨的人":"Hated one","职业":"Profession","秘密任务":"Secret mission","秘密":"Secret","玩家名单":"Players","存活状态":"Alive status","修改规则":"Change rule","该项不能留空":"This field can't be empty","请输入 0.5 的倍数":"Enter a multiple of 0.5","单位":"units","规则配置":"Rules","职业草案":"Profession drafts","秘密任务草案":"Secret mission drafts","停用草案：":"Retired drafts: ","负面状态":"Negative statuses","物品名称":"Item name","自定义物品":"Custom items"," · 占":" · takes ","单位 · ":" units · ","件":"pcs","请输入名称":"Please enter a name","占位需为 0.5 的倍数":"Space must be a multiple of 0.5","已有同名物品「":"An item named “","新增":"Add","占位":"Space","存档":"Save","已复制存档 JSON":"Save JSON copied","复制失败":"Copy failed","复制 JSON":"Copy JSON","粘贴导入":"Paste to import","撤销最近操作":"Undo last action","重置存档":"Reset save","备份（":"Backups (","打开演示存档":"Open demo save","不是有效的 JSON（":"Not valid JSON (","）。当前存档未改动。":"). The current save is unchanged.","导入失败：当前存档未改动":"Import failed: the current save is unchanged","导入存档？":"Import save?","将用导入的存档替换当前":"This replaces the current ","存档。当前存档会先备份。":" save with the imported one. The current save is backed up first.","导入前自动备份":"Auto-backup before import","导入存档":"Import save","导入成功":"Imported","把存档 JSON 粘贴到这里":"Paste the save JSON here","校验并导入":"Validate and import","重置存档？":"Reset save?","会清空当前":"This clears the current ","重置前自动备份":"Auto-backup before reset","已切换到演示存档（正式存档未改动）":"Switched to the demo save (real save unchanged)","已返回正式存档":"Back to the real save","清空演示数据？":"Clear demo data?","只删除演示存档，正式存档不受影响。":"Only the demo save is deleted; the real save is unaffected.","清空":"Clear","演示数据已清空":"Demo data cleared","计划者":"Planner","名单":"Roster","总览":"Overview","库存":"Inventory","库存与携带":"Inventory & carry","搜刮":"Scavenge","行动":"Action","行动与身份":"Action & identity","分数":"Score","演示·小周":"Demo · Zhou","【演示】公共池还剩不少面包；D 想用子弹换水。":"[Demo] The pool still has plenty of bread; D wants to trade ammo for water.","北门外有辆翻倒的补给车":"An overturned supply truck outside the north gate","地铁站B口积水，别走":"Metro exit B is flooded — avoid it","【演示】第1天在超市割伤":"[Demo] Cut at the supermarket on day 1","下一次行动判定视为充盈（功能饮料）":"Next action counts as Full (energy drink)","）。原数据已另存为备份，当前是空白存档，可在「存档」页查看备份。":"). The original data was saved as a backup; this is now a blank save. See the backup on the Save page.","浏览器本地保存不可用（可能是隐私模式或存储被禁用）：页面仍在内存中运行，刷新即丢失——请随时在「存档」页导出 JSON。":"Browser storage isn't available (private mode or storage blocked): the page runs in memory and is lost on refresh — export JSON from the Save page often.","交接文本（需要对方手动修改）":"Handoff text (the other side updates by hand)","复制后发到 Discord":"Copy and post to Discord","玩家端不会自动同步到任何人的页面。":"The player page never syncs to anyone else's page.","我":"Me","仅供试用，与正式存档完全分开。":"Trial only; fully separate from your real save.","清空演示":"Clear demo","未命名玩家":"Unnamed player","前一天":"Previous day","后一天":"Next day","简要状态":"Quick status","未记录":"Not recorded","意识":"Consciousness","库存占位":"Inventory space","携带中":"Carrying","修改天数":"Change day","更多":"More","核心状态":"Core status","生命为 0":"HP is 0","基础战斗力 ":"Base combat "," · 生命上限待配置":" · max HP not configured","自动":"Auto","手动":"Manual","按阈值自动判定":"Auto from thresholds","阈值待配置":"Thresholds not configured","负面状态 ":"Negative statuses: ","没有负面状态":"No negative statuses","超出上限":"Over the limit","未超出":"Within limit"," · 携带中 ":" · carrying ","财富估算":"Wealth estimate","死亡清零":"Lost on death","待主持人计分":"Host scores this","钞票 ":"Cash "," · 名画 ":" · Painting "," · 珠宝 ":" · Jewel "," · 地图笔记 ":" · Map notes ","今天":"Today","未行动":"Not acted","座次未记录":"Seat not recorded","快捷操作":"Quick actions","添加物品":"Add item","继续搜刮":"Continue scavenging","携带模式":"Carry mode","今日：":"Today: ","选择今日行动":"Choose today's action","查看":"View","一切正常":"All clear"," 没有需要处理的提醒。":" Nothing needs attention.","需要留意":"Needs attention"," · 占上限 ":" · of limit ","各分类占位（单位）":"Space by category (units)"," 单位，":" units, ","比例尺 0–":"Scale 0–","（个人总库存上限 ":" (personal limit ","；已用 ":"; used ","库存是空的。主持人发放物资后在「库存」页手动添加。":"Inventory is empty. Add items by hand on the Inventory page after the host hands them out.","占位构成":"Space by category","上限待定":"Limit TBD"," 单位 · ":" units · ","战斗力 ":"Combat ","（叠加待定）":" (stacking TBD)","进行中：第 ":"In progress: round "," 轮":" ","待整理提交":"Waiting to sort and submit","临时效果":"Temporary effect","公共笔记":"Public notes","没有携带中的物品、进行中的搜刮或临时效果。":"Nothing being carried, no scavenge in progress, no temporary effects.","进行中":"In progress","效果见状态页":"See the Status page for effects","到期":"Due"," 没有负面状态。":" No negative statuses.","遮住":"Hide","身份与目标已遮住（只在这台设备上生效）。":"Identity and goals are hidden (on this device only).","未填写":"Not filled in","结算时判断":"Decided at settlement","身份与目标":"Identity & goals","还没有记录。":"Nothing recorded yet.","最近记录":"Recent log","全部":"All","流血提醒：":"Bleeding reminder: ","流血扣血":"Bleeding HP loss","流血伤口：经主持人确认扣1生命 → ":"Bleeding wound: lost 1 HP (host confirmed) → ","已确认，扣1生命":"Confirmed, lose 1 HP","流血不扣":"No bleeding loss","主持人裁定不扣":"Host ruled no loss","生命需为整数":"HP must be an integer","修改生命":"Change HP","生命 ":"HP ","初始 ":"start "," · 上限 ":" · max ","生命减一":"HP minus one","生命加一":"HP plus one","基础战斗力＝当前生命：":"Base combat = current HP: ","生命为 0：0 生命的处理与死亡时点尚未确定（":"HP is 0: how 0 HP is handled and the time of death are TBD (","）。页面不会自动判定死亡。":"). The page never decides death on its own.","超过生命上限 ":"Above max HP ","：请确认是否录入有误。":": please check the entry.","修改饥饿值":"Change hunger value","饥饿值 ":"Hunger value ","充盈／普通／饥饿／饥荒":"Full / Normal / Hungry / Starving","区间：":"Zone: ","（按阈值自动判定）":" (auto from thresholds)","（手动）":" (manual)"," 未填阈值时禁用自动判定，保留手动状态：":" Without thresholds, auto-detection is off and the manual state is kept:","手动饥饿状态":"Manual hunger state","饥饿状态（手动）：":"Hunger state (manual): ","饥荒阈值待配置":"Starving threshold not configured"," 自动判定只到「饥饿」；饥荒阈值填写后才会自动判为饥荒。":" Auto-detection only goes down to “Hungry”; it detects Starving once the Starving threshold is filled.","充盈改善力气和相关成功率，饥饿降低相关成功率，饥荒比饥饿更严重（具体修正与后果未定）。按行动消耗前的状态判定，再扣事件消耗；事件开启后不能靠临时进食提升本次状态（提示，不强制）。":"Full improves strength and related success rates; Hungry lowers them; Starving is worse than Hungry (exact modifiers and consequences TBD). Judge by your state before the action's cost, then apply the event's cost; once an event starts, eating on the spot can't improve this check (a reminder, not enforced).","口渴与意识":"Thirst & consciousness","修改意识":"Change consciousness","意识 ":"Consciousness ","脱水直接昏迷（已确认）。没有固定的每日口渴扣减，由结算结果触发；补水幅度、昏迷如何解除及能做哪些事尚未确定——请手动切换，不会自动判成死亡。":"Dehydration means falling unconscious (confirmed). There's no fixed daily thirst loss; results trigger it. How much water restores, how unconsciousness ends and what you can do meanwhile are TBD — switch by hand; the page never marks you dead.","修改口渴":"Change thirst","口渴 ":"Thirst ","脱水直接昏迷":"Dehydrated: falls unconscious","脱水直接昏迷（已确认规则）":"Dehydration means falling unconscious (confirmed rule)","自定义状态…":"Custom status…","改日期":"Change dates","移除状态":"Remove status","移除状态：":"Removed status: ","移除":"Remove","没有负面状态。":"No negative statuses.","添加":"Add","感染、腹泻、虚弱、拉伤、眩晕：候选状态，效果未被确认。":"Infection, diarrhea, weakness, strain, dizziness: candidate statuses, effects not confirmed.","感染、腹泻、虚弱、拉伤、眩晕是草案状态，默认停用（可在「存档 → 规则」按主持人通知启用）。":"Infection, diarrhea, weakness, strain and dizziness are draft statuses, off by default (turn on under Save → Rules when the host says so).","状态名称":"Status name","说明（可选）":"Description (optional)","自定义状态":"Custom status","说明":"Description","添加状态":"Add status","添加状态：":"Added status: ","（草案，效果未确认）":" (draft, effect not confirmed)","添加流血伤口":"Add bleeding wound","已经有流血伤口。重复流血是否叠加尚未确定——请先与主持人确认。":"You already have a bleeding wound. Whether bleeding stacks is TBD — check with the host first.","获得日期（第几天）":"Acquired on (day)","下次触发日期":"Next trigger day","每两个回合失去1生命，直到清除。获得当天是否计入两回合待定：默认下次为获得日+2，可改。到期只提醒，扣血前与主持人确认。":"Lose 1 HP every two turns until cleared. Whether the acquiring day counts toward the two turns is TBD: next defaults to acquired day + 2 and can be changed. Due dates only remind you; confirm with the host before losing HP.","日期需为整数":"Date must be an integer","添加流血":"Add bleeding","修改流血日期":"Change bleeding dates","获得日期":"Acquired on","例如：下一任务临时攻击+2（酒）":"e.g. next mission: temporary attack +2 (liquor)","攻击+":"Attack +","清除临时效果":"Clear temporary effect","清除临时效果：":"Cleared temporary effect: ","清除":"Clear","没有临时效果。":"No temporary effects.","添加临时效果":"Add temporary effect","添加临时效果：":"Added temporary effect: ","临时效果只记录到下一次任务或行动，不自动扩展为全回合加成；用完请手动清除。":"Temporary effects only last until your next mission or action; they don't become whole-round bonuses. Clear them by hand when used.","标记为死亡（由主持人宣布）":"Mark as dead (announced by the host)","恢复为存活":"Restore to alive","我已死亡（由主持人宣布）":"I'm dead (announced by the host)","死亡后不保留财富分；爱恨与任务分保留，各任务是否仍可继续完成待定。":"Wealth points are lost on death; love/hate and mission points stay. Whether missions can still be completed is TBD.","其他":"Other","这个分类下没有物品。":"No items in this category.","库存是空的。主持人发放物资后，请在这里手动添加。":"Inventory is empty. Add items here by hand after the host hands them out.","总占位 ":"Total space ","超出总库存上限 ":"Over the inventory limit by "," 单位：只警告，不阻断主持人裁定。":" units: warning only; the host still decides.","水壶内的水是否额外占容量：待配置":"Whether water in the canteen takes space: to configure"," 目前只计算水壶本身。":" For now only the canteen itself counts.","排列":"Sort","按类别":"By category","默认顺序":"Default order","+ 添加物品":"+ Add item","添加自定义物品":"Add custom item","携带中：暂不可操作":"Carrying: locked for now","使用":"Use","赠予／交公":"Give / to pool","赠予他人或交给公共池":"Give to someone or hand in to the pool","赠予":"Give"," · 每件 ":" · each "," · 合计 ":" · total ","携带中 ":"Carrying ","备注：":"Remark: ","囤积者：秘密消耗1件记进度":"Hoarder: secretly use 1 to log progress","少带一件":"Carry one less ","带 ":"Carry ","多带一件":"Carry one more ","✓ 已带上":"✓ Taken","带上":"Take","挑选携带 · ":"Choosing carry · ","携带中 · ":"Carrying · ","不限（上限未设）":"No limit (not set)","携带占位":"Carry space","在下面的物品卡上点「带上」。最多 ":"Tap “Take” on the item cards below. Up to ","不限":"no limit","，超出的物品选不上；上限可在「设置上限」里改（以主持人或事件规定为准）。":"; items over the limit can't be picked. Change the limit with “Set limit” (the host's or the event's rule wins).","已选超出上限：请减少后再确认。":"Over the limit: remove something before confirming.","确认携带":"Confirm carry"," 种）":" kinds)","设置上限":"Set limit","取消携带":"Cancel carry","取消携带模式":"Carry mode cancelled","带着：":"Carrying: ","（没有物品）":"(no items)","。主持人宣布结果后，直接在高亮的物品卡上「删除」或「修改」；其他物品暂时锁定。":". When the host announces the result, delete or edit the highlighted cards directly; other items stay locked.","战斗力：基础 ":"Combat: base ","；未带武器":"; no weapon","；临时 +":"; temporary +","；合计 ":"; total ","（多武器是否叠加待定）":" (whether weapons stack is TBD)"," 单位：只警告，由主持人裁定。":" units: warning only; the host decides.","结束携带（返回）":"End carry (return)","重新挑选携带":"Re-choose carry","重新挑选携带物品":"Re-choosing carried items","重新挑选":"Re-choose","可选：事件名或第几夜":"Optional: event name or which night","进入携带模式":"Enter carry mode","带去哪里":"Carry for","携带上限（单位）":"Carry limit (units)","默认 2 单位；以主持人或具体事件的规定为准":"Defaults to 2 units; the host's or the event's rule wins","携带只是给库存里的物品做标记，不复制物品。确认后其他物品暂时锁定，结束携带时解锁。":"Carrying only marks items in your inventory; nothing is copied. After you confirm, other items lock until you end the carry.","开始挑选":"Start choosing","上限需为 0.5 的倍数或留空":"The limit must be a multiple of 0.5, or empty","准备携带":"Prepare carry","携带（上限 ":" carry (limit ","携带上限":"Carry limit","上限（单位，留空＝不限）":"Limit (units, empty = no limit)","以主持人或具体事件的规定为准":"The host's or the event's rule wins","修改携带上限":"Change carry limit","携带上限：":"Carry limit: ","确认携带（":"Confirmed carry (","已确认携带：其他物品暂时锁定":"Carry confirmed: other items are locked for now","结束携带？":"End carry?","只清除携带标记、解锁其他物品。事件中用掉或丢失的物品，请先在高亮的卡片上删除或修改。":"This only clears the carry marks and unlocks other items. Delete or edit anything used up or lost in the event on its highlighted card first.","结束携带":"End carry","结束携带（":"Ended carry (","），物品不重复添加":"); items are not added again","调整携带":"Adjust carry","超出携带上限 ":"Over the carry limit of ","删除数量（现有 ":"Quantity to delete (have "," 件）":" pcs)","从你的库存移除，可以用顶部的「撤销」恢复。":"Removes it from your inventory; “Undo” at the top brings it back.","交给别人或交公请用「赠予／交公」，那样会生成给对方的交接文本。":"To hand it to someone or the pool, use “Give / to pool” — that creates a handoff text for them.","数量需在 1～":"Quantity must be 1–"," 之间":" ","删除物品":"Delete item","删除：":"Deleted: ","（携带中）":" (carried)","剩余 ":"Left: "," 次（用完消失；未用完整件仍占 ":" uses (gone when used up; a partly used one still takes ","储水 ":"Water: ","破损":"Damaged","完好":"Intact","笔记 ":"Notes: "," 条（每条1分）· 状态：":" (1 pt each) · condition: ","损坏":"Damaged","可选，例如：主持人第2天发放":"Optional, e.g. handed out by the host on day 2","每件剩余次数":"Uses left per item","每个水壶储水（0～":"Water per canteen (0–","已损坏":"Damaged","物品":"Item","数量（件）":"Quantity (pcs)","主持人端不会自动发物资：拿到什么就在这里记什么。超出容量只警告。":"The host page doesn't send you items: record here whatever you receive. Going over capacity only warns.","剩余次数需为正整数":"Uses left must be a positive integer","储水需在 0～":"Water must be 0–","添加物品：":"Added item: ","库存已超出上限（只警告）":"Inventory is over the limit (warning only)","效果（按主持人说明）":"Effect (as the host described)","可选":"Optional","分类":"Category","占位（单位）":"Space (units)","效果":"Effect","内置":"built-in","，每件占 ":", each takes "," 单位）：会按原有定义加入库存。":" units): it will be added using the existing definition.","主持人也可以把自定义物品放进规则包，你在「存档」页导入即可。":"The host can also put custom items in the rules pack — import it on the Save page.","加入库存":"Add to inventory","新建自定义物品：":"New custom item: ","（每件占 ":" (each takes "," 单位）":" units)","已按原有的「":"Added using the existing “","」加入库存 ×":"” ×","已创建并加入库存：":"Created and added to inventory: ","+ 添加笔记":"+ Add note","修改：":"Edit: ","手动覆盖用于纠错，会记入日志。":"Manual override for fixing mistakes; it's logged.","数量（0＝删除）":"Quantity (0 = delete)","剩余次数（0＝用完，删除）":"Uses left (0 = used up, delete)","删除这件物品？":"Delete this item?","删除物品：":"Deleted item: ","删除这件":"Delete it","数量不能是负数":"Quantity can't be negative","剩余次数不能是负数":"Uses left can't be negative","修改物品":"Edit item","手动修改：":"Manual edit: ","已删除":"Deleted","囤积者进度":"Hoarder progress","需要持有3件相同物品":"Needs 3 identical items","囤积者：秘密消耗1件":"Hoarder: secretly use 1","，进度 ":", progress ","对方名字":"Their name","赠予／交易给玩家":"Give / trade to a player","交给公共池":"Hand in to the pool","转出：":"Transfer: ","对方（赠予时填写）":"Recipient (for gifts)","数量（现有 ":"Quantity (have ","会从你的库存扣除并生成交接文本：对方（或主持人）需要手动添加，不会自动同步。":"This is deducted from your inventory and a handoff text is created: the other player (or host) adds it by hand; nothing syncs automatically.","转出并生成文本":"Transfer and create text","请填写对方名字":"Please enter their name","交公":"To pool","（地图笔记：":" (map notes: "," 把「":" gave “","」交给了 ":"” to ","。请 ":". "," 在玩家页「库存」手动添加。":" — please add it by hand on your Inventory page.","转出给 ":"Transferred to "," 交出「":" handed in “","。请主持人在公共池手动加入。":". Host, please add it to the pool by hand.","交给公共池：":"Handed in to the pool: ","不改":"No change","饮用：":"Drink: ","消耗 1 件。补水幅度待定——请按主持人裁定手动设置口渴状态：":"Uses 1. How much thirst it restores is TBD — set your thirst by hand as the host rules:","已确认：下一次行动判定视为充盈（实际饥饿值不变）。会记录为临时效果。":"Confirmed: your next action counts as Full (hunger value unchanged). Recorded as a temporary effect.","饮用":"Drink","：口渴 ":": thirst ","；下一次行动视为充盈":"; next action counts as Full","吃一次：":"Eat once: ","食用：":"Eat: "," 次 → 用后 ":" uses → after use "," 次":" left","（用完消失）":" (gone when used up)","。每次约等于一份普通食物／面包。":". Each use is about one plain food / bread.","消耗 1 件。":"Uses 1.","饥饿值变化（恢复量待定：按主持人裁定手动填写，留空＝不改）":"Hunger change (amount TBD: enter as the host rules; empty = no change)","口渴（补水幅度待定，手动设置）":"Thirst (amount TBD; set by hand)","提示：事件开启后不能通过临时进食提升本次状态；携带的食物可按事件规则消耗。":"Reminder: once an event starts, eating on the spot can't improve this check; carried food is used by the event's rules.","饥饿值变化需为数字或留空":"Hunger change must be a number or empty","食用":"Eat","饥饿值未改（恢复量待定）":"Hunger value unchanged (amount TBD)","吃一次":"Eat once","自己":"Self","他人":"Someone else","恢复1生命":"Restore 1 HP","止血":"Stop bleeding","使用绷带":"Use bandage","对象":"Target","效果（二选一，已确认）":"Effect (pick one; confirmed)","你目前没有流血伤口：对自己只能选「恢复1生命」。":"You have no bleeding wound: on yourself you can only “Restore 1 HP”.","没有可以止血的伤口":"No wound to stop bleeding","绷带：恢复1生命 → ":"Bandage: restored 1 HP → ","绷带：止血（清除一处流血伤口）":"Bandage: stopped bleeding (cleared one bleeding wound)"," 对 ":" used a bandage on "," 使用了绷带：":": ","止血（清除一处流血伤口）":"stop bleeding (clear one bleeding wound)"," 在玩家页手动修改。":" — please update it by hand on your player page.","对 ":"Used a bandage on "," 使用绷带（":" (","治疗他人：请对方手动修改":"Treating others: they update it by hand","伤病类":"Injury/illness","是否属伤病类待裁定":"Whether it's an injury/illness is up to the host","你没有负面状态。":"You have no negative statuses.","使用医疗箱":"Use medkit","已确认：清除伤病类负面状态，并恢复2生命；不处理饥饿、口渴及脱水昏迷。不会把所有非正常状态清零。":"Confirmed: clears injury/illness statuses and restores 2 HP; doesn't treat hunger, thirst or dehydration coma. It does not reset every abnormal state.","对自己时清除的状态":"Statuses cleared when used on yourself","医生（草案）：治疗他人时消耗医疗箱并获得1份绷带":"Doctor (draft): treating others uses the medkit and gives 1 bandage","医疗箱：恢复2生命 → ":"Medkit: restored 2 HP → ","；清除 ":"; cleared "," 使用了医疗箱：清除伤病类负面状态，并恢复2生命（不处理饥饿、口渴及脱水昏迷）。请 ":" used a medkit: clears injury/illness statuses and restores 2 HP (not hunger, thirst or dehydration coma). "," 使用医疗箱":" Use medkit","医生（草案）：治疗他人后获得1份绷带":"Doctor (draft): gained 1 bandage after treating someone","笔记内容：地点、时间或可能的回报":"Note: a place, time or possible reward","携带参加一次任务加1笔记（已确认），每条笔记1分。":"+1 note each time it's carried on a mission (confirmed); 1 pt per note.","新笔记":"New note","移交地图时，笔记会写进交接文本告知对方；转移后笔记归属、损坏后及死亡后的分数由主持人裁定。":"When you hand the map over, its notes go into the handoff text; note ownership after a transfer, and points after damage or death, are up to the host.","标记损坏":"Mark damaged","加1笔记":"Add 1 note","地图加笔记":"Map note added","地图状态":"Map condition","任务笔记":"Mission note","地图加1笔记：":"Map +1 note: ","（共":" (total ","条）":")","地图标记为":"Map marked as ","军用水壶（储水 ":"Army canteen (water: ","水源或下雨条件下可获得1份水，最多储存":"Collects 1 water at a water source or in rain; holds up to ","份。取水频率、饮用后是否生成普通水物品未定。":". Refill frequency and whether drinking creates a Water item are TBD.","饮用后的口渴（补水幅度待定，手动设置）":"Thirst after drinking (amount TBD; set by hand)","取水 +1":"Refill +1","饮用 −1":"Drink −1","水壶是空的":"The canteen is empty","水壶取水":"Canteen refill","水壶饮用":"Canteen drink","水壶取水：储水 ":"Canteen refill: water ","水壶饮用：储水 ":"Canteen drink: water ","；口渴 ":"; thirst ","事件中使用酒？":"Use liquor in the event?","消耗1件。已确认：临时攻击力+2，并承担一次口渴消耗。只记录到下一任务，不扩展为全回合加成；口渴变化请按结算手动修改。":"Uses 1. Confirmed: temporary attack +2, at the cost of one thirst step. Only lasts until the next mission, not the whole round; update thirst by hand per the result.","使用酒":"Use liquor","下一任务：临时攻击+2（酒）":"Next mission: temporary attack +2 (liquor)","承担一次口渴消耗（酒，按结算手动修改）":"One thirst step (liquor; update by hand per the result)","使用酒：下一任务临时攻击+2，并承担一次口渴消耗":"Used liquor: temporary attack +2 next mission, plus one thirst step","防弹背心（":"Bulletproof vest (","防止任务中一次负面状态或生命损失。损坏时点、伤害范围待定：不会自动判定每次保护都会损坏。":"Blocks one negative status or HP loss during a mission. When it breaks and what it covers are TBD: it doesn't assume every block breaks it.","军人（草案）修复技能需要破损的背心。":"The soldier (draft) repair skill needs a damaged vest.","记录抵挡一次":"Log one block","标记完好（已修复）":"Mark intact (repaired)","背心抵挡":"Vest block","背心状态":"Vest condition","防弹背心抵挡一次（是否因此破损由主持人裁定）":"The vest blocked one hit (the host decides whether it broke)","防弹背心标记为":"Vest marked as ","用在哪里（可选）":"Where it was used (optional)","记录使用：":"Log use: ","使用次数：":"Uses: ","。未确定的使用不会自动扣数量。":". Undecided uses don't deduct quantity automatically.","同时扣除数量":"Also deduct quantity","扣除件数":"Pieces to deduct","扣除件数需在 1～":"Pieces to deduct must be 1–","记录使用":"Log use","，扣除 ":", deducted ","，未扣数量":", quantity not deducted","阶段性搜刮":"Scavenge","轮 × ":" rounds × ","选项 × ":" options × ","每轮几组物资组合（每组 ":"A few supply combos each round (each "," 单位；补给之外的物品每组最多一件），超时自动选默认项（第一项，已标明）。计时按截止时间计算，候选与选择立即存档：刷新或切到后台都不会多领一轮。":" units; non-supply items at most once per combo); on timeout the marked default (first option) is picked. The timer runs on deadlines and options and choices are saved right away: refreshing or switching away never gives an extra round.","新所得进入待整理区：自留不超过 ":"New finds go to a sorting area: keep up to "," 单位，同时检查总库存 ":" units, while also checking the inventory limit of "," 单位，其余形成交公清单。":" units; the rest becomes a hand-in list.","开始搜刮（主持人通知后）":"Start scavenging (after the host says go)","候选从下方的搜刮模板生成，不扣公共池（实现假设，主持人可改）。":"Options come from the scavenge template below and don't take from the pool (implementation choice; the host can change it).","开始搜刮？":"Start scavenging?","请确认主持人已经通知开始。开始后计时不能暂停，刷新也不会重置。":"Make sure the host has said go. Once started, the timer can't pause and refreshing won't reset it.","开始搜刮":"Start scavenging","处理中…":"Working…"," 秒":"s","默认：超时自动选择":"Default: picked on timeout","（空）":"(empty)","已完成：":"Done: ","（超时默认）":" (timeout default)","搜刮选择":"Scavenge pick","搜刮超时":"Scavenge timeout","搜刮超时：自动选默认项（第一项）":"Scavenge timed out: default picked (first option)","，进入下一轮":", moving to the next round","待整理区":"Sorting area","三轮已完成":"Three rounds done"," · 每件":" · each ","自留":"Keep","交公 ":"To pool ","这次什么也没搜到。":"Nothing found this time.","本次自留：":"Keeping this time: ","（超出自留额度）":" (over the keep allowance)","提交后总库存：":"Inventory after submitting: ","（超出总库存，只警告）":" (over the inventory limit, warning only)","单独转出旧物品":"Hand off old items separately"," 腾出库存；不算进本次搜刮所得":" to free up space; they don't count as this scavenge's finds","库存是空的。":"Inventory is empty.","预览并提交":"Preview and submit","预览：一次性提交":"Preview: submit once","自留（加入库存）：":"Keep (added to inventory): ","本次所得交公：":"Finds handed in to the pool: ","旧物品转出（不算本次所得）：":"Old items handed off (not this scavenge's finds): ","件）":" pcs)","自留超过 ":"Keeping more than "," 单位。":" units. ","提交后总库存超过 ":"After submitting, inventory exceeds ","只警告，不阻断主持人裁定。":"Warning only; the host still decides.","主持人已裁定，仍然提交":"The host has ruled — submit anyway","提交后只能提交一次：自留物品加入库存，交公清单生成交接文本给主持人手动加入公共池。":"You can only submit once: kept items go into your inventory, and the hand-in list becomes a handoff text for the host to add to the pool.","返回修改":"Back to edit","确认提交":"Confirm submit","超出额度：请先勾选「主持人已裁定」":"Over the allowance: tick “The host has ruled” first","提交搜刮":"Submit scavenge","本次搜刮已提交，不会重复领取":"This scavenge has been submitted; it won't pay out twice","另交出旧物品（不算本次所得）：":"Also handing in old items (not this scavenge's finds): ","自留 ":"Keep ","（超出额度，已由主持人裁定）":" (over the allowance, ruled by the host)","提交搜刮：自留 ":"Submitted scavenge: keep ","；交公 ":"; to pool ","；旧物品转出 ":"; old items handed off ","交公清单：发给主持人":"Hand-in list: send to the host","上一次搜刮":"Last scavenge","已提交 ":"Submitted ","复制交公清单":"Copy hand-in list","搜刮模板：":"Scavenge template: ","权重需为非负数字（0＝不出现）":"Weight must be a non-negative number (0 = never appears)","修改搜刮模板":"Edit scavenge template","自定义搜刮模板":"Custom scavenge template","所有物品都已在模板中":"Every item is already in the template","模板加入物品":"Add items to template","加入自定义物品（权重0）":"Add custom items (weight 0)","恢复示例模板":"Restore sample template","为今晚抽两份守夜候选，交给主持人":"Draw two watch roster options for tonight and give them to the host","尝试换位":"Try a seat swap","请求与别人交换实际座位，双方同意才生效":"Ask someone to swap actual seats; it only happens if both agree","使用职业技能":"Use profession skill","主持人允许的其他行动":"Another action the host allows","今天不行动":"No action today","已使用（未注明）":"Used (type not noted)","今日行动":"Today's action","取消今日行动：":"Cancelled today's action: ","技能":"skill","今日行动：":"Today's action: ","（改选，原为":" (changed from ","可选：对谁、做了什么":"Optional: on whom, what you did","行动备注":"Action note","例如：制造子弹":"e.g. make ammo","回合":"Turns","还没选":"Not chosen","每天一次行动。点一个按钮点亮它，就记为今天的行动；再点一次取消，点别的就改选。只记在你自己的页面上，不会自动通知主持人。":"One action per day. Tap a button to light it up and record it as today's action; tap again to cancel, or tap another to switch. It's only saved on your page and doesn't notify the host.","先在下方选择职业":"Choose a profession below first","职业草案未启用":"Profession drafts are off","今天已标记使用行动（旧记录，未注明类型）。点一个按钮可补上类型。":"Today's action was already marked as used (old record, type not noted). Tap a button to add the type.","职业技能":"Profession skill","未选择":"Not chosen","选择职业":"Choose profession","职业：":"Profession: ","的技能":"'s skill","还没有选择职业。":"No profession chosen yet.","使用职业技能会占用当天的行动：在上方点亮「使用职业技能」。职业没有专属分数，除非之后确认。":"Using your profession skill takes today's action: light up “Use profession skill” above. Professions have no score of their own unless confirmed later.","使用记录":"Use log","职业草案未启用（主持人明确启用后，在「存档 → 规则」打开）。":"Profession drafts are off (turn them on under Save → Rules once the host enables them).","制作进度":"Crafting"," 回合":" turns","完成":"Done","删除制作":"Delete crafting","删除制作项：":"Deleted crafting: ","没有进行中的制作。":"Nothing being crafted.","请输入制作内容":"Please enter what you're crafting","回合数需为正整数或留空":"Turns must be a positive integer or empty","新增制作":"Add crafting","新增制作项：":"Added crafting: ","例如军人（草案）：持枪两个回合制造1份子弹、两个回合修复破损背心；两回合是否各耗行动未定。完成后请手动修改库存。":"e.g. Soldier (draft): two turns with a rifle make 1 ammo; two turns repair a damaged vest; whether each turn costs an action is TBD. Update your inventory by hand when done.","制作进度：":"Crafting progress: ","指向自己":"Point to self","：自己":": self","身份与秘密":"Identity & secrets","姓名":"Name","由主持人私信分配，手动填写；可以是自己":"Assigned by the host in a DM; enter it by hand. Can be yourself","可以是自己；爱与恨能否是同一人尚未确定":"Can be yourself; whether love and hate can be the same person is TBD","选择任务":"Choose mission","秘密任务：":"Secret mission: ","任务完成后统一固定奖励（奖励值：":"Completing a mission gives a fixed reward (value: ","）。完成即锁定还是结算时判断，按任务与配置处理。停用草案：":"). Whether it locks on completion or is judged at settlement depends on the mission and config. Retired drafts: ","（不可选择）。":" (not selectable).","秘密任务草案未启用。":"Secret mission drafts are off.","亲自参与的公共事件名称":"Name of a public event you joined","不同公共事件：":"Different public events: ","移除事件":"Remove event","这件事件已记录过（需不同事件）":"That event is already recorded (must be different)","记录参与事件":"Log event joined","冒险家：参与事件「":"Adventurer: joined event “","进度：":"Progress: ","任务进度":"Mission progress","进度 ":"Progress ","库存里同一物品（面包、普通水除外）持有3件时，物品卡上会出现「囤积者：秘密消耗1件」按钮。":"When you hold 3 of the same item (not bread or water), its card shows a “Hoarder: secretly use 1” button.","在营救结算时由主持人判断：初始 ":"Judged by the host at rescue settlement: with "," 人时最多 ":" starting players, at most "," 人死亡。":" may die.","任务完成标记":"Mission done mark","：标记完成":": marked done","：取消完成标记":": done mark removed","已完成（由主持人确认）":"Done (confirmed by the host)","手动分数":"Manual scores","：钞票":": cash ","、名画":", paintings ","、珠宝":", jewels "," → 财富分 ":" → wealth pts ","需主持人计分":"host must score","；地图笔记 ":"; map notes ","；任务 ":"; mission ","（已完成）":" (done)","（进度 ":" (progress "," × 1 ＋ 名画 ":" × 1 + paintings "," × 6 ＋ 珠宝 ":" × 6 + jewels "," 件（查表：":" pcs (table: ","超过5件":"more than 5","珠宝 1～5 件总分依次 1、4、8、11、15；超过5件不自行外推。":"1–5 jewels score 1, 4, 8, 11, 15 in total; beyond 5 isn't extrapolated.","笔记合计 ":"Notes total "," 条（每条1分）":" (1 pt each)","转移后笔记归属、损坏后分数与死亡后的地图分由主持人裁定，不并入死亡即清零的财富。":"Note ownership after a transfer, and points after damage or death, are up to the host; map points are not part of the wealth that resets on death.","地图分（主持人裁定）":"Map points (host decides)","留空＝待定":"Empty = TBD","分值待配置":"Point value not configured","固定奖励值待配置":"Fixed reward not configured","合计（已知部分）：":"Total (known part): ","部分分数／待裁定：":"Partial score / pending rulings: ","上报给主持人":"Report to the host","复制分数上报":"Copy score report","主持人手动录入，不会自动同步":"The host enters it by hand; nothing syncs","例如：3":"e.g. 3","记录座次":"Record seat","记录座次：":"Seat recorded: ","例如：公共池还剩面包；今晚守夜是 A、B。":"e.g. bread left in the pool; tonight's watch is A and B.","公共信息记录":"Public info notes","公共库存、座次、日期由主持人维护权威记录；这里只手动记必要信息。":"The host keeps the official records of the pool, seating and date; note only what you need here.","当前第几天":"Current day","我的座次":"My seat","规则开关":"Rule switches","请输入 0.5 的倍数或留空":"Enter a multiple of 0.5 or leave empty","请输入整数或留空":"Enter an integer or leave empty","粘贴主持人发来的规则包 JSON":"Paste the rules pack JSON from the host","规则（本机副本）":"Rules (local copy)","以主持人通知为准":"The host's word wins","个人总库存上限（暂定10）":"Personal inventory limit (tentative 10)","搜刮自留额度（4）":"Scavenge keep allowance (4)","事件携带上限默认值":"Event carry limit default","守夜携带上限（待定）":"Watch carry limit (TBD)","水壶内每份水占位（待定）":"Space per water in canteen (TBD)","生命上限（待定）":"Max HP (TBD)","充盈阈值 ≥（待定）":"Full threshold ≥ (TBD)","饥饿阈值 ≤（待定）":"Hungry threshold ≤ (TBD)","导入主持人规则包":"Import host rules pack","不是有效的 JSON":"Not valid JSON","导入失败：规则未改动":"Import failed: rules unchanged","导入规则包":"Import rules pack","规则包已导入":"Rules pack imported","自动保存到本机":"Auto-saved on this device","本地保存不可用：仅内存":"Local storage unavailable: memory only","玩家存档与主持人存档使用不同的命名空间。导入前会校验并备份旧存档，导入失败不会覆盖当前存档。":"Player and host saves use different namespaces. Imports are validated and the old save is backed up first; a failed import never overwrites your current save.","导入文件":"Import file","恢复":"Restore","独立的存储位置：载入、修改、清空都不会碰到你的正式存档。":"A separate storage slot: loading, editing or clearing it never touches your real save.","存档（先自动备份）。":" save (backed up first).","交接记录（":"Handoff log ("," 赠予、交公、治疗他人、搜刮交公":" Gifts, hand-ins, treating others, scavenge hand-ins","暂无。":"None yet.","个人日志（":"Personal log (","搜刮：离开期间已超时的回合按默认项记录":"Scavenge: rounds that timed out while you were away were recorded with defaults","另一个标签页修改了同一份玩家存档。请只保留一个标签页，然后刷新本页。":"Another tab changed the same player save. Keep only one tab open, then refresh this page.","抽到两张守夜候选卡":"Drew two watch cards","选择守夜候选卡":"Choose watch card","守夜名单":"Watch roster","已选第 ":"Picked #"," 张":" ","我的两张候选卡":"My two cards","每张卡写明谁守夜、倾向和可能遭遇。选一张，把代码发给主持人；主持人把它放进今天的候选池。只有你一个人计划时，你选的直接生效。":"Each card says who keeps watch, the tendency and possible outcomes. Pick one and send the code to the host, who adds it to today's pool. If you're the only planner, your pick takes effect directly.","还没有玩家名单：卡片只写人数，主持人收到代码后按存活名单抽人。导入主持人的规则包后会显示名字。 ":"No player list yet: cards only show a headcount, and the host draws names from the living players on receiving your code. Import the host's rules pack to see names. ","去导入规则包":"Import the rules pack","：我选第 ":": I pick card "," 张。\n":".\n","复制给主持人":"Copy for the host","私发给主持人，主持人粘贴进「守夜」页":"Send privately to the host, who pastes it on the Watch page","今天的行动不是「计划守夜名单」：卡片保留，重新点亮后还是这两张。":"Today's action isn't “Plan watch roster”: the cards are kept, and you get the same two if you light it up again.","点亮上方「计划守夜名单」后，会在这里抽两张候选卡。":"Light up “Plan watch roster” above to draw two cards here.","粘贴主持人发来的名单码（SHELTER-POOL…）":"Paste the list code from the host (SHELTER-POOL…)","粘贴主持人发来的名单码":"Paste the list code from the host","这不是主持人发来的名单码":"This isn't a list code from the host","收到守夜名单码":"Watch list code received","末位拍板":"Last-seat decision","两人及以上计划时，由实际换位后座次最后的玩家从所有提交里选一份。只负责拍板不算计划者。主持人会把名单码发给你，粘贴进来就能看到所有提交：":"When two or more players plan, the player in the last seat (after swaps) picks one of the submissions. Only deciding doesn't count as planning. The host sends you a list code — paste it here to see every submission:","读取名单码":"Read list code"," 份提交：点一份作为最终名单。":" submissions: tap one as the final roster."," 提交 · ":" submitted · ","守夜拍板：选择 ":"Watch decision: picked "," 提交的名单":"'s roster","：我选 ":": I pick "," 提交的名单。\n":"'s roster.\n","复制拍板码给主持人":"Copy pick code for the host","私发给主持人":"Send privately to the host","守夜卡片显示可能遭遇":"Show possible outcomes on watch cards","玩家名单：":"Player list: ","还没有导入（规则包里带，守夜候选卡要用来显示名字）":"Not imported yet (it comes with the rules pack; watch cards use it to show names)","只更新规则、自定义物品、玩家名单与守夜名单模板（以及包里附带的搜刮模板），不碰你的库存和状态。":"Only updates rules, custom items, the player list and watch roster templates (plus any scavenge template in the pack); your inventory and status are untouched."," · 收到主持人的名单码时用":" · use it when the host sends you a list code","知道了":"OK","对话框":"Dialog","取消":"Cancel","确定":"Confirm","已复制，请粘贴到 Discord":"Copied — paste it into Discord","复制失败，请手动全选复制":"Copy failed; select all and copy by hand","复制":"Copy","读取文件失败":"Couldn't read the file","演示":"Demo","数值":"Value","请输入数字":"Please enter a number","减少":"Decrease","增加":"Increase","正常":"OK","提示":"Info","注意":"Caution","危险":"Danger","已选":"Picked","浏览器不允许读取剪贴板：请长按或右键粘贴到框里":"The browser won't let the page read the clipboard: long-press or right-click to paste into the box","从剪贴板粘贴":"Paste from clipboard","到期：先与主持人确认是否扣1生命":"is due: check with the host whether to lose 1 HP","的个人行动未标记为已使用":"— personal action not marked as used","label|口渴":"Thirst","label|饥饿":"Hunger","中文":"中文","切换到中文":"切换到中文","记录当前天数：":"Current day recorded:","获得 · ":"acquired ·","提醒":"reminder","到期（获得于":"is due (acquired","）。每两个回合失去1生命——请先与主持人确认，避免两端重复扣血。":"). You lose 1 HP every two turns — check with the host first so it isn't deducted twice.","；下次提醒":"; next reminder","流血伤口：主持人裁定本次不扣血；下次提醒":"Bleeding wound: host ruled no HP loss this time; next reminder","获得于":"Acquired","（主持人确认后扣血）":" (HP lost after the host confirms)","添加流血伤口：":"Added bleeding wound:","获得，":"acquired,","【演示】":"[Demo] ","在超市割伤":"cut at the supermarket","修改流血日期：":"Bleeding dates changed:","获得，下次":"acquired, next","【赠予／交易·":"[Gift/trade ·","【交公·":"[To pool ·","【治疗·":"[Treatment ·","开始搜刮（":"Started scavenging (","选择 ":"picked ","超时，按默认项记录":"timed out; default recorded","选 ":"picked ","【搜刮交公·":"[Scavenge to pool ·","的行动":"action","【分数上报·":"[Score report ·","进入":"Go to","phase-no|开":"S","phase-no|事":"E","switch|开":"On","switch|关":"Off","已记录的当日数据会被丢弃。":"— recorded data will be discarded. ","已记录的数据（行动、名单、事件判定、公开结果等）将被丢弃。":"— recorded data (actions, rosters, event rolls, public results, etc.) will be discarded. ","将恢复":"Will restore","的当日记录与当天结束时的座次。":"records and its end-of-day seating. ","回退到":"Go back to","跨日回退：":"Cross-day rollback:","结束今天，进入":"End today, go to","有一条待公布的守夜结果（":"A watch result is waiting to be announced (","）。内容可在「守夜」页预览（需先暂停共享）。":"). Preview it on the Watch page (pause sharing first).","公布昨夜结果（":"Announced last night's result (","：固定指定":": fixed assignment","【开局领取":"[Opening pickup","·固定指定】\n":" · fixed assignment]\n","（固定指定）：":" (fixed assignment): ","完成（固定指定）":"done (fixed assignment)","【守夜候选·":"[Watch options ·","【守夜拍板·":"[Watch decision ·"," 名单":" ","末位选":"Last seat picks","已于":"announced on"," 公布":" ","的结果尚未公布，保存会覆盖它。确定吗？":"— its result isn't announced yet; saving overwrites it. Continue?","结果草稿：":"result draft:","已按权重抽取（":"Drawn by weight (","已手动选择":"Chosen by hand","【事件结果·":"[Event result ·","避难所 Playtest · 主持人":"Shelter Playtest · Host","避难所 Playtest · 玩家":"Shelter Playtest · Player","主持人面板":"Host panel","玩家面板":"Player panel","条":" entries","第 ":"Day "," 天":" "," 份":" ","tab-short|总览":"Home","tab-short|状态":"Status","tab-short|库存":"Items","tab-short|搜刮":"Loot","tab-short|行动":"Action","tab-short|分数":"Score","tab-short|存档":"Save","代码是":"The code was drawn on","抽的，现在是":"; it is now","【守夜提交·":"[Watch submission ·","收到":"Received","的守夜名单码：":"watch list code:","导入）":"imported)"};
+</script>
+<script>
+/* src/shared/i18n.js */
+/*
+ * 避难所 Playtest · 界面语言（中文／English）
+ *
+ * 只翻译「显示出来的文字」：ui.js 的 h() 在生成文本节点和提示属性时调用 T()。
+ * 游戏数据（存档里的状态值、日志、名字）保持原样，所以中英文切换不影响存档，也不影响规则判断。
+ *
+ * 翻译顺序：整句精确匹配 → 固定句式（如「第 2 天」）→ 按词条从长到短逐段替换（拼接出来的句子也能翻）→ 全角标点换成半角。
+ * 词典来自 src/shared/i18n/*.tsv，由 build.mjs 内联为 SHELTER_I18N_EN。
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(root);
+  else root.ShelterI18n = factory(root);
+})(typeof self !== 'undefined' ? self : this, function (root) {
+  'use strict';
+
+  var KEY_LANG = 'shelter-playtest:lang';
+  var HAN = /[一-鿿]/;
+  var dict = root.SHELTER_I18N_EN || {};
+  var lang = readLang();
+  var cache = {};
+  var index = null;
+
+  function readLang() {
+    try { return root.localStorage && root.localStorage.getItem(KEY_LANG) === 'en' ? 'en' : 'zh'; } catch (e) { return 'zh'; }
+  }
+
+  function setLang(next) {
+    lang = next === 'en' ? 'en' : 'zh';
+    try { root.localStorage.setItem(KEY_LANG, lang); } catch (e) { /* 本地存储不可用时只在本页生效 */ }
+    if (root.document) root.document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+  }
+
+  /* 固定句式：语序与中文不同、靠逐段替换拼不出来的（先于词条替换） */
+  var PRE = [
+    [/第\s*(\d+)\s*天夜间/g, ' Night of Day $1 '],
+    [/第\s*(\d+)\s*天/g, ' Day $1 '],
+    [/第\s*(\d+)\s*夜/g, ' Night $1 '],
+    [/第\s*(\d+)\s*轮/g, ' Round $1 '],
+    [/第\s*(\d+)\s*座/g, ' Seat $1 '],
+    [/第\s*(\d+)\s*次/g, ' #$1 '],
+    [/第\s*(\d+)\s*份/g, ' List $1 '],
+    [/第\s*(\d+)\s*件/g, ' Item $1 ']
+  ];
+  /* 量词兜底：词条替换后还剩下的「数字＋量词」 */
+  var POST = [
+    [/(\d+(?:\.\d+)?)\s*单位/g, '$1 units'],
+    [/(\d+)\s*件/g, '$1 pcs'],
+    [/(\d+(?:\.\d+)?)\s*秒/g, '$1s'],
+    [/(\d+)\s*分钟/g, '$1 min'],
+    [/(\d+)\s*人/g, '$1 players'],
+    [/(\d+)\s*条/g, '$1'],
+    [/(\d+)\s*项/g, '$1 items'],
+    [/(\d+)\s*次/g, '$1×'],
+    [/(\d+)\s*份/g, '$1'],
+    [/(\d+)\s*个/g, '$1'],
+    [/(\d+)\s*轮/g, '$1 rounds'],
+    [/(\d+)\s*回合/g, '$1 turns'],
+    [/(\d+)\s*分/g, '$1 pts']
+  ];
+
+  var PUNCT = [
+    [/：/g, ': '], [/，/g, ', '], [/。/g, '. '], [/；/g, '; '], [/、/g, ', '], [/！/g, '! '], [/？/g, '? '],
+    [/（/g, ' ('], [/）/g, ') '], [/「/g, '“'], [/」/g, '”'], [/『/g, '“'], [/』/g, '”'], [/／/g, '/'], [/～/g, '–'],
+    [/【/g, '['], [/】/g, '] '], [/ {2,}/g, ' '], [/ ([,.;:!?)\]])/g, '$1'], [/\( /g, '('], [/\[ /g, '['], [/“ /g, '“'], [/ ”/g, '”']
+  ];
+
+  /* 按首字符分桶、桶内从长到短，逐位置找最长词条 */
+  function buildIndex() {
+    index = {};
+    Object.keys(dict).forEach(function (k) {
+      if (!k) return;
+      (index[k[0]] = index[k[0]] || []).push(k);
+    });
+    Object.keys(index).forEach(function (c) { index[c].sort(function (a, b) { return b.length - a.length; }); });
+  }
+
+  function replacePhrases(s) {
+    if (!index) buildIndex();
+    var out = '';
+    var i = 0;
+    while (i < s.length) {
+      var bucket = index[s[i]];
+      var hit = null;
+      if (bucket) {
+        for (var j = 0; j < bucket.length; j++) {
+          if (s.startsWith(bucket[j], i)) { hit = bucket[j]; break; }
+        }
+      }
+      if (hit) { out += dict[hit]; i += hit.length; } else { out += s[i]; i += 1; }
+    }
+    return out;
+  }
+
+  function translate(s) {
+    if (Object.prototype.hasOwnProperty.call(dict, s)) return dict[s];
+    var lead = s.match(/^\s*/)[0];
+    var trail = s.match(/\s*$/)[0];
+    var core = s.trim();
+    if (Object.prototype.hasOwnProperty.call(dict, core)) return lead + dict[core] + trail;
+    // 词条可能带首尾空格（拼接片段），所以在未去空格的原文上替换，最后再还原首尾空白
+    var out = s;
+    PRE.forEach(function (r) { out = out.replace(r[0], r[1]); });
+    out = replacePhrases(out);
+    POST.forEach(function (r) { out = out.replace(r[0], r[1]); });
+    PUNCT.forEach(function (r) { out = out.replace(r[0], r[1]); });
+    return lead + out.trim() + trail;
+  }
+
+  /** 把一段要显示的中文换成当前语言。不是字符串、没有中文或当前是中文时原样返回。 */
+  function T(s) {
+    if (lang !== 'en' || typeof s !== 'string' || !HAN.test(s)) return s;
+    if (Object.prototype.hasOwnProperty.call(cache, s)) return cache[s];
+    var out = translate(s);
+    cache[s] = out;
+    return out;
+  }
+
+  /** 同一个中文词在不同位置意思不同时（如「口渴」既是栏目名又是状态值），按语境取词：词典里写成「语境|中文」。 */
+  function TC(context, s) {
+    if (lang !== 'en') return s;
+    var k = context + '|' + s;
+    return Object.prototype.hasOwnProperty.call(dict, k) ? dict[k] : T(s);
+  }
+
+  return {
+    T: T,
+    TC: TC,
+    setLang: setLang,
+    getLang: function () { return lang; },
+    isEn: function () { return lang === 'en'; },
+    _setDict: function (d) { dict = d || {}; index = null; cache = {}; },
+    KEY_LANG: KEY_LANG
+  };
+});
+</script>
 <script>
 /* src/shared/core.js */
 /*
@@ -792,6 +970,9 @@ details.card > summary { cursor: pointer; }
     }
     var lower = key.toLowerCase();
     for (var j = 0; j < defs.length; j++) if (defs[j].id.toLowerCase() === lower) return defs[j];
+    // 英文界面下也能用英文名录入（Bread×3）：词典由页面内联，单元测试环境里没有
+    var en = typeof window !== 'undefined' && window.SHELTER_I18N_EN;
+    if (en) for (var k = 0; k < defs.length; k++) if (en[defs[k].name] && String(en[defs[k].name]).toLowerCase() === lower) return defs[k];
     return null;
   }
 
@@ -880,7 +1061,8 @@ details.card > summary { cursor: pointer; }
       hungerInitial: null,
       eventChance: 80,
       eventPosition: null,
-      watchSize: 2,
+      watchSize: null,
+      watchShowEffects: true,
       swapRequestLimit: 3,
       rescueTarget: null,
       scoreSurvival: null,
@@ -895,7 +1077,7 @@ details.card > summary { cursor: pointer; }
       scavengeOptions: 3,
       scavengeSeconds: 7,
       scavengeComboTicks: 4,
-      rulesRev: 2
+      rulesRev: 3
     };
   }
 
@@ -918,7 +1100,8 @@ details.card > summary { cursor: pointer; }
     { key: 'eventChance', label: '每日事件触发概率（%）', type: 'int', min: 0, max: 100, status: 'confirmed', note: '80%有事件、20%无；只控制是否触发' },
     { key: 'eventPosition', label: '公共事件位置', type: 'select', nullable: true, status: 'pending',
       options: [['beforeSupply', '阶段2（资源补给）之前'], ['afterWatch', '阶段6（确认守夜）之后']], note: '未选时由主持人手动触发' },
-    { key: 'watchSize', label: '守夜人数（「指定N人」）', type: 'int', min: 1, status: 'confirmed', note: '6人局通常2人，特殊条件可改' },
+    { key: 'watchSize', label: '守夜人数（随机抽人时）', type: 'int', nullable: true, min: 1, status: 'confirmed', note: '留空＝存活人数的三分之一，向上取整（6人2人、7人3人）；特殊条件可改' },
+    { key: 'watchShowEffects', label: '守夜卡片提前显示可能遭遇', type: 'bool', status: 'tentative', note: '风险后果是否提前可见尚未确定：暂定显示；关闭后卡片上只写「主持人确认后公布」' },
     { key: 'swapRequestLimit', label: '每人换位请求上限', type: 'int', min: 0, status: 'confirmed', note: '最多3次；主持人可覆盖' },
     { key: 'rescueTarget', label: '营救阈值', type: 'int', nullable: true, status: 'pending', note: '阈值未知：不自动结束，主持人点击结算' },
     { key: 'scoreSurvival', label: '基础生存分', type: 'int', nullable: true, status: 'pending' },
@@ -950,6 +1133,10 @@ details.card > summary { cursor: pointer; }
     if (rules && rules.rulesRev == null) {
       if (out.scavengeSeconds === 5) out.scavengeSeconds = base.scavengeSeconds;
       if (out.scavengeComboTicks === 6) out.scavengeComboTicks = base.scavengeComboTicks;
+    }
+    // 第3版：守夜人数默认改成「存活人数的三分之一向上取整」；旧存档里仍是旧默认值 2 的跟着改
+    if (rules && (rules.rulesRev == null || rules.rulesRev < 3)) {
+      if (out.watchSize === 2) out.watchSize = null;
       out.rulesRev = base.rulesRev;
     }
     return out;
@@ -1470,12 +1657,12 @@ details.card > summary { cursor: pointer; }
   // ---------------------------------------------------------------- 守夜
 
   var WATCH_KINDS = [
-    { id: 'designated', name: '指定N人', people: true },
-    { id: 'planners', name: '今天计划过名单的人', people: true },
-    { id: 'skillUsers', name: '今天使用过技能的人', people: true },
-    { id: 'everyone', name: '全员', people: true },
-    { id: 'rescue', name: '更可能获得营救信息', people: false },
-    { id: 'danger', name: '更可能遭遇不测', people: false }
+    { id: 'designated', name: '随机抽人', people: true, weight: 6 },
+    { id: 'planners', name: '按行动指定：今天使用行动计划守夜名单的人守夜', people: true, weight: 1 },
+    { id: 'skillUsers', name: '按行动指定：今天使用职业技能的人守夜', people: true, weight: 1 },
+    { id: 'everyone', name: '全体指定：所有人今晚守夜', people: true, weight: 0.5 },
+    { id: 'rescue', name: '收益倾向', people: false },
+    { id: 'danger', name: '风险倾向', people: false }
   ];
 
   var WATCH_COMBINE = [
@@ -1485,56 +1672,218 @@ details.card > summary { cursor: pointer; }
   ];
 
   var TENDENCY_NAMES = { neutral: '中性', rescue: '更可能获得营救信息', danger: '更可能遭遇不测' };
+  /* 卡片上的倾向说明（说明书原话） */
+  var TENDENCY_TEXT = { rescue: '这份守夜名单似乎能获得更多获救信息', danger: '这份守夜名单或许在今晚会遭遇更多不测' };
+
+  /*
+   * 守夜可能产生的遭遇（说明书：口渴、额外饥饿、受伤、负面状态、无事发生，或获得营救信息／关键物资）。
+   * 每张卡随机 1～2 条；涉及个人的随机落在 1～2 名守夜者身上。权重与倾向修正都是实现假设，主持人可裁定。
+   */
+  var WATCH_EFFECTS = [
+    { id: 'thirst', name: '口渴', people: true, weight: 3 },
+    { id: 'hunger', name: '额外饥饿', people: true, weight: 3 },
+    { id: 'injury', name: '受伤', people: true, weight: 1.5 },
+    { id: 'status', name: '负面状态', people: true, weight: 1 },
+    { id: 'quiet', name: '无事发生', people: false, weight: 2 },
+    { id: 'rescue', name: '获得营救信息／关键物资', people: false, weight: 1.5 }
+  ];
+  var TENDENCY_BIAS = { rescue: { rescue: 3, quiet: 1.5 }, danger: { injury: 2.5, status: 2.5, rescue: 0.3 } };
+
+  function watchEffectName(id) {
+    for (var i = 0; i < WATCH_EFFECTS.length; i++) if (WATCH_EFFECTS[i].id === id) return WATCH_EFFECTS[i].name;
+    return id;
+  }
+
+  /** 随机抽人时的守夜人数：规则里填了就用规则，否则存活人数的三分之一向上取整（至少 1 人）。 */
+  function watchCount(aliveCount, rules) {
+    if (rules && isInt(rules.watchSize) && rules.watchSize > 0) return rules.watchSize;
+    return Math.max(1, Math.ceil((aliveCount || 0) / 3));
+  }
 
   function watchKindName(kind, count) {
-    if (kind === 'designated') return '指定' + (count || 2) + '人';
+    if (kind === 'designated') return '随机 ' + (count || 2) + ' 人守夜';
     for (var i = 0; i < WATCH_KINDS.length; i++) if (WATCH_KINDS[i].id === kind) return WATCH_KINDS[i].name;
     return kind;
   }
 
-  /** 默认名单模板：说明里列出的六种条目各一条，单条不混合。 */
+  /**
+   * 默认名单模板（第2版）：随机抽人为主，另有按行动指定、全体指定；收益／风险倾向不再单独成卡，而是随机加在卡片上。
+   * 名单条目如何组合、具体概率尚未确定：权重是实现假设，主持人可在「守夜」页修改。
+   */
   function defaultWatchTemplates() {
-    return WATCH_KINDS.map(function (k) {
+    return WATCH_KINDS.filter(function (k) { return k.people; }).map(function (k) {
       return {
         id: 'wt_' + k.id,
-        name: k.id === 'designated' ? '指定两人' : k.name,
-        entries: [{ kind: k.id, count: k.id === 'designated' ? 2 : null }],
+        name: k.name,
+        entries: [{ kind: k.id, count: null }],
         combine: 'single',
-        weight: 1,
+        weight: k.weight,
         enabled: true,
-        note: k.people ? '' : '只表达风险倾向，不含对象：确认时由主持人指定人员。'
+        note: '',
+        rev: 2
       };
     });
   }
 
   function newWatchTemplate() {
-    return { id: uid('wt'), name: '新名单模板', entries: [{ kind: 'designated', count: 2 }], combine: 'pending', weight: 1, enabled: true, note: '' };
+    return { id: uid('wt'), name: '新名单模板', entries: [{ kind: 'designated', count: null }], combine: 'pending', weight: 1, enabled: true, note: '' };
   }
 
-  /** 为一份名单模板生成候选：「指定N人」在生成时就抽定人员并保存，刷新不变。 */
-  function makeWatchOption(template, aliveIds, rng, watchSize) {
-    var opt = { id: uid('wo'), templateId: template.id, template: clone(template), designatedIds: null };
-    for (var i = 0; i < template.entries.length; i++) {
-      var e = template.entries[i];
-      if (e.kind === 'designated') {
-        var n = isInt(e.count) && e.count > 0 ? e.count : watchSize || 2;
-        opt.designatedIds = sample(aliveIds, n, rng);
-        break;
+  /** 第1版的默认模板（六条、权重都是1、没有 rev）原样未改时，换成第2版默认模板。 */
+  function isOldDefaultWatchTemplates(list) {
+    if (!Array.isArray(list) || list.length !== 6) return false;
+    var ids = ['wt_designated', 'wt_planners', 'wt_skillUsers', 'wt_everyone', 'wt_rescue', 'wt_danger'];
+    return list.every(function (t, i) { return t && t.id === ids[i] && !t.rev && t.weight === 1; });
+  }
+
+  function pickWeighted(list, weightOf, rng) {
+    var i = weightedIndex(list, weightOf, rng);
+    return i < 0 ? null : list[i];
+  }
+
+  /**
+   * 生成一张守夜候选卡。ctx: { alive: [{id, name}], rules }
+   * 卡片在生成时就定下：守夜的人（随机抽人时抽定）、倾向、1～2 条可能遭遇。存档后刷新不变。
+   * 不知道玩家名单时（玩家页还没导入规则包），只记人数，名字由主持人收到代码时按存活名单抽出。
+   */
+  function makeWatchCard(template, ctx, rng) {
+    rng = rng || Math.random;
+    var alive = (ctx && ctx.alive) || [];
+    var rules = (ctx && ctx.rules) || {};
+    var n = watchCount(alive.length || rules.playerCount || 0, rules);
+    var card = {
+      id: uid('wc'), templateId: template.id, template: clone(template),
+      count: null, designatedIds: null, designatedNames: null, tendency: null, effects: []
+    };
+    var watchers = null; // 生成时就知道是谁守夜（随机抽人、全体）；按行动指定的要等当天记录
+    var hasPeople = false;
+    (template.entries || []).forEach(function (e) {
+      if (e.kind === 'designated' && !card.count) {
+        hasPeople = true;
+        card.count = isInt(e.count) && e.count > 0 ? e.count : n;
+        if (alive.length) {
+          var picked = sample(alive, Math.min(card.count, alive.length), rng);
+          card.designatedIds = picked.map(function (p) { return p.id; });
+          card.designatedNames = picked.map(function (p) { return p.name; });
+          watchers = picked;
+        }
+      } else if (e.kind === 'everyone') {
+        hasPeople = true;
+        if (alive.length && !watchers) watchers = alive.slice();
+      } else if (e.kind === 'planners' || e.kind === 'skillUsers') {
+        hasPeople = true;
+      } else if ((e.kind === 'rescue' || e.kind === 'danger') && !card.tendency) {
+        card.tendency = e.kind;
+      }
+    });
+    // 只有倾向、没有人员的旧模板：补上随机抽人
+    if (!hasPeople) {
+      card.count = n;
+      if (alive.length) {
+        var p2 = sample(alive, Math.min(n, alive.length), rng);
+        card.designatedIds = p2.map(function (p) { return p.id; });
+        card.designatedNames = p2.map(function (p) { return p.name; });
+        watchers = p2;
       }
     }
-    return opt;
+    if (!card.tendency) {
+      var r = rng();
+      card.tendency = r < 0.25 ? 'rescue' : r < 0.5 ? 'danger' : null;
+    }
+    var bias = TENDENCY_BIAS[card.tendency] || {};
+    var pool = WATCH_EFFECTS.slice();
+    var howMany = rng() < 0.5 ? 1 : 2;
+    while (card.effects.length < howMany && pool.length) {
+      var fx = pickWeighted(pool, function (x) { return x.weight * (bias[x.id] || 1); }, rng);
+      if (!fx) break;
+      pool.splice(pool.indexOf(fx), 1);
+      if (fx.id === 'quiet' && card.effects.length) continue; // 「无事发生」不和其他遭遇同时出现
+      var entry = { type: fx.id, count: null, ids: null, names: null };
+      if (fx.people) {
+        entry.count = rng() < 0.5 ? 1 : 2;
+        if (watchers && watchers.length) {
+          var who = sample(watchers, Math.min(entry.count, watchers.length), rng);
+          entry.count = who.length;
+          entry.ids = who.map(function (p) { return p.id; });
+          entry.names = who.map(function (p) { return p.name; });
+        }
+      }
+      card.effects.push(entry);
+      if (fx.id === 'quiet') break;
+    }
+    return card;
   }
 
-  /** 计划者获得两份随机名单（模板无放回加权抽取）。 */
-  function drawWatchOptions(templates, aliveIds, rng, watchSize) {
+  /**
+   * 计划者的两张候选卡：每张从启用的模板里加权抽一条。随机抽人可以两张都是（人不同）；
+   * 按行动指定、全体指定这类条件同一对卡里只出现一次（两张一样的卡没有意义）。
+   */
+  function drawWatchCards(templates, ctx, rng) {
     var pool = (templates || []).filter(function (t) { return t.enabled; });
     var out = [];
-    while (out.length < 2 && pool.length) {
+    var guard = 0;
+    while (out.length < 2 && pool.length && guard++ < 10) {
       var idx = weightedIndex(pool, function (t) { return t.weight == null ? 1 : t.weight; }, rng);
       if (idx < 0) break;
-      out.push(makeWatchOption(pool.splice(idx, 1)[0], aliveIds, rng, watchSize));
+      var tpl = pool[idx];
+      var random = (tpl.entries || []).some(function (e) { return e.kind === 'designated'; });
+      if (!random) pool.splice(idx, 1);
+      var card = makeWatchCard(tpl, ctx, rng);
+      // 两张随机卡抽到同一组人时重抽（人数不够换人时就算了）
+      for (var tries = 0; tries < 4 && random && out.length && sameWatchers(out[0], card); tries++) card = makeWatchCard(tpl, ctx, rng);
+      out.push(card);
     }
     return out;
+  }
+
+  function sameWatchers(a, b) {
+    if (!a.designatedIds || !b.designatedIds) return false;
+    return a.designatedIds.slice().sort().join('|') === b.designatedIds.slice().sort().join('|');
+  }
+
+  /* 兼容旧调用：aliveIds 没有名字时用 id 当名字 */
+  function drawWatchOptions(templates, aliveIds, rng, watchSize) {
+    var alive = (aliveIds || []).map(function (id) { return { id: id, name: id }; });
+    return drawWatchCards(templates, { alive: alive, rules: { watchSize: watchSize } }, rng);
+  }
+
+  /**
+   * 卡片的可读内容：谁守夜、倾向、可能遭遇。nameOf 把 id 换成名字（主持人端）；玩家端卡片自带名字。
+   * showEffects=false 时遭遇只写「主持人确认后公布」。
+   */
+  function watchCardText(card, nameOf, showEffects) {
+    var nm = function (ids, names) {
+      if (names && names.length) return names.join('、');
+      if (ids && ids.length && nameOf) return ids.map(nameOf).join('、');
+      return '';
+    };
+    var who;
+    var kind = ((card.template && card.template.entries) || [])[0];
+    // 旧版存档里的候选没有 count，但有 designatedIds：照样列出名字
+    if ((card.designatedIds && card.designatedIds.length) || (card.designatedNames && card.designatedNames.length) || (card.count && (!kind || kind.kind === 'designated' || kind.kind === 'rescue' || kind.kind === 'danger'))) {
+      var list = nm(card.designatedIds, card.designatedNames);
+      who = list ? list + ' 守夜' : '随机 ' + (card.count || 2) + ' 人守夜（主持人收到代码后按存活名单抽出）';
+    } else if (kind && kind.kind === 'planners') {
+      who = '今天使用行动计划守夜名单的人守夜';
+    } else if (kind && kind.kind === 'skillUsers') {
+      who = '今天使用职业技能的人守夜';
+    } else if (kind && kind.kind === 'everyone') {
+      who = '所有人今晚守夜';
+    } else {
+      who = card.template ? card.template.name : '';
+    }
+    var effects = (card.effects || []).map(function (e) {
+      var people = nm(e.ids, e.names);
+      if (e.type === 'quiet' || e.type === 'rescue') return watchEffectName(e.type);
+      return watchEffectName(e.type) + '：' + (people || (e.count || 1) + ' 名守夜者');
+    });
+    return {
+      title: card.template ? card.template.name : '',
+      who: who,
+      tendency: card.tendency ? TENDENCY_TEXT[card.tendency] : '',
+      tendencyKind: card.tendency || null,
+      effects: showEffects === false ? ['可能遭遇：主持人确认后公布'] : effects
+    };
   }
 
   /**
@@ -1550,6 +1899,7 @@ details.card > summary { cursor: pointer; }
     (opt.template.entries || []).forEach(function (e) {
       var ids = null;
       if (e.kind === 'designated') ids = opt.designatedIds || [];
+      else if ((e.kind === 'rescue' || e.kind === 'danger') && opt.designatedIds) { ids = opt.designatedIds; if (tendencies.indexOf(e.kind) < 0) tendencies.push(e.kind); }
       else if (e.kind === 'planners') ids = ctx.plannerIds || [];
       else if (e.kind === 'skillUsers') ids = ctx.skillUserIds || [];
       else if (e.kind === 'everyone') ids = ctx.aliveIds || [];
@@ -1561,6 +1911,7 @@ details.card > summary { cursor: pointer; }
         });
       }
     });
+    if (opt.tendency && tendencies.indexOf(opt.tendency) < 0) tendencies.push(opt.tendency);
     var needsHost = false;
     if (peopleEntries === 0) {
       needsHost = true;
@@ -1586,27 +1937,69 @@ details.card > summary { cursor: pointer; }
     return (today.watchCandidates || []).filter(function (c) { return isInt(c.chosenIndex); });
   }
 
-  /** 名单的人类可读描述（私信文本用）。nameOf: id → 姓名 */
-  function describeWatchOption(opt, nameOf) {
-    var entries = opt.template.entries || [];
-    var parts = entries.map(function (e) {
-      var detail = '';
-      if (e.kind === 'designated') {
-        var names = (opt.designatedIds || []).map(nameOf).join('、');
-        detail = names ? '：' + names : '';
-      } else if (e.kind === 'planners' || e.kind === 'skillUsers') {
-        detail = '（按当日记录结算）';
-      }
-      return { label: watchKindName(e.kind, e.count), detail: detail };
-    });
-    var name = opt.template.name;
-    // 单条名单且名称就是条目本身（如「指定两人」「全员」）时不重复书写
-    if (parts.length === 1 && (parts[0].label === name || entries[0].kind === 'designated')) return '「' + name + '」' + parts[0].detail;
-    var combine = '';
-    if (entries.length > 1) {
-      for (var i = 0; i < WATCH_COMBINE.length; i++) if (WATCH_COMBINE[i].id === opt.template.combine) combine = '｜' + WATCH_COMBINE[i].name;
+  /** 名单的一行描述（日志、私信用）。nameOf: id → 姓名 */
+  function describeWatchOption(opt, nameOf, showEffects) {
+    var t = watchCardText(opt, nameOf, showEffects);
+    return '「' + t.title + '」' + t.who + (t.tendency ? '；' + t.tendency : '') + (t.effects.length ? '；' + t.effects.join('，') : '');
+  }
+
+  // ---------------------------------------------------------------- 分享代码（玩家⇄主持人，复制粘贴即可）
+
+  /** SHELTER-<类型>:<base64(JSON)>。前后可以夹带说明文字，粘贴整条消息也能读出来。 */
+  function encodeShareCode(kind, data) {
+    var json = JSON.stringify(data);
+    var b64 = typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(json))) : Buffer.from(json, 'utf8').toString('base64');
+    return 'SHELTER-' + kind + ':' + b64;
+  }
+
+  function decodeShareCode(text) {
+    var m = String(text || '').match(/SHELTER-([A-Z]+):([A-Za-z0-9+/=]+)/);
+    if (!m) return { ok: false, reason: '没有找到代码：请粘贴以 SHELTER- 开头的整段内容' };
+    try {
+      var json = typeof atob === 'function' ? decodeURIComponent(escape(atob(m[2]))) : Buffer.from(m[2], 'base64').toString('utf8');
+      return { ok: true, kind: m[1], data: JSON.parse(json) };
+    } catch (e) {
+      return { ok: false, reason: '代码不完整或已损坏：请重新复制整段' };
     }
-    return '「' + name + '」' + parts.map(function (p) { return p.label + p.detail; }).join(' + ') + combine;
+  }
+
+  /** 字符串 → 随机种子：同一个玩家同一天抽到的候选卡固定，撤销或重新点亮都不会重抽。 */
+  function hashSeed(str) {
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+    return h || 1;
+  }
+
+  /** 玩家导入的名单：名字当 id 用（玩家端不知道主持人端的 id）。 */
+  function rosterAlive(roster) {
+    return ((roster && roster.players) || []).filter(function (p) { return p && p.name && p.alive !== false; })
+      .map(function (p) { return { id: p.name, name: p.name }; });
+  }
+
+  /**
+   * 主持人收到玩家的卡片后，把名字换成本地玩家 id；没有名字（玩家没导入名单）的随机抽人在这里按存活名单补抽。
+   * players: [{id, name, alive}]。返回 { card, unknown: [不认识的名字] }。
+   */
+  function adoptWatchCard(card, players, rng) {
+    var c = clone(card);
+    var unknown = [];
+    var alive = players.filter(function (p) { return p.alive !== false; });
+    function idsOf(names) {
+      var out = [];
+      (names || []).forEach(function (nm) {
+        var p = players.filter(function (x) { return x.name === nm; })[0];
+        if (p) out.push(p.id); else unknown.push(nm);
+      });
+      return out;
+    }
+    if (c.designatedNames) c.designatedIds = idsOf(c.designatedNames);
+    else if (c.count && !c.designatedIds) {
+      var picked = sample(alive, Math.min(c.count, alive.length), rng || Math.random);
+      c.designatedIds = picked.map(function (p) { return p.id; });
+      c.designatedNames = picked.map(function (p) { return p.name; });
+    }
+    (c.effects || []).forEach(function (e) { if (e.names) e.ids = idsOf(e.names); });
+    return { card: c, unknown: unknown };
   }
 
   /** 夜间遭遇按权重抽取：只有候选结果全部填了权重才允许自动抽签。 */
@@ -1897,6 +2290,9 @@ details.card > summary { cursor: pointer; }
       out.push({ level: 'warning', text: '搜刮进行中：第 ' + s.scavenge.rounds.length + '／' + s.scavenge.cfg.rounds + ' 轮，超时会自动选默认项', tab: 'scavenge' });
     } else if (s.scavenge && s.scavenge.status === 'organize') {
       out.push({ level: 'warning', text: '搜刮三轮已完成：待整理并一次性提交', tab: 'scavenge' });
+    }
+    if (s.action && s.action.day === day && s.action.used && s.action.type === 'plan' && s.watchPlan && s.watchPlan.day === day && s.watchPlan.chosen == null) {
+      out.push({ level: 'warning', text: '守夜候选卡还没选：选一张后把代码发给主持人', tab: 'action' });
     }
     if (s.alive !== false && !(s.action && s.action.day === day && s.action.used)) {
       out.push({ level: 'info', text: '第 ' + day + ' 天的个人行动未标记为已使用', tab: 'action' });
@@ -2225,6 +2621,10 @@ details.card > summary { cursor: pointer; }
       hp: rules.hpInitial,
       hunger: rules.hungerInitial,
       hungerManual: '普通',
+      roster: null,
+      watchTemplates: null,
+      watchPlan: null,
+      watchPick: null,
       thirst: '不渴',
       consciousness: '清醒',
       statuses: [],
@@ -2304,6 +2704,7 @@ details.card > summary { cursor: pointer; }
       out.stage = Object.assign({ event: null, showPoolCount: false }, obj.stage || {});
       out.timer = Object.assign({ durationMs: 180000, remainingMs: 180000, endsAt: null, running: false }, obj.timer || {});
       out.opening = Object.assign({ items: [], note: '', done: [false, false] }, obj.opening || {});
+      if (isOldDefaultWatchTemplates(out.watchTemplates)) out.watchTemplates = defaultWatchTemplates();
     } else {
       out.publicInfo = Object.assign({ day: 1, seat: '', notes: '' }, obj.publicInfo || {});
       out.manualScores = Object.assign({ loveHate: null, survival: null, task: null, adjust: null, note: '' }, obj.manualScores || {});
@@ -2323,7 +2724,10 @@ details.card > summary { cursor: pointer; }
       exportedAt: Date.now(),
       rules: clone(state.rules),
       customItems: clone(state.customItems || []),
-      scavengeTemplate: scavengeTemplate ? clone(scavengeTemplate) : null
+      scavengeTemplate: scavengeTemplate ? clone(scavengeTemplate) : null,
+      // 玩家页生成守夜卡片要用：存活玩家名单与名单模板（都不是秘密）
+      roster: state.players ? { day: state.day, players: state.players.map(function (p) { return { name: p.name, alive: p.alive !== false }; }) } : null,
+      watchTemplates: state.watchTemplates ? clone(state.watchTemplates) : null
     };
   }
 
@@ -2411,8 +2815,19 @@ details.card > summary { cursor: pointer; }
     watchKindName: watchKindName,
     defaultWatchTemplates: defaultWatchTemplates,
     newWatchTemplate: newWatchTemplate,
-    makeWatchOption: makeWatchOption,
     drawWatchOptions: drawWatchOptions,
+    drawWatchCards: drawWatchCards,
+    makeWatchCard: makeWatchCard,
+    watchCardText: watchCardText,
+    watchCount: watchCount,
+    WATCH_EFFECTS: WATCH_EFFECTS,
+    TENDENCY_TEXT: TENDENCY_TEXT,
+    encodeShareCode: encodeShareCode,
+    decodeShareCode: decodeShareCode,
+    rosterAlive: rosterAlive,
+    hashSeed: hashSeed,
+    adoptWatchCard: adoptWatchCard,
+    isOldDefaultWatchTemplates: isOldDefaultWatchTemplates,
     resolveWatchOption: resolveWatchOption,
     watchMode: watchMode,
     submittedCandidates: submittedCandidates,
@@ -2470,6 +2885,13 @@ details.card > summary { cursor: pointer; }
 (function (root) {
   'use strict';
 
+  // ---------------------------------------------------------------- 语言
+
+  /* 所有界面文字都经过 h() 写入，因此只在这里翻译一次（存档里的数据保持原样）。 */
+  var I18N = root.ShelterI18n || { T: function (s) { return s; }, TC: function (c, s) { return s; }, isEn: function () { return false; }, getLang: function () { return 'zh'; }, setLang: function () {} };
+  var T = I18N.T;
+  var TRANSLATED_ATTRS = { placeholder: 1, title: 1, 'aria-label': 1, alt: 1 };
+
   // ---------------------------------------------------------------- DOM
 
   var PROPS = { value: 1, checked: 1, disabled: 1, selected: 1, htmlFor: 1, indeterminate: 1 };
@@ -2483,7 +2905,7 @@ details.card > summary { cursor: pointer; }
         if (k === 'class') el.className = v;
         else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
         else if (PROPS[k]) el[k] = v;
-        else el.setAttribute(k, v === true ? '' : String(v));
+        else el.setAttribute(k, v === true ? '' : TRANSLATED_ATTRS[k] ? T(String(v)) : String(v));
       });
     }
     appendKids(el, Array.prototype.slice.call(arguments, 2));
@@ -2495,7 +2917,7 @@ details.card > summary { cursor: pointer; }
       if (c == null || c === false || c === true) return;
       if (Array.isArray(c)) appendKids(el, c);
       else if (c instanceof Node) el.appendChild(c);
-      else el.appendChild(document.createTextNode(String(c)));
+      else el.appendChild(document.createTextNode(T(String(c))));
     });
   }
 
@@ -2645,6 +3067,7 @@ details.card > summary { cursor: pointer; }
   /** 可复制的交接文本框：一律提醒「需要对方手动修改」，不假装跨端同步。 */
   function copyBlock(text, opts) {
     opts = opts || {};
+    text = T(text); // 交接文本按当前语言生成，复制出去的就是看到的
     var ta = h('textarea', { class: 'copy-text', readonly: true, rows: opts.rows || Math.min(8, Math.max(2, text.split('\n').length + 1)) });
     ta.value = text;
     var btn = h('button', {
@@ -2899,7 +3322,80 @@ details.card > summary { cursor: pointer; }
       o.sub ? h('span', { class: 'tile-sub' }, o.sub) : null);
   }
 
+  /**
+   * 演示存档在英文界面下用英文内容生成（名字、事件、笔记……）。
+   * 规则判断要用的中文状态值（口渴、意识、饥饿状态）不翻译，否则逻辑比较会失效。
+   */
+  var KEEP_KEYS = { thirst: 1, consciousness: 1, hungerManual: 1 };
+  function localizeDemo(obj) {
+    if (!I18N.isEn()) return obj;
+    (function walk(o) {
+      Object.keys(o).forEach(function (k) {
+        var v = o[k];
+        if (typeof v === 'string') { if (!KEEP_KEYS[k]) o[k] = T(v); }
+        else if (v && typeof v === 'object') walk(v);
+      });
+    })(obj);
+    return obj;
+  }
+
+  /**
+   * 守夜候选卡。t 来自 ShelterCore.watchCardText：{ title, who, tendency, tendencyKind, effects }。
+   * opts: { label（①／②）, selected, onclick（可点选时整张卡是按钮）, id }
+   */
+  function watchCard(t, opts) {
+    opts = opts || {};
+    var clickable = typeof opts.onclick === 'function';
+    return h(clickable ? 'button' : 'div', {
+      type: clickable ? 'button' : null,
+      class: 'watch-card' + (opts.selected ? ' on' : ''),
+      'aria-pressed': clickable ? (opts.selected ? 'true' : 'false') : null,
+      'data-watch-card': opts.id || null,
+      onclick: clickable ? opts.onclick : null
+    },
+      h('span', { class: 'watch-card-head' },
+        opts.label ? h('span', { class: 'watch-card-label' }, opts.label) : null,
+        h('span', { class: 'watch-card-title' }, t.title),
+        opts.selected ? h('span', { class: 'watch-card-picked' }, icon('check'), '已选') : null),
+      h('span', { class: 'watch-card-who' }, t.who),
+      t.tendency ? h('span', { class: 'watch-card-tend tend-' + t.tendencyKind }, t.tendency) : null,
+      t.effects.length ? h('span', { class: 'watch-card-fx' }, t.effects.map(function (e) { return h('span', { class: 'fx' }, e); })) : null);
+  }
+
+  /** 「从剪贴板粘贴」：浏览器不允许时提示手动粘贴。 */
+  function pasteButton(onText) {
+    return h('button', {
+      type: 'button', class: 'btn', onclick: function () {
+        var fail = function () { toast('浏览器不允许读取剪贴板：请长按或右键粘贴到框里', 'warn'); };
+        try {
+          if (!navigator.clipboard || !navigator.clipboard.readText) { fail(); return; }
+          navigator.clipboard.readText().then(function (text) { if (text) onText(text); else fail(); }, fail);
+        } catch (e) { fail(); }
+      }
+    }, '从剪贴板粘贴');
+  }
+
+  /** 语言切换按钮：显示「要切换到的语言」，点了保存选择并重画页面。 */
+  function langToggle(onChange) {
+    var en = I18N.isEn();
+    return h('button', {
+      type: 'button', class: 'btn small lang-btn', lang: en ? 'zh-CN' : 'en',
+      'aria-label': en ? '切换到中文' : 'Switch to English', title: en ? '切换到中文' : 'Switch to English',
+      onclick: function () {
+        I18N.setLang(en ? 'zh' : 'en');
+        if (onChange) onChange();
+      }
+    }, en ? '中文' : 'EN');
+  }
+
   root.ShelterUI = {
+    T: T,
+    TC: I18N.TC,
+    i18n: I18N,
+    langToggle: langToggle,
+    localizeDemo: localizeDemo,
+    watchCard: watchCard,
+    pasteButton: pasteButton,
     sevBadge: sevBadge,
     meter: meter,
     statTile: statTile,
@@ -3003,7 +3499,7 @@ details.card > summary { cursor: pointer; }
     s.statuses = [{ id: C.uid('st'), statusId: 'bleeding', name: '流血伤口', startDay: 1, nextDay: 3, note: '【演示】第1天在超市割伤' }];
     s.temporaryEffects = [{ id: C.uid('fx'), text: '下一次行动判定视为充盈（功能饮料）', day: 2, attack: null }];
     log(s, '载入演示存档（与正式存档完全分开）');
-    return s;
+    return U.localizeDemo(s);
   }
 
   // ================================================================ 存档与提交
@@ -3137,6 +3633,14 @@ details.card > summary { cursor: pointer; }
 
   // ================================================================ 渲染骨架
 
+  var PAGE_TITLE = document.title;
+
+  /** 切换语言：只换显示文字，存档不变；页面标题与 <html lang> 一起换。 */
+  function onLangChange() {
+    document.title = U.T(PAGE_TITLE);
+    render();
+  }
+
   function render() {
     renderBanner();
     renderTop();
@@ -3182,15 +3686,17 @@ details.card > summary { cursor: pointer; }
           h('button', { type: 'button', class: 'btn small icon-btn', 'aria-label': '前一天', onclick: function () { setDay(today() - 1); } }, '‹'),
           h('span', null, '第 ', h('b', null, String(today())), ' 天'),
           h('button', { type: 'button', class: 'btn small icon-btn', 'aria-label': '后一天', onclick: function () { setDay(today() + 1); } }, '›')),
-        h('button', { type: 'button', class: 'btn small', onclick: undoLast, disabled: !undo.peek(), title: undo.peek() ? '撤销：' + undo.peek().label : '' }, U.icon('undo'), '撤销')),
+        h('div', { class: 'p-top-tools' },
+          U.langToggle(onLangChange),
+          h('button', { type: 'button', class: 'btn small', onclick: undoLast, disabled: !undo.peek(), title: undo.peek() ? '撤销：' + undo.peek().label : '' }, U.icon('undo'), '撤销'))),
       h('div', { class: 'p-vitals', role: 'group', 'aria-label': '简要状态' },
         cell('hp', '生命', h('b', null, String(state.hp), C.isInt(r.hpMax) ? h('small', null, '／' + r.hpMax) : null),
           state.hp <= 0 ? 'crit' : state.hp <= 2 ? 'warn' : 'ok',
           C.isInt(r.hpMax) ? meter(state.hp, r.hpMax, state.hp <= 0 ? 'critical' : 'ok', '生命') : pips(state.hp), 'status'),
-        cell('hunger', '饥饿', h('b', null, hw, C.isNum(state.hunger) ? h('small', null, ' ' + state.hunger) : null),
+        cell('hunger', U.TC('label', '饥饿'), h('b', null, hw, C.isNum(state.hunger) ? h('small', null, ' ' + state.hunger) : null),
           hw === '饥荒' ? 'crit' : hw === '饥饿' ? 'warn' : hw === '未记录' ? 'info' : 'ok',
           stepsBar(HUNGER_ZONES, HUNGER_ZONES.indexOf(hw), hw === '饥荒' ? 'critical' : hw === '饥饿' ? 'warning' : 'ok'), 'status'),
-        cell('thirst', '口渴', h('b', null, state.thirst),
+        cell('thirst', U.TC('label', '口渴'), h('b', null, state.thirst),
           thirstIdx >= 2 ? 'crit' : thirstIdx === 1 ? 'warn' : 'ok',
           stepsBar(THIRST, thirstIdx, thirstIdx >= 2 ? 'critical' : thirstIdx === 1 ? 'warning' : 'ok'), 'status'),
         cell('mind', '意识', h('b', null, state.consciousness), state.consciousness === '昏迷' ? 'crit' : 'ok', null, 'status'),
@@ -3218,13 +3724,15 @@ details.card > summary { cursor: pointer; }
 
   function tabButton(t) {
     // 手机底栏用短名，平板和电脑用全名
+    // 英文短名另取（Home／Items／Loot），手机底栏 6 格放得下
     return h('button', { type: 'button', class: 'tab ' + (ui.tab === t.id ? 'on' : ''), 'data-tab': t.id, 'aria-current': ui.tab === t.id ? 'page' : null, onclick: function () { setTab(t.id); } },
-      t.full ? [h('span', { class: 'tab-short' }, t.name), h('span', { class: 'tab-full' }, t.full)] : t.name);
+      h('span', { class: 'tab-short' }, U.TC('tab-short', t.name)), h('span', { class: 'tab-full' }, t.full || t.name));
   }
 
   /** 手机：底栏 5 个常用页 +「更多」；平板：顶部一行；电脑：左侧栏。三种布局共用同一组按钮，由 CSS 排布。 */
   function renderTabs() {
     var nav = U.clear(document.getElementById('tabs'));
+    nav.setAttribute('aria-label', U.T('玩家面板'));
     var current = TABS.find(function (t) { return t.id === ui.tab; });
     var inMore = current && !current.primary;
     nav.appendChild(h('div', { class: 'tabs-primary' },
@@ -3303,13 +3811,13 @@ details.card > summary { cursor: pointer; }
         sub: '基础战斗力 ' + Math.max(0, hp) + (C.isInt(r.hpMax) ? '' : ' · 生命上限待配置')
       }),
       tile({
-        key: 'hunger', tab: 'status', label: '饥饿', badge: sevBadge(hungerLevel, zone ? '自动' : '手动'),
+        key: 'hunger', tab: 'status', label: U.TC('label', '饥饿'), badge: sevBadge(hungerLevel, zone ? '自动' : '手动'),
         value: hungerWord, unit: C.isNum(state.hunger) ? ' ' + state.hunger : '',
         viz: C.isInt(r.hungerMax) && C.isNum(state.hunger) ? meter(state.hunger, r.hungerMax, hungerLevel, '饥饿值') : null,
         sub: zone ? '按阈值自动判定' : '阈值待配置'
       }),
       tile({
-        key: 'thirst', tab: 'status', label: '口渴', badge: sevBadge(thirstLevel),
+        key: 'thirst', tab: 'status', label: U.TC('label', '口渴'), badge: sevBadge(thirstLevel),
         value: state.thirst, viz: stepsBar(THIRST, thirstIdx, thirstLevel), sub: '补水幅度待定'
       }),
       tile({
@@ -3544,7 +4052,7 @@ details.card > summary { cursor: pointer; }
       setValue(n);
     });
     return h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, '饥饿'), h('span', { class: 'muted small' }, '充盈／普通／饥饿／饥荒')),
+      h('div', { class: 'card-head' }, h('h2', null, U.TC('label', '饥饿')), h('span', { class: 'muted small' }, '充盈／普通／饥饿／饥荒')),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', onclick: function () { setValue((state.hunger || 0) - 1); } }, '−1'),
         input,
@@ -4075,7 +4583,7 @@ details.card > summary { cursor: pointer; }
       var d = existing();
       hint.hidden = !d;
       newFields.hidden = !!d;
-      if (d) hint.textContent = '已有同名物品「' + d.name + '」（' + (d.ruleStatus === 'custom' ? '自定义' : '内置') + '，每件占 ' + C.fmtUnits(d.capacityTicks) + ' 单位）：会按原有定义加入库存。';
+      if (d) hint.textContent = U.T('已有同名物品「' + d.name + '」（' + (d.ruleStatus === 'custom' ? '自定义' : '内置') + '，每件占 ' + C.fmtUnits(d.capacityTicks) + ' 单位）：会按原有定义加入库存。');
     });
     U.modal({
       title: '添加自定义物品',
@@ -4623,7 +5131,7 @@ details.card > summary { cursor: pointer; }
       var remaining = Math.max(0, round.deadline - Date.now());
       var clock = document.getElementById('scav-clock');
       var bar = document.getElementById('scav-bar');
-      if (clock) clock.textContent = (remaining / 1000).toFixed(1) + ' 秒';
+      if (clock) clock.textContent = U.T((remaining / 1000).toFixed(1) + ' 秒');
       if (bar) bar.style.width = (remaining / (sc.cfg.seconds * 1000)) * 100 + '%';
     }
   }
@@ -4783,6 +5291,10 @@ details.card > summary { cursor: pointer; }
         return;
       }
       s.action = { day: today(), used: true, type: type, note: old && old.used ? old.note || '' : '' };
+      if (type === 'plan' && !(s.watchPlan && s.watchPlan.day === today())) {
+        s.watchPlan = { day: today(), cards: drawPlanCards(s), chosen: null };
+        log(s, '抽到两张守夜候选卡');
+      }
       if (type === 'skill' && prof) {
         var id = C.uid('sk');
         s.skillLog.unshift({ id: id, day: today(), text: prof.name + '技能' });
@@ -4790,6 +5302,95 @@ details.card > summary { cursor: pointer; }
       }
       log(s, '今日行动：' + actionName(type) + (cur ? '（改选，原为' + actionName(cur) + '）' : ''));
     });
+  }
+
+  /** 同一个玩家同一天抽到的两张卡是固定的（按玩家 id＋天数＋名单定种子），撤销或重新点亮都不会重抽。 */
+  function drawPlanCards(s) {
+    var alive = C.rosterAlive(s.roster);
+    var seed = C.hashSeed(s.playerId + '|' + today() + '|' + alive.map(function (p) { return p.name; }).join(','));
+    return C.drawWatchCards(s.watchTemplates || C.defaultWatchTemplates(), { alive: alive, rules: s.rules }, C.seededRng(seed));
+  }
+
+  function showWatchEffects() {
+    return state.rules.watchShowEffects !== false;
+  }
+
+  function choosePlanCard(i) {
+    commit('选择守夜候选卡', function (s) {
+      if (s.watchPlan.chosen === i) return false;
+      s.watchPlan.chosen = i;
+      log(s, '选择守夜候选卡' + (i ? '②' : '①'));
+    });
+  }
+
+  /** 守夜名单：计划者的两张候选卡＋发给主持人的代码；末位玩家粘贴主持人的名单码后拍板。 */
+  function watchSection(current) {
+    var plan = state.watchPlan && state.watchPlan.day === today() ? state.watchPlan : null;
+    var planning = current === 'plan';
+    var hasRoster = !!(state.roster && state.roster.players && state.roster.players.length);
+    var show = showWatchEffects();
+    var parts = [h('div', { class: 'card-head' }, h('h2', null, '守夜名单'), plan && plan.chosen != null ? sevBadge('ok', '已选第 ' + (plan.chosen + 1) + ' 张') : null)];
+    if (plan || planning) {
+      parts.push(h('h3', null, '我的两张候选卡'));
+      parts.push(h('p', { class: 'muted small' }, '每张卡写明谁守夜、倾向和可能遭遇。选一张，把代码发给主持人；主持人把它放进今天的候选池。只有你一个人计划时，你选的直接生效。'));
+      if (!hasRoster) {
+        parts.push(h('div', { class: 'callout info' }, '还没有玩家名单：卡片只写人数，主持人收到代码后按存活名单抽人。导入主持人的规则包后会显示名字。 ',
+          h('button', { type: 'button', class: 'btn-link', onclick: function () { setTab('save'); } }, '去导入规则包')));
+      }
+      if (plan) {
+        parts.push(h('div', { class: 'watch-cards', role: 'group', 'aria-label': '我的两张候选卡' }, plan.cards.map(function (c, i) {
+          return U.watchCard(C.watchCardText(c, null, show), { label: i ? '②' : '①', selected: plan.chosen === i, id: c.id, onclick: function () { choosePlanCard(i); } });
+        })));
+        if (plan.chosen != null) {
+          var code = C.encodeShareCode('WATCH', { v: 1, day: plan.day, from: myName(), cards: plan.cards, chosen: plan.chosen });
+          parts.push(U.copyBlock('【守夜提交·第' + plan.day + '天】' + myName() + '：我选第 ' + (plan.chosen + 1) + ' 张。\n' + code, { label: '复制给主持人', rows: 3, note: '私发给主持人，主持人粘贴进「守夜」页' }));
+        }
+        if (!planning) parts.push(h('p', { class: 'muted small' }, '今天的行动不是「计划守夜名单」：卡片保留，重新点亮后还是这两张。'));
+      }
+    } else {
+      parts.push(h('p', { class: 'muted' }, '点亮上方「计划守夜名单」后，会在这里抽两张候选卡。'));
+    }
+    parts.push(pickPart(show));
+    return h('section', { class: 'card wide watch-section' }, parts);
+  }
+
+  function pickPart(show) {
+    var pick = state.watchPick;
+    var box = h('textarea', { rows: 2, placeholder: '粘贴主持人发来的名单码（SHELTER-POOL…）', 'aria-label': '粘贴主持人发来的名单码' });
+    function read(text) {
+      var r = C.decodeShareCode(text);
+      if (!r.ok) { U.toast(r.reason, 'warn'); return; }
+      if (r.kind !== 'POOL' || !r.data || !Array.isArray(r.data.entries) || !r.data.entries.length) { U.toast('这不是主持人发来的名单码', 'warn'); return; }
+      commit('收到守夜名单码', function (s) {
+        s.watchPick = { day: r.data.day, entries: r.data.entries, chosenCardId: null };
+        log(s, '收到第' + r.data.day + '天的守夜名单码：' + r.data.entries.length + ' 份提交');
+      });
+    }
+    var out = [
+      h('p', { class: 'muted small' }, '两人及以上计划时，由实际换位后座次最后的玩家从所有提交里选一份。只负责拍板不算计划者。主持人会把名单码发给你，粘贴进来就能看到所有提交：'),
+      h('div', { class: 'code-reader' }, box, h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn', onclick: function () { read(box.value); } }, '读取名单码'),
+        U.pasteButton(function (text) { box.value = text; read(text); })))
+    ];
+    if (pick) {
+      out.push(h('p', { class: 'small' }, '第 ' + pick.day + ' 天 · ' + pick.entries.length + ' 份提交：点一份作为最终名单。'));
+      out.push(h('div', { class: 'watch-cards', role: 'group', 'aria-label': '末位拍板' }, pick.entries.map(function (e, i) {
+        var t = C.watchCardText(e.card, null, show);
+        t.title = e.planner + ' 提交 · ' + t.title;
+        return U.watchCard(t, { label: String(i + 1), selected: pick.chosenCardId === e.card.id, id: e.card.id, onclick: function () {
+          commit('末位拍板', function (s) { s.watchPick.chosenCardId = e.card.id; log(s, '守夜拍板：选择 ' + e.planner + ' 提交的名单'); });
+        } });
+      })));
+      var chosen = pick.entries.filter(function (e) { return e.card.id === pick.chosenCardId; })[0];
+      if (chosen) {
+        var code = C.encodeShareCode('PICK', { v: 1, day: pick.day, from: myName(), cardId: chosen.card.id });
+        out.push(U.copyBlock('【守夜拍板·第' + pick.day + '天】' + myName() + '：我选 ' + chosen.planner + ' 提交的名单。\n' + code, { label: '复制拍板码给主持人', rows: 3, note: '私发给主持人' }));
+      }
+    }
+    // 只有末位用得到：平时收起，粘贴过名单码后自动展开
+    return h('details', { class: 'pick-part', open: !!pick },
+      h('summary', null, h('b', null, '末位拍板'), h('span', { class: 'muted small' }, ' · 收到主持人的名单码时用')),
+      h('div', { class: 'stack' }, out));
   }
 
   function renderAction() {
@@ -4820,6 +5421,7 @@ details.card > summary { cursor: pointer; }
         })),
         usedToday && !current ? h('p', { class: 'small' }, '今天已标记使用行动（旧记录，未注明类型）。点一个按钮可补上类型。') : null,
         usedToday ? U.field('备注', note) : null),
+      watchSection(current),
       h('section', { class: 'card' },
         h('div', { class: 'card-head' }, h('h2', null, '职业技能'), U.ruleBadge('draft')),
         state.rules.professionsEnabled ? h('div', { class: 'stack' },
@@ -5021,7 +5623,10 @@ details.card > summary { cursor: pointer; }
     var pack = h('textarea', { rows: 3, placeholder: '粘贴主持人发来的规则包 JSON' });
     return h('section', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', null, '规则（本机副本）'), h('span', { class: 'muted small' }, '以主持人通知为准')),
-      h('div', { class: 'row' }, toggle('professionsEnabled', '启用职业草案'), toggle('tasksEnabled', '启用秘密任务草案'), toggle('draftStatusesEnabled', '启用候选负面状态')),
+      h('div', { class: 'row' }, toggle('professionsEnabled', '启用职业草案'), toggle('tasksEnabled', '启用秘密任务草案'), toggle('draftStatusesEnabled', '启用候选负面状态'), toggle('watchShowEffects', '守夜卡片显示可能遭遇')),
+      h('p', { class: 'small' }, h('b', null, '玩家名单：'), state.roster && state.roster.players && state.roster.players.length
+        ? state.roster.players.map(function (p) { return p.name + (p.alive === false ? '（已死亡）' : ''); }).join('、') + '（第 ' + state.roster.day + ' 天导入）'
+        : '还没有导入（规则包里带，守夜候选卡要用来显示名字）'),
       h('div', { class: 'rules-grid' },
         unitsField('inventoryCapacityTicks', '个人总库存上限（暂定10）'),
         unitsField('scavengeKeepTicks', '搜刮自留额度（4）'),
@@ -5031,9 +5636,11 @@ details.card > summary { cursor: pointer; }
         intField('hpMax', '生命上限（待定）'),
         intField('hungerFullAt', '充盈阈值 ≥（待定）'),
         intField('hungerHungryAt', '饥饿阈值 ≤（待定）')),
-      h('details', null, h('summary', null, '导入主持人规则包'),
-        h('div', { class: 'stack' }, pack, h('button', { type: 'button', class: 'btn', onclick: function () { importRulesPack(pack.value); } }, '校验并导入'),
-          h('p', { class: 'muted small' }, '只更新规则与自定义物品（以及包里附带的搜刮模板），不碰你的库存和状态。'))));
+      h('details', { open: !(state.roster && state.roster.players && state.roster.players.length) }, h('summary', null, '导入主持人规则包'),
+        h('div', { class: 'stack' }, pack, h('div', { class: 'row' },
+          h('button', { type: 'button', class: 'btn', onclick: function () { importRulesPack(pack.value); } }, '校验并导入'),
+          U.pasteButton(function (text) { pack.value = text; importRulesPack(text); })),
+          h('p', { class: 'muted small' }, '只更新规则、自定义物品、玩家名单与守夜名单模板（以及包里附带的搜刮模板），不碰你的库存和状态。'))));
   }
 
   function importRulesPack(text) {
@@ -5050,6 +5657,8 @@ details.card > summary { cursor: pointer; }
         else s.customItems.push(d);
       });
       if (data.scavengeTemplate && Array.isArray(data.scavengeTemplate.items)) s.scavengeTemplate = data.scavengeTemplate;
+      if (data.roster && Array.isArray(data.roster.players)) s.roster = data.roster;
+      if (Array.isArray(data.watchTemplates) && data.watchTemplates.length) s.watchTemplates = data.watchTemplates;
       log(s, '导入主持人规则包');
     });
     U.toast('规则包已导入', 'ok');
@@ -5171,6 +5780,8 @@ details.card > summary { cursor: pointer; }
   function boot() {
     var tab = U.readKey(KEY_TAB);
     tab = TAB_ALIASES[tab] || tab;
+    U.i18n.setLang(U.i18n.getLang());
+    document.title = U.T(PAGE_TITLE);
     if (tab && TABS.some(function (t) { return t.id === tab; })) ui.tab = tab;
     state = loadState();
     // 点击「更多」面板以外的地方时收起

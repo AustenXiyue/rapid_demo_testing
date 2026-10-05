@@ -1,0 +1,84 @@
+# 补充词条：源码里没有单独出现、但经过「第 N 天」等固定句式处理后会剩下的片段，以及按语境取词（语境|中文）
+到期：先与主持人确认是否扣1生命	is due: check with the host whether to lose 1 HP
+的个人行动未标记为已使用	— personal action not marked as used
+label|口渴	Thirst
+label|饥饿	Hunger
+中文	中文
+切换到中文	切换到中文
+记录当前天数：	Current day recorded:
+获得 · 	acquired ·
+提醒	reminder
+到期（获得于	is due (acquired
+）。每两个回合失去1生命——请先与主持人确认，避免两端重复扣血。	). You lose 1 HP every two turns — check with the host first so it isn't deducted twice.
+；下次提醒	; next reminder
+流血伤口：主持人裁定本次不扣血；下次提醒	Bleeding wound: host ruled no HP loss this time; next reminder
+获得于	Acquired
+（主持人确认后扣血）	 (HP lost after the host confirms)
+添加流血伤口：	Added bleeding wound:
+获得，	acquired,
+【演示】	[Demo] 
+在超市割伤	cut at the supermarket
+修改流血日期：	Bleeding dates changed:
+获得，下次	acquired, next
+【赠予／交易·	[Gift/trade ·
+【交公·	[To pool ·
+【治疗·	[Treatment ·
+开始搜刮（	Started scavenging (
+选择 	picked 
+超时，按默认项记录	timed out; default recorded
+选 	picked 
+【搜刮交公·	[Scavenge to pool ·
+的行动	action
+【分数上报·	[Score report ·
+进入	Go to
+phase-no|开	S
+phase-no|事	E
+switch|开	On
+switch|关	Off
+已记录的当日数据会被丢弃。	— recorded data will be discarded. 
+已记录的数据（行动、名单、事件判定、公开结果等）将被丢弃。	— recorded data (actions, rosters, event rolls, public results, etc.) will be discarded. 
+将恢复	Will restore
+的当日记录与当天结束时的座次。	records and its end-of-day seating. 
+回退到	Go back to
+跨日回退：	Cross-day rollback:
+结束今天，进入	End today, go to
+有一条待公布的守夜结果（	A watch result is waiting to be announced (
+）。内容可在「守夜」页预览（需先暂停共享）。	). Preview it on the Watch page (pause sharing first).
+公布昨夜结果（	Announced last night's result (
+：固定指定	: fixed assignment
+【开局领取	[Opening pickup
+·固定指定】\n	 · fixed assignment]\n
+（固定指定）：	 (fixed assignment): 
+完成（固定指定）	done (fixed assignment)
+【守夜候选·	[Watch options ·
+【守夜拍板·	[Watch decision ·
+ 名单	 
+末位选	Last seat picks
+已于	announced on
+ 公布	 
+的结果尚未公布，保存会覆盖它。确定吗？	— its result isn't announced yet; saving overwrites it. Continue?
+结果草稿：	result draft:
+已按权重抽取（	Drawn by weight (
+已手动选择	Chosen by hand
+【事件结果·	[Event result ·
+避难所 Playtest · 主持人	Shelter Playtest · Host
+避难所 Playtest · 玩家	Shelter Playtest · Player
+主持人面板	Host panel
+玩家面板	Player panel
+条	 entries
+第 	Day 
+ 天	 
+ 份	 
+tab-short|总览	Home
+tab-short|状态	Status
+tab-short|库存	Items
+tab-short|搜刮	Loot
+tab-short|行动	Action
+tab-short|分数	Score
+tab-short|存档	Save
+代码是	The code was drawn on
+抽的，现在是	; it is now
+【守夜提交·	[Watch submission ·
+收到	Received
+的守夜名单码：	watch list code:
+导入）	imported)

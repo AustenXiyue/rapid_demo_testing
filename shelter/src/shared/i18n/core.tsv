@@ -1,0 +1,404 @@
+待配置／主持人裁定	To configure / host decides
+待配置	To configure
+已确认	Confirmed
+暂定	Tentative
+待定	TBD
+实现建议	Implementation note
+草案	Draft
+自定义	Custom
+补给	Supplies
+医疗	Medical
+财富	Wealth
+装备	Gear
+特殊	Special
+普通水	Water
+补水；恢复多少档待定。	Restores thirst; how many levels is TBD.
+补水幅度待定	Thirst restored: TBD
+补水	Hydration
+功能饮料	Energy drink
+补水；下一次行动判定视为充盈，实际饥饿值不填满。	Restores thirst; your next action counts as Full, but your hunger value isn't filled.
+面包	Bread
+恢复饥饿值，恢复量待定。	Restores hunger; amount TBD.
+恢复量待定	Amount TBD
+食物	Food
+普通食物	Plain food
+奶油汤	Cream soup
+恢复饥饿值并补水，数值待定。	Restores hunger and thirst; amounts TBD.
+能量棒	Energy bar
+使用3次，每次约等于普通食物／面包；整个实例未用完仍占0.5。	3 uses, each about one plain food / bread; a partly used bar still takes 0.5.
+每次恢复量同面包，待定	Each use restores the same as bread (TBD)
+绷带	Bandage
+止血或恢复1生命，二选一。	Stop bleeding or restore 1 HP (pick one).
+医疗箱	Medkit
+清除伤病类负面状态，并恢复2生命；不处理饥饿、口渴及脱水昏迷。	Clears injury/illness statuses and restores 2 HP; does not treat hunger, thirst or dehydration coma.
+钞票	Cash
+每件1分。	1 pt each.
+名画	Painting
+每件6分。	6 pts each.
+珠宝	Jewel
+1～5件总分依次1、4、8、11、15；0件0分，超过5件未定。	1–5 jewels score 1, 4, 8, 11, 15 in total; 0 jewels score 0; more than 5 is TBD.
+超过5件的计分未定	Scoring above 5 jewels TBD
+军用折刀	Army knife
+攻击力+1；切绳、内藏铁丝开锁。	Attack +1; cuts rope; hidden wire picks locks.
+武器	Weapon
+切绳	Cut rope
+开锁	Pick locks
+消防斧	Fire axe
+攻击力+2；破门、清除封锁道路。	Attack +2; breaks doors and clears blocked roads.
+破门	Break doors
+清障	Clear roads
+军用步枪	Army rifle
+需携带子弹才能发挥+6攻击力；无弹仍可恐吓。	Needs ammo for +6 attack; can still intimidate without ammo.
+多武器是否叠加未定	Whether multiple weapons stack is TBD
+子弹何时扣除未定	When ammo is spent is TBD
+恐吓	Intimidate
+子弹	Ammo
+支持步枪；部分交易事件有额外价值。每份使用次数未定。	Feeds the rifle; extra value in some trade events. Uses per ammo TBD.
+每份使用次数未定	Uses per ammo TBD
+弹药	Ammo
+交易	Trade
+防弹背心	Bulletproof vest
+防止任务中一次负面状态或生命损失；损坏时点、伤害范围待定。	Blocks one negative status or HP loss during a mission; when it breaks and what it covers is TBD.
+损坏时点待定	When it breaks is TBD
+伤害范围待定	Coverage TBD
+防护	Protection
+跳棋	Checkers
+外交、娱乐；特定售货机事件中冒充硬币，获得食物或水。	Diplomacy, fun; poses as a coin at a certain vending machine to get food or water.
+使用次数未定	Number of uses TBD
+外交	Diplomacy
+娱乐	Fun
+售货机	Vending machine
+地图	Map
+提供地点、时间与可能回报信息；降低队伍探路危险；携带参加一次任务加1笔记，每笔记1分；可能损坏。	Gives places, timing and possible rewards; lowers scouting risk; +1 note per mission it is carried on, 1 pt per note; may get damaged.
+转移后笔记归属、损坏后及死亡后的地图分数由主持人裁定	Who owns the notes after a transfer, and map points after damage or death, are up to the host
+探路	Scouting
+军用水壶	Army canteen
+水源或下雨条件下可获得1份水，最多储存2份。	Collects 1 water at a water source or in rain; holds up to 2.
+内部水是否额外占容量未定	Whether stored water takes extra space is TBD
+饮用后是否生成普通水物品未定	Whether drinking creates a Water item is TBD
+取水频率未定	Refill frequency TBD
+酒	Liquor
+事件中使用：临时攻击力+2，并承担一次口渴消耗。	Use during an event: temporary attack +2, at the cost of one thirst step.
+事件	Event
+信号枪	Flare gun
+适当地点与时机推进营救；其他事件中使用获得随机军方补给。	Advances the rescue at the right place and time; in other events, gets random military supplies.
+营救	Rescue
+（未知物品）	(Unknown item)
+字典里找不到这个物品：可能是已删除的自定义物品。	This item isn't in the dictionary: maybe a custom item that was deleted.
+未命名物品	Unnamed item
+主持人自定义物品，效果见备注。	Host-defined custom item; see remark for effect.
+流血伤口	Bleeding wound
+每两个回合失去1生命，直到清除。	Lose 1 HP every two turns until cleared.
+获得当天是否计入两回合待定	Whether the day it's received counts toward the two turns is TBD
+重复流血是否叠加待定	Whether repeated bleeding stacks is TBD
+感染	Infection
+候选状态，效果未被确认。	Candidate status; effect not confirmed.
+腹泻	Diarrhea
+虚弱	Weakness
+拉伤	Strain
+眩晕	Dizziness
+医生	Doctor
+用医疗箱治疗别人，消耗医疗箱并获得1份绷带；绷带可不消耗。	Treats others with a medkit, consuming it and gaining 1 bandage; the bandage may be kept.
+是否能自疗、技能具体作用范围未定。	Self-treatment and the exact scope of the skill are TBD.
+军人	Soldier
+持枪用两个回合制造1份子弹；用两个回合修复破损背心。可为他人服务，所需物品先交给军人。	With a rifle, makes 1 ammo in two turns; repairs a damaged vest in two turns. Can work for others — hand the items over first.
+两回合是否各耗行动未定。	Whether each of the two turns costs an action is TBD.
+背包客	Backpacker
+帮助他人整理：携带／带回额度+1，或保护一件物品在下一事件不损坏。	Helps others pack: +1 carry/bring-back allowance, or protects one item from damage in the next event.
+加成范围、持续时间和叠加未定。	Scope, duration and stacking TBD.
+厨师	Chef
+一次行动将0.5普通食物加工成0.5料理，恢复量相同；选择下次行动免一次负面、免一次伤害或减少饥饿消耗。	One action turns 0.5 plain food into 0.5 dish with the same restore; choose to avoid one negative, avoid one hit, or reduce hunger cost on the next action.
+具体触发未定。	Exact trigger TBD.
+冒险家	Adventurer
+亲自参与至少7件不同公共事件。	Personally take part in at least 7 different public events.
+圣母	Saint
+营救结算时死亡人数不超过初始人数的三分之二；6人即最多4人死亡。	At rescue settlement, deaths do not exceed two-thirds of the starting players (at most 4 of 6).
+囤积者	Hoarder
+持有3件相同物品时秘密消耗1件记进度，面包和普通水除外；累计3次。	When holding 3 identical items, secretly use 1 to log progress (bread and water excluded); 3 times in total.
+联络员	Liaison
+以任意形式亲自参与推进游戏进程3次。	Personally help move the game forward 3 times, in any form.
+厌世者	Misanthrope
+累计有3人死亡。无爱人、继承仇恨等早期规则不自动加入。	3 deaths in total. Early rules like "no loved one" or inherited hatred are not added automatically.
+爱财者（旧版）	Wealth lover (old)
+旧版财富额外加分尚未完成改写，置于停用草案，不可选择。	The old wealth bonus hasn't been rewritten yet; parked as a retired draft and can't be chosen.
+计划人数	Planned players
+约6人，可配置	About 6, configurable
+个人总库存上限	Personal inventory limit
+10单位（暂定）；超出只警告	10 units (tentative); exceeding only warns
+每次搜刮自留额度	Keep allowance per scavenge
+4单位；与总库存分开计算	4 units; counted separately from inventory
+事件携带上限（默认值）	Event carry limit (default)
+由具体事件规定，一般1～2单位；不是个人总库存	Set by each event, usually 1–2 units; not your total inventory
+守夜携带上限	Watch carry limit
+待定；不会默认沿用事件上限	TBD; does not default to the event limit
+水壶内每份水额外占位	Extra space per water in canteen
+未定时只独立显示水量	Until decided, water is shown on its own
+初始生命	Starting HP
+基础战斗力＝当前生命	Base combat = current HP
+生命上限	Max HP
+0生命处理与死亡时点	Handling 0 HP and time of death
+饥饿值上限	Max hunger value
+充盈阈值（≥）	Full threshold (≥)
+与饥饿阈值都填写后才启用自动判定	Auto-detection turns on once both this and the Hungry threshold are filled
+饥饿阈值（≤）	Hungry threshold (≤)
+饥荒阈值（≤）	Starving threshold (≤)
+填写后低于等于此值自动判为饥荒；未填时饥荒只能手动选择	Once filled, values at or below it count as Starving; until then Starving can only be set by hand
+初始饥饿值	Starting hunger value
+每日事件触发概率（%）	Daily event chance (%)
+80%有事件、20%无；只控制是否触发	80% event, 20% none; only decides whether one triggers
+公共事件位置	Public event position
+阶段2（资源补给）之前	Before Phase 2 (Resupply)
+阶段6（确认守夜）之后	After Phase 6 (Confirm watch)
+未选时由主持人手动触发	If unset, the host triggers it by hand
+守夜人数（「指定N人」）	Watch size ("pick N")
+6人局通常2人，特殊条件可改	Usually 2 in a 6-player game; can change for special conditions
+每人换位请求上限	Swap requests per player
+最多3次；主持人可覆盖	Up to 3; the host can override
+营救阈值	Rescue threshold
+阈值未知：不自动结束，主持人点击结算	Threshold unknown: the game doesn't end on its own; the host clicks settle
+基础生存分	Base survival score
+爱分值	Love points
+恨分值	Hate points
+秘密任务固定奖励	Secret mission reward
+搜刮轮数	Scavenge rounds
+3轮	3 rounds
+每轮选项数	Options per round
+3个	3
+每轮秒数	Seconds per round
+7秒，超时选默认项	7 s; on timeout the default is picked
+每组合上限	Combo cap
+2单位；每组在「上限−0.5」到上限之间，不会超出	2 units; each combo is between cap − 0.5 and the cap, never over
+启用职业草案	Enable profession drafts
+默认停用，主持人明确启用后使用	Off by default; use only after the host enables it
+启用秘密任务草案	Enable secret mission drafts
+与职业独立开关	Separate switch from professions
+启用候选负面状态	Enable candidate negative statuses
+感染、腹泻、虚弱、拉伤、眩晕：效果未确认	Infection, diarrhea, weakness, strain, dizziness: effects not confirmed
+能量棒使用次数	Energy bar uses
+子弹每份使用次数	Uses per ammo
+跳棋使用次数	Checkers uses
+信号枪使用次数	Flare gun uses
+充盈	Full
+饥荒	Starving
+饥饿	Hungry
+普通	Normal
+数量必须是正整数	Quantity must be a positive integer
+找不到该物品	Item not found
+数量不足：现有 	Not enough: have 
+，要扣 	, need 
+（剩	 (
+次）	 uses left)
+（笔记	 (notes: 
+条	~
+·损坏	 · damaged
+（储水	 (water: 
+（破损）	 (damaged)
+（完好）	 (intact)
+看不懂：「	Can't read: “
+未知物品：「	Unknown item: “
+数量为0：「	Quantity is 0: “
+抽取数量必须是正整数	Draw count must be a positive integer
+公共池只有 	The pool only has 
+ 件，不足 	 pcs, short of 
+ 件	 pcs
+剩余物品的权重都为 0，无法抽取	All remaining items have weight 0; nothing can be drawn
+每日补给	Daily supply
+该批次已结束	This batch is closed
+该玩家不在本批领取名单中	This player isn't on this batch's pick list
+该玩家本批已领取过	This player already picked in this batch
+该物品已被选走或不在本批候选中	That item was taken or isn't in this batch
+该玩家本批尚未领取	This player hasn't picked in this batch yet
+该批次已撤销	This batch was undone
+开局准备	Setup
+登记玩家、设计开局物资：每名玩家先领取两次，方式由主持人决定。	Register players and design opening supplies: each player picks twice first; the host decides how.
+昨夜结果	Last night's result
+公布前一晚的守夜结果，主持人确认状态与营救进度变化。首日无结果可跳过。	Announce last night's watch result; the host confirms status and rescue changes. Skip on day 1.
+资源补给	Resupply
+按当前座次领取物资。	Pick supplies in the current seating order.
+自由交流	Free talk
+讨论、交易、赠予及预先协商换位，均不收费；尚不锁定个人行动。	Discussion, trades, gifts and pre-arranged swaps are free; personal actions aren't locked yet.
+每日轮换	Daily rotation
+当前末位移到首位，其余人后移。每日只执行一次。	The last seat moves to the first; everyone else shifts back. Once per day.
+个人行动	Personal actions
+按轮换后的固定顺序逐人决定并结算；每人一次行动：使用技能、尝试换位或计划守夜名单。	Players act one by one in the fixed post-rotation order; one action each: use a skill, try a seat swap, or plan the watch roster.
+确认守夜	Confirm watch
+多人提交时，由实际换位后的末位玩家选择最终名单。	If several rosters were submitted, the player in the last seat (after swaps) picks the final one.
+公共事件	Public event
+每日一次判定：80%触发需要投票的公共事件，20%无事件。	Rolled once a day: 80% triggers a public event to vote on, 20% no event.
+阶段	Phase 
+换位双方必须都在座次中	Both players must be in the seating order to swap
+今日已轮换过，不会重复轮换	Already rotated today; it won't rotate twice
+尚未进入个人行动阶段	Personal actions phase hasn't started
+该玩家不在本轮行动顺序中	This player isn't in this round's action order
+该玩家本轮已行动	This player already acted this round
+该玩家今日已发起 	This player has already made 
+ 次换位请求（上限 	 swap requests today (limit 
+不能和自己换位	You can't swap with yourself
+换位请求→	Swap request → 
+（同意）	 (accepted)
+（拒绝）	 (declined)
+指定N人	Pick N
+今天计划过名单的人	Today's roster planners
+今天使用过技能的人	Today's skill users
+全员	Everyone
+更可能获得营救信息	More likely to get rescue info
+更可能遭遇不测	More likely to meet danger
+单条（不混合）	Single (no mixing)
+叠加：人员取并集	Stack: union of people
+组合方式待定：主持人预览确认	Mixing TBD: host previews and confirms
+中性	Neutral
+指定	Pick 
+人	~
+指定两人	Pick two
+只表达风险倾向，不含对象：确认时由主持人指定人员。	Only signals a risk tendency, no people: the host names them when confirming.
+新名单模板	New roster template
+该名单没有指定对象：请主持人指定守夜人员。	This roster names nobody: the host picks the watchers.
+多条目的组合方式未定：已按并集预览，请主持人确认。	How multiple entries combine is TBD: previewed as a union; please confirm.
+按当日记录解析后没有人：请主持人裁定。	No one left after applying today's records: host decides.
+（按当日记录结算）	 (resolved from today's records)
+参与	Join
+拒绝	Decline
+没有结果	No outcomes
+ 个结果未填概率	 outcomes have no probability
+概率合计 	Probabilities total 
+%，不是100%	%, not 100%
+ 少了 	 is missing 
+ 件（可能已被发放）	 pcs (maybe already handed out)
+生命	HP
+饥饿值	Hunger value
+口渴：	Thirst: 
+状态：	Status: 
+物品：	Items: 
+地图笔记	Map notes
+缺少名称	Name is missing
+至少需要一个选项	Needs at least one option
+选项	Option
+死亡后不保留财富分	Wealth points are lost on death
+珠宝超过5件：需主持人计分	More than 5 jewels: the host must score
+财富分	Wealth pts
+地图分	Map pts
+爱恨分	Love/hate pts
+生存分	Survival pts
+任务分	Mission pts
+无弹，仅可恐吓	no ammo, intimidation only
+已标记死亡：财富分不保留，爱恨与任务分保留	Marked dead: wealth points are lost; love/hate and mission points stay
+生命为 0：处理方式与死亡时点待主持人裁定	HP is 0: how to handle it and time of death are up to the host
+脱水	Dehydrated
+脱水：直接昏迷	Dehydrated: falls unconscious
+口渴	Thirsty
+口渴：补水幅度待定，饮水后手动调整	Thirsty: how much water restores is TBD; adjust by hand after drinking
+昏迷	Unconscious
+昏迷中：如何解除尚未确定	Unconscious: how it wears off is TBD
+饥荒：比饥饿更严重，后果待主持人裁定	Starving: worse than hungry; consequences up to the host
+饥饿：相关成功率降低	Hungry: related success rates drop
+流血伤口第 	~
+ 天到期：先与主持人确认是否扣1生命	~
+库存超出上限 	Inventory over the limit by 
+ 单位（只警告，由主持人裁定）	 units (warning only; the host decides)
+守夜	Watch
+携带超出上限 	Carrying over the limit by 
+ 单位	 units
+携带中：	 carry: 
+ 单位；结果出来后处理高亮物品，再点「结束携带」	 units; when the result is in, update the highlighted items, then tap “End carry”
+正在挑选	Choosing 
+携带：已选 	 carry: 
+ 单位，确认后才生效	 units chosen; takes effect after you confirm
+搜刮进行中：第 	Scavenging: round 
+ 轮，超时会自动选默认项	, defaults are picked on timeout
+搜刮三轮已完成：待整理并一次性提交	Scavenge finished 3 rounds: sort and submit once
+第 	~
+ 天的个人行动未标记为已使用	~
+（已移除）	(removed)
+还没有登记玩家	No players registered yet
+开局领取完成 	Opening pickups done: 
+／2 次	/2
+不在座次：	Not seated: 
+已死亡仍在座次：	Dead but still seated: 
+（是否移出由主持人决定）	 (the host decides whether to remove)
+有一条昨夜结果待公布	A night result is waiting to be announced
+昨夜结果还没有公布	Last night's result hasn't been announced
+」还有 	” still has 
+ 人未领取	 players to pick
+」已全部领取，可以结束批次	” fully picked; you can close the batch
+今天还没有发放批次	No supply batch today yet
+今日尚未轮换	Not rotated today
+尚未生成本轮行动顺序	This round's action order isn't generated yet
+轮到 	 
+ 行动（还剩 	's turn (left: 
+ 人）	 players)
+守夜名单未确认（已收到 	Watch roster not confirmed (
+ 份提交）	 submitted)
+守夜名单已确认，尚未公开	Watch roster confirmed, not public yet
+今晚的守夜结果还没有保存为草稿	Tonight's watch result isn't saved as a draft yet
+今日事件尚未判定	Today's event roll not done
+今日触发了公共事件，尚未选择事件	A public event triggered today; no event chosen yet
+事件已选定，尚未公布到公开页	Event chosen, not yet shown on the public page
+事件已公布，等待录入投票并结算	Event shown; waiting for the vote and resolution
+事件已结算，结果尚未公开	Event resolved; result not public yet
+营救进度已达阈值 	Rescue progress reached the threshold 
+：何时结算由主持人决定	: the host decides when to settle
+规则配置未完成 	Rules not fully configured: 
+ 项	 items left
+示例搜刮模板	Sample scavenge template
+实现假设：候选只从本模板生成，不扣公共池。补给之外的物品每组最多一件，同类物品不容易同时出现。物品与权重都可编辑，也可导入主持人给的模板。	Implementation note: options come only from this template and don't take from the pool. Non-supply items appear at most once per combo, and same-category items rarely appear together. Items and weights are editable; you can also import the host's template.
+该轮已超时，已按默认项记录	That round timed out; the default was recorded
+选项不存在	Option doesn't exist
+不渴	Not thirsty
+清醒	Conscious
+不是有效的存档对象	Not a valid save object
+主持人存档	Host save
+玩家存档	Player save
+规则包	Rules pack
+存档类型不符：这里需要	Wrong save type: expected 
+，文件是	, file is 
+未知类型	Unknown type
+缺少有效的 schemaVersion	Missing a valid schemaVersion
+存档版本 	Save version 
+ 比本页面（	 is newer than this page (
+）新，无法导入	); can't import
+缺少 rules	Missing rules
+缺少 log	Missing log
+customItems 必须是数组	customItems must be an array
+缺少数组字段 	Missing array field 
+缺少 today	Missing today
+day 必须是整数	day must be an integer
+玩家	Player
+缺少 id 或姓名	Missing id or name
+玩家 id 重复：	Duplicate player id: 
+座次中有不存在的玩家：	Seating has unknown players: 
+公共池里有无效物品（数量须为正整数）	The pool has invalid items (quantity must be a positive integer)
+缺少 inventory	Missing inventory
+库存里有无效物品（数量须为正整数）	Inventory has invalid items (quantity must be a positive integer)
+hp 必须是数字	hp must be a number
+缺少 statuses	Missing statuses
+缺少 playerId	Missing playerId
+不是规则包（kind 应为 shelter-rules）	Not a rules pack (kind should be shelter-rules)
+规则包缺少 rules	Rules pack is missing rules
+守夜人数（随机抽人时）	Watch size (for random draws)
+留空＝存活人数的三分之一，向上取整（6人2人、7人3人）；特殊条件可改	Empty = one third of the living players, rounded up (6 → 2, 7 → 3); can change for special conditions
+守夜卡片提前显示可能遭遇	Show possible outcomes on watch cards
+风险后果是否提前可见尚未确定：暂定显示；关闭后卡片上只写「主持人确认后公布」	Whether risk outcomes are visible in advance is TBD: shown for now; when off, cards only say “announced after the host confirms”
+随机抽人	Random draw
+按行动指定：今天使用行动计划守夜名单的人守夜	By action: whoever used their action to plan the watch roster today keeps watch
+按行动指定：今天使用职业技能的人守夜	By action: whoever used a profession skill today keeps watch
+全体指定：所有人今晚守夜	Everyone: all players keep watch tonight
+收益倾向	Reward tendency
+风险倾向	Risk tendency
+这份守夜名单似乎能获得更多获救信息	This roster seems likely to get more rescue information
+这份守夜名单或许在今晚会遭遇更多不测	This roster may run into more trouble tonight
+额外饥饿	Extra hunger
+受伤	Injury
+无事发生	Nothing happens
+获得营救信息／关键物资	Rescue info / key supplies
+随机 	 
+ 人守夜	 random players watch
+ 守夜	 watch
+ 人守夜（主持人收到代码后按存活名单抽出）	 random players watch (the host draws them from the living players on receiving the code)
+今天使用行动计划守夜名单的人守夜	Whoever used their action to plan the watch roster today keeps watch
+今天使用职业技能的人守夜	Whoever used a profession skill today keeps watch
+所有人今晚守夜	All players keep watch tonight
+ 名守夜者	 watcher(s)
+可能遭遇：主持人确认后公布	Possible outcomes: announced after the host confirms
+没有找到代码：请粘贴以 SHELTER- 开头的整段内容	No code found: paste the whole message starting with SHELTER-
+代码不完整或已损坏：请重新复制整段	The code is incomplete or damaged: copy the whole thing again
+守夜候选卡还没选：选一张后把代码发给主持人	Watch card not chosen yet: pick one and send the code to the host

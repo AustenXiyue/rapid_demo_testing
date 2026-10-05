@@ -11,6 +11,7 @@ body.player { min-width: 300px; }
 .p-top-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .p-name { font-size: 16px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .p-day { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; white-space: nowrap; }
+.p-top-tools { display: inline-flex; align-items: center; gap: 6px; }
 /* 简要面板：6 格等宽（手机 3×2），每格 名称 / 数值 / 小进度；点格子去对应页 */
 .p-vitals { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .p-top.on-dashboard .p-vitals { display: none; }
@@ -84,7 +85,7 @@ body.player { min-width: 300px; }
     position: sticky; top: calc(var(--top-h, 0px) + 16px); align-self: start; margin-top: 16px;
     flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; overflow: visible;
   }
-  .tabs .tab { justify-content: flex-start; border-bottom: 0; border-left: 3px solid transparent; border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 15.5px; }
+  .tabs .tab { justify-content: flex-start; border-bottom: 0; border-left: 3px solid transparent; border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 15.5px; white-space: normal; text-align: left; }
   .tabs .tab.on { border-left-color: var(--teal); background: var(--teal-soft); }
   .tabs .tab:hover { background: var(--surface-2); }
   .p-main { max-width: none; margin: 0; padding: 16px 0 48px; }
@@ -322,3 +323,9 @@ details.card > summary { cursor: pointer; }
   .big-num { font-size: 44px; }
   .tile.hero .tile-value { font-size: 48px; }
 }
+
+/* 守夜名单区 */
+.watch-section h3 { font-size: 15px; margin: 4px 0 2px; }
+.pick-part { margin-top: 6px; border-top: 1px dashed var(--line-strong); padding-top: 10px; }
+.pick-part > summary { cursor: pointer; padding: 4px 0; }
+.pick-part > .stack { margin-top: 8px; }

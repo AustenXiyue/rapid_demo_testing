@@ -236,38 +236,108 @@ test('守夜：0／1／多份提交走不同处理，空提交不读空数组', 
   assert.deepEqual(C.submittedCandidates(today), []);
 });
 
-test('守夜候选：两份随机名单，「指定两人」生成时即抽定；按行为选人的名单从当日记录解析', () => {
-  const rng = C.seededRng(42);
+test('守夜候选卡：两张；随机抽人＝存活人数三分之一向上取整且生成时抽定；按行动指定从当日记录解析', () => {
+  const people = (ids) => ids.map((id) => ({ id, name: id }));
+  const rules = C.defaultRules();
+  assert.equal(rules.watchSize, null, '守夜人数默认按存活人数自动计算');
+  assert.deepEqual([1, 3, 4, 6, 7, 9].map((n) => C.watchCount(n, rules)), [1, 1, 2, 2, 3, 3]);
+  assert.equal(C.watchCount(6, Object.assign({}, rules, { watchSize: 4 })), 4, '主持人填了人数就用填的');
+
   const templates = C.defaultWatchTemplates();
-  const opts = C.drawWatchOptions(templates, ['A', 'B', 'C', 'D'], rng, 2);
-  assert.equal(opts.length, 2);
-  assert.notEqual(opts[0].templateId, opts[1].templateId, '两份名单来自不同模板');
+  const designatedTpl = templates.find((t) => t.id === 'wt_designated');
+  const card = C.makeWatchCard(designatedTpl, { alive: people(['A', 'B', 'C', 'D', 'E', 'F', 'G']), rules }, C.seededRng(5));
+  assert.equal(card.designatedIds.length, 3, '7 人 → 3 人守夜');
+  assert.deepEqual(card.designatedNames, card.designatedIds);
+  const res1 = C.resolveWatchOption(card, { plannerIds: [], skillUserIds: [], aliveIds: ['A', 'B', 'C', 'D', 'E', 'F', 'G'] });
+  assert.deepEqual(res1.memberIds, card.designatedIds, '重算不变');
+  assert.ok(card.effects.length >= 1 && card.effects.length <= 2, '1～2 条可能遭遇');
+  for (const e of card.effects) if (e.ids) assert.ok(e.ids.every((id) => card.designatedIds.includes(id)), '遭遇落在守夜者身上');
 
-  const designated = C.makeWatchOption(templates.find((t) => t.id === 'wt_designated'), ['A', 'B', 'C', 'D'], C.seededRng(5), 2);
-  assert.equal(designated.designatedIds.length, 2);
-  const frozen = JSON.stringify(designated.designatedIds);
-  const res1 = C.resolveWatchOption(designated, { plannerIds: [], skillUserIds: [], aliveIds: ['A', 'B', 'C', 'D'] });
-  assert.equal(JSON.stringify(res1.memberIds), frozen, '刷新／重算不变');
-
-  const planners = C.makeWatchOption(templates.find((t) => t.id === 'wt_planners'), ['A', 'B', 'C', 'D'], rng, 2);
+  const planners = C.makeWatchCard(templates.find((t) => t.id === 'wt_planners'), { alive: people(['A', 'B', 'C', 'D']), rules }, C.seededRng(2));
   const res2 = C.resolveWatchOption(planners, { plannerIds: ['B', 'C'], skillUserIds: [], aliveIds: ['A', 'B', 'C', 'D'] });
-  assert.deepEqual(res2.memberIds, ['B', 'C']);
+  assert.deepEqual(res2.memberIds, ['B', 'C'], '按当日计划者解析');
+  assert.match(C.watchCardText(planners).who, /今天使用行动计划守夜名单的人守夜/);
 
-  const danger = C.makeWatchOption(templates.find((t) => t.id === 'wt_danger'), ['A', 'B'], rng, 2);
-  const res3 = C.resolveWatchOption(danger, { plannerIds: [], skillUserIds: [], aliveIds: ['A', 'B'] });
-  assert.equal(res3.needsHost, true, '只有倾向的名单需要主持人指定人员');
-  assert.deepEqual(res3.tendencies, ['danger']);
+  // 旧版只有倾向的模板：补上随机抽人，倾向保留
+  const legacy = { id: 'wt_danger', name: '更可能遭遇不测', entries: [{ kind: 'danger', count: null }], combine: 'single', weight: 1, enabled: true };
+  const lc = C.makeWatchCard(legacy, { alive: people(['A', 'B', 'C', 'D', 'E', 'F']), rules }, C.seededRng(3));
+  assert.equal(lc.designatedIds.length, 2);
+  assert.equal(lc.tendency, 'danger');
+  assert.match(C.watchCardText(lc).tendency, /或许在今晚会遭遇更多不测/);
+
+  // 两张卡：大多是随机抽人；条件卡（按行动、全体）同一对里不重复；两张随机卡不会是同一组人
+  const rng = C.seededRng(42);
+  let random = 0;
+  for (let i = 0; i < 500; i++) {
+    const cards = C.drawWatchCards(templates, { alive: people(['A', 'B', 'C', 'D', 'E', 'F']), rules }, rng);
+    assert.equal(cards.length, 2);
+    if (!cards[0].designatedIds || !cards[1].designatedIds) assert.notEqual(cards[0].templateId, cards[1].templateId);
+    else assert.notEqual(cards[0].designatedIds.slice().sort().join(), cards[1].designatedIds.slice().sort().join());
+    random += cards.filter((c) => c.designatedIds).length;
+  }
+  assert.ok(random / 1000 > 0.6, '随机抽人为主：' + random / 1000);
+});
+
+test('守夜卡片：没导入名单时只记人数，主持人收到后按存活名单补抽；名字换成主持人端 id', () => {
+  const rules = C.defaultRules();
+  const blind = C.makeWatchCard(C.defaultWatchTemplates()[0], { alive: [], rules }, C.seededRng(1));
+  assert.equal(blind.count, 2, '按计划人数 6 → 2 人');
+  assert.equal(blind.designatedIds, null);
+  assert.match(C.watchCardText(blind).who, /随机 2 人守夜（主持人收到代码后按存活名单抽出）/);
+  const players = [{ id: 'p1', name: '甲', alive: true }, { id: 'p2', name: '乙', alive: true }, { id: 'p3', name: '丙', alive: false }];
+  const adopted = C.adoptWatchCard(blind, players, C.seededRng(2)).card;
+  assert.equal(adopted.designatedIds.length, 2);
+  assert.ok(!adopted.designatedIds.includes('p3'), '不抽已死亡的玩家');
+  const named = C.makeWatchCard(C.defaultWatchTemplates()[0], { alive: [{ id: '甲', name: '甲' }, { id: '乙', name: '乙' }, { id: '丁', name: '丁' }], rules: Object.assign({}, rules, { watchSize: 3 }) }, C.seededRng(4));
+  const r = C.adoptWatchCard(named, players, C.seededRng(2));
+  assert.deepEqual(r.unknown, ['丁'], '主持人名单里没有的名字单独列出');
+  assert.ok(r.card.designatedIds.every((id) => ['p1', 'p2'].includes(id)));
+});
+
+test('旧版存档里的守夜候选（没有人数和遭遇）照样能显示名字', () => {
+  const old = { id: 'wo1', templateId: 'wt_designated', template: { id: 'wt_designated', name: '指定两人', entries: [{ kind: 'designated', count: 2 }], combine: 'single' }, designatedIds: ['p1', 'p2'] };
+  const t = C.watchCardText(old, (id) => ({ p1: '甲', p2: '乙' })[id], true);
+  assert.equal(t.who, '甲、乙 守夜');
+  assert.deepEqual(t.effects, []);
+  assert.equal(C.describeWatchOption(old, (id) => id), '「指定两人」p1、p2 守夜');
+});
+
+test('分享代码：中文内容来回无损；夹在消息里也能读；损坏的代码给出提示', () => {
+  const data = { v: 1, day: 3, from: '演示·小周', cards: [{ id: 'x', designatedNames: ['阿珍'] }], chosen: 0 };
+  const code = C.encodeShareCode('WATCH', data);
+  assert.match(code, /^SHELTER-WATCH:[A-Za-z0-9+/=]+$/);
+  const r = C.decodeShareCode('【守夜提交】请收下 ' + code + ' 谢谢');
+  assert.equal(r.ok, true);
+  assert.equal(r.kind, 'WATCH');
+  assert.deepEqual(r.data, data);
+  assert.equal(C.decodeShareCode('随便一段话').ok, false);
+  assert.equal(C.decodeShareCode('SHELTER-WATCH:' + code.slice(14, 30)).ok, false, '截断的代码');
 });
 
 test('多条目名单不擅自混合：组合方式未定时要求主持人确认', () => {
   const t = { id: 'x', name: '混合', entries: [{ kind: 'planners' }, { kind: 'skillUsers' }], combine: 'pending', weight: 1, enabled: true };
-  const opt = C.makeWatchOption(t, ['A', 'B', 'C'], C.seededRng(1), 2);
+  const ctx = { alive: ['A', 'B', 'C'].map((id) => ({ id, name: id })), rules: C.defaultRules() };
+  const opt = C.makeWatchCard(t, ctx, C.seededRng(1));
   const res = C.resolveWatchOption(opt, { plannerIds: ['A'], skillUserIds: ['B'], aliveIds: ['A', 'B', 'C'] });
   assert.equal(res.needsHost, true);
   t.combine = 'union';
-  const res2 = C.resolveWatchOption(C.makeWatchOption(t, ['A', 'B', 'C'], C.seededRng(1), 2), { plannerIds: ['A'], skillUserIds: ['B'], aliveIds: ['A', 'B', 'C'] });
+  const res2 = C.resolveWatchOption(C.makeWatchCard(t, ctx, C.seededRng(1)), { plannerIds: ['A'], skillUserIds: ['B'], aliveIds: ['A', 'B', 'C'] });
   assert.equal(res2.needsHost, false);
   assert.deepEqual(res2.memberIds, ['A', 'B']);
+});
+
+test('规则第3版：守夜人数旧默认值 2 改为自动；旧版六条默认名单模板换成新版', () => {
+  const old = Object.assign(C.defaultRules(), { watchSize: 2 });
+  old.rulesRev = 2;
+  assert.equal(C.normalizeRules(old).watchSize, null);
+  const kept = Object.assign(C.defaultRules(), { watchSize: 3 });
+  kept.rulesRev = 2;
+  assert.equal(C.normalizeRules(kept).watchSize, 3, '改过的人数保留');
+  const host = C.newHostState();
+  host.watchTemplates = ['designated', 'planners', 'skillUsers', 'everyone', 'rescue', 'danger'].map((k) => ({ id: 'wt_' + k, name: k, entries: [{ kind: k }], combine: 'single', weight: 1, enabled: true }));
+  const out = C.normalizeSave(JSON.parse(JSON.stringify(host)), 'shelter-host');
+  assert.equal(out.watchTemplates.length, 4);
+  assert.equal(out.watchTemplates[0].rev, 2);
 });
 
 test('公共事件：80% 只控制触发；分支概率单独计算，合计100%才允许自动抽签', () => {
@@ -613,4 +683,41 @@ test('事件导入规范化：缺字段补齐，id 冲突换新', () => {
   assert.equal(ev.isDraft, true);
   assert.ok(C.probabilityStatus(ev.options[0]).complete);
   assert.deepEqual(C.validateEvent(ev), []);
+});
+
+// ---------------------------------------------------------------- 中英文
+
+test('英文界面：整句、拼接片段、「第 N 天」句式、量词与标点都能翻；中文模式原样返回', async () => {
+  const { loadDictionary } = await import('../build.mjs');
+  const I = require('../src/shared/i18n.js');
+  const dict = loadDictionary();
+  assert.ok(Object.keys(dict).length > 2000, '词典覆盖全部界面文字');
+  for (const [k, v] of Object.entries(dict)) assert.ok(v.trim() || v === ' ', '空译文：' + k);
+  I._setDict(dict);
+  I.setLang('zh');
+  assert.equal(I.T('下一阶段 →'), '下一阶段 →', '中文模式不翻译');
+  I.setLang('en');
+  assert.equal(I.T('下一阶段 →'), 'Next phase →');
+  assert.equal(I.T('第 2 天'), 'Day 2');
+  assert.equal(I.T('已行动 2／6'), 'Acted 2/6');
+  assert.equal(I.T('轮到 B·阿珍 行动（还剩 4 人）'), "B·Jen's turn (left: 4 players)");
+  assert.equal(I.T('流血伤口第 3 天到期：先与主持人确认是否扣1生命'), 'Bleeding wound Day 3 is due: check with the host whether to lose 1 HP');
+  assert.equal(I.T(' 次（用完消失；未用完整件仍占 0.5）'), ' uses (gone when used up; a partly used one still takes 0.5)');
+  assert.equal(I.T('口渴'), 'Thirsty');
+  assert.equal(I.TC('label', '口渴'), 'Thirst', '同一个词按语境取不同译法');
+  assert.equal(I.T('B·阿珍 2 / 3'), 'B·Jen 2 / 3');
+  assert.equal(I.T('Alice'), 'Alice', '没有中文的原样返回');
+  I.setLang('zh');
+});
+
+test('英文界面录入物品：英文名也能解析（Bread×3、Energy bar+2），中文名照旧', async () => {
+  const { loadDictionary } = await import('../build.mjs');
+  globalThis.window = { SHELTER_I18N_EN: loadDictionary() };
+  try {
+    const r = C.parseItemList('Bread×3, energy bar+2, 普通水', []);
+    assert.deepEqual(r.errors, []);
+    assert.deepEqual(r.items.map((i) => [i.defId, i.qty]), [['bread', 3], ['energy_bar', 2], ['water', 1]]);
+  } finally {
+    delete globalThis.window;
+  }
 });

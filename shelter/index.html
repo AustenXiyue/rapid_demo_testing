@@ -15,7 +15,11 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.65; }
   main { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; }
+  .topline { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .eyebrow { color: var(--muted); font-size: 14px; letter-spacing: 1px; }
+  .lang-btn { font: inherit; font-size: 14px; font-weight: 650; min-width: 52px; padding: 5px 12px; border: 1px solid #cfc4b1; border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+  .lang-btn:hover { border-color: var(--teal); }
+  .lang-btn:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
   h1 { font-size: 40px; line-height: 1.2; margin: 6px 0 10px; font-weight: 750; }
   .lead { color: var(--ink-2); font-size: 17px; max-width: 640px; margin: 0; }
   .quote { margin: 18px 0 0; padding: 10px 14px; border-left: 3px solid var(--orange); background: var(--orange-soft); color: #6a3205; border-radius: 0 8px 8px 0; font-size: 15px; max-width: 640px; }
@@ -25,7 +29,7 @@
   .card h2 { margin: 0; font-size: 22px; }
   .card p { margin: 0; color: var(--ink-2); font-size: 15px; }
   .card .go { margin-top: auto; padding-top: 8px; color: var(--teal-strong); font-weight: 650; }
-  .tag { display: inline-block; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--teal-soft); color: var(--teal-strong); font-weight: 600; }
+  .tag { align-self: flex-start; display: inline-block; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--teal-soft); color: var(--teal-strong); font-weight: 600; }
   ul { padding-left: 20px; color: var(--ink-2); font-size: 15px; }
   li { margin: 4px 0; }
   h3 { font-size: 17px; margin: 28px 0 6px; }
@@ -40,37 +44,37 @@
 </head>
 <body>
 <main>
-  <div class="eyebrow">PLAYTEST · 规则测试工具</div>
-  <h1>避难所 Playtest</h1>
-  <p class="lead">末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。</p>
-  <p class="quote">军方热线目前忙音。请保持冷静，并清点你的面包。</p>
+  <div class="topline"><div class="eyebrow" data-en="PLAYTEST · RULES TESTING TOOL">PLAYTEST · 规则测试工具</div><button type="button" class="lang-btn" id="lang-btn" aria-label="Switch to English">EN</button></div>
+  <h1 data-en="Shelter Playtest">避难所 Playtest</h1>
+  <p class="lead" data-en="At the end of the world, the army houses strangers in a shelter in an abandoned city, promises evacuation, then breaks the promise. You fight to survive and to get rescued, while love, hate, wealth and your own secret goals pull you in different directions.">末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。</p>
+  <p class="quote" data-en="The military hotline is busy. Please stay calm and count your bread.">军方热线目前忙音。请保持冷静，并清点你的面包。</p>
 
   <div class="cards">
     <a class="card" href="host.html" data-page="host.html">
-      <span class="tag">桌面 · 屏幕共享</span>
-      <h2>主持人面板</h2>
-      <p>主持台汇总当前阶段与待办；公开展示天数、阶段、轮到谁、营救与公共事件，可全屏给 Discord 看；库存、抽取、未公布名单放在需要确认后才显示的隐藏区，并提供「一键隐藏所有秘密」。</p>
-      <span class="go">进入主持人面板 →</span>
+      <span class="tag" data-en="Desktop · screen sharing">桌面 · 屏幕共享</span>
+      <h2 data-en="Host panel">主持人面板</h2>
+      <p data-en="The console sums up the current phase and to-dos; the public display shows the day, phase, whose turn it is, rescue and public events, full-screen for Discord; inventory, draws and unannounced rosters sit in hidden areas that open only after you confirm, with one-click “Hide all secrets”.">主持台汇总当前阶段与待办；公开展示天数、阶段、轮到谁、营救与公共事件，可全屏给 Discord 看；库存、抽取、未公布名单放在需要确认后才显示的隐藏区，并提供「一键隐藏所有秘密」。</p>
+      <span class="go" data-en="Open host panel →">进入主持人面板 →</span>
     </a>
     <a class="card" href="player.html" data-page="player.html">
-      <span class="tag">手机 · 个人记录</span>
-      <h2>玩家面板</h2>
-      <p>记录物品（含能量棒次数、地图笔记、水壶水量、背心状态）、生命与状态、携带装备、搜刮、身份与分数。</p>
-      <span class="go">进入玩家面板 →</span>
+      <span class="tag" data-en="Phone · personal records">手机 · 个人记录</span>
+      <h2 data-en="Player panel">玩家面板</h2>
+      <p data-en="Track items (energy bar uses, map notes, canteen water, vest condition), HP and status, carried gear, scavenging, identity and score.">记录物品（含能量棒次数、地图笔记、水壶水量、背心状态）、生命与状态、携带装备、搜刮、身份与分数。</p>
+      <span class="go" data-en="Open player panel →">进入玩家面板 →</span>
     </a>
   </div>
 
-  <h3>开始之前</h3>
+  <h3 data-en="Before you start">开始之前</h3>
   <ul>
-    <li>两个页面互不联网、互不同步：主持人通过 Discord 共享屏幕与私信，玩家在自己的设备上手动记录。</li>
-    <li>数据只保存在当前浏览器里。换设备或清缓存前，请在页面里导出 JSON 存档。</li>
-    <li>规则里还没确定的数值一律显示「待配置／主持人裁定」，页面不会替你补值。</li>
-    <li>想先熟悉流程：两个页面都有独立的「演示存档」，不会碰到正式数据。</li>
+    <li data-en="The two pages never go online or sync with each other: the host shares the screen and DMs on Discord, and players record things by hand on their own devices.">两个页面互不联网、互不同步：主持人通过 Discord 共享屏幕与私信，玩家在自己的设备上手动记录。</li>
+    <li data-en="Data lives only in this browser. Export a JSON save from the page before switching devices or clearing your cache.">数据只保存在当前浏览器里。换设备或清缓存前，请在页面里导出 JSON 存档。</li>
+    <li data-en="Numbers the rules haven't settled yet always show “to configure / host decides”; the page never fills them in for you.">规则里还没确定的数值一律显示「待配置／主持人裁定」，页面不会替你补值。</li>
+    <li data-en="To learn the flow first, both pages have a separate “demo save” that never touches real data.">想先熟悉流程：两个页面都有独立的「演示存档」，不会碰到正式数据。</li>
   </ul>
 
   <footer>
-    <span>第一版 · 规则快照 2026-10-04</span>
-    <a href="/" id="home-link" hidden>← 返回 xxxmnalx.com</a>
+    <span data-en="First version · rules snapshot 2026-10-04">第一版 · 规则快照 2026-10-04</span>
+    <a href="/" id="home-link" hidden data-en="← Back to xxxmnalx.com">← 返回 xxxmnalx.com</a>
   </footer>
 </main>
 <script>
@@ -83,6 +87,31 @@
       for (var i = 0; i < links.length; i++) links[i].href = path + '/' + links[i].getAttribute('data-page');
     }
     if (/(^|\.)xxxmnalx\.com$/.test(location.hostname)) document.getElementById('home-link').hidden = false;
+
+    // 中文／English：与主持人、玩家页面共用同一个选择（本机记住）
+    var KEY = 'shelter-playtest:lang';
+    var TITLE = { zh: document.title, en: 'Shelter Playtest' };
+    var btn = document.getElementById('lang-btn');
+    function read() { try { return localStorage.getItem(KEY) === 'en' ? 'en' : 'zh'; } catch (e) { return 'zh'; } }
+    function apply(lang) {
+      var els = document.querySelectorAll('[data-en]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (!el.hasAttribute('data-zh')) el.setAttribute('data-zh', el.textContent);
+        el.textContent = el.getAttribute(lang === 'en' ? 'data-en' : 'data-zh');
+      }
+      document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+      document.title = TITLE[lang];
+      btn.textContent = lang === 'en' ? '中文' : 'EN';
+      btn.setAttribute('aria-label', lang === 'en' ? '切换到中文' : 'Switch to English');
+      btn.setAttribute('lang', lang === 'en' ? 'zh-CN' : 'en');
+    }
+    btn.addEventListener('click', function () {
+      var next = read() === 'en' ? 'zh' : 'en';
+      try { localStorage.setItem(KEY, next); } catch (e) { /* 只在本页生效 */ }
+      apply(next);
+    });
+    apply(read());
   })();
 </script>
 </body>

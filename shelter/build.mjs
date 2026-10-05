@@ -5,7 +5,7 @@
 //   node build.mjs          生成
 //   node build.mjs --check  只检查产物是否与源码一致（不一致时退出码 1）
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,9 +16,41 @@ const PAGES = [
 ];
 const BANNER = '<!-- 此文件由 shelter/build.mjs 从 shelter/src/ 生成，请勿直接修改。 -->';
 
+/**
+ * 英文词典：src/shared/i18n/*.tsv，每行「中文<TAB>English」，# 开头为注释。
+ * \n、\t、\\ 为转义。同一个中文在多个文件里出现时，后读到的覆盖先读到的（文件按名字排序）。
+ */
+export function loadDictionary(only = null, dir = join(ROOT, 'src/shared/i18n')) {
+  const dict = {};
+  const unescape = (t) => t.replace(/\\(n|t|\\)/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : '\\'));
+  const names = readdirSync(dir).filter((f) => f.endsWith('.tsv') && (!only || only.includes(f.replace(/\.tsv$/, '')))).sort();
+  for (const name of names) {
+    readFileSync(join(dir, name), 'utf8').split('\n').forEach((line, i) => {
+      if (!line.trim() || line.startsWith('#')) return;
+      const tab = line.indexOf('\t');
+      if (tab < 0) throw new Error(`${name}:${i + 1} 缺少制表符`);
+      const zh = unescape(line.slice(0, tab));
+      const en = unescape(line.slice(tab + 1));
+      if (en === '' || en === '~') return; // 空＝还没翻译；~＝交给 i18n.js 的固定句式处理（如量词）
+      dict[zh] = en;
+    });
+  }
+  return dict;
+}
+
 function inline(templatePath) {
   const template = readFileSync(join(ROOT, templatePath), 'utf8');
-  return template.replace(/<!-- inline:(css|js) ([^ ]+) -->/g, (_, kind, file) => {
+  // <!-- inline:i18n a.js,b.js --> 只内联这些源码里实际出现的词条（外加 zz-extra 补充词条），两个页面各带各的
+  return template.replace(/<!-- inline:i18n ([^ ]+) -->/g, (_, list) => {
+    const sources = list.split(',').map((f) => readFileSync(join(ROOT, f), 'utf8')).join('\n');
+    const extra = loadDictionary(['zz-extra']);
+    const all = loadDictionary();
+    const esc = (k) => k.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/'/g, "\\'");
+    const dict = {};
+    for (const [k, v] of Object.entries(all)) if (k in extra || sources.includes(k) || sources.includes(esc(k))) dict[k] = v;
+    const json = JSON.stringify(dict).replace(/<\/script/gi, '<\\/script');
+    return `<script>\n/* src/shared/i18n/*.tsv（${Object.keys(dict).length} 条） */\nwindow.SHELTER_I18N_EN = ${json};\n</script>`;
+  }).replace(/<!-- inline:(css|js) ([^ ]+) -->/g, (_, kind, file) => {
     const source = readFileSync(join(ROOT, file), 'utf8').trimEnd();
     if (kind === 'css') {
       if (/<\/style/i.test(source)) throw new Error(`${file} 含有 </style，无法内联`);
@@ -29,6 +61,9 @@ function inline(templatePath) {
   }).replace(/^<!doctype html>\n/i, (m) => m + BANNER + '\n');
 }
 
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) build();
+
+function build() {
 const check = process.argv.includes('--check');
 let stale = 0;
 for (const page of PAGES) {
@@ -50,3 +85,4 @@ for (const page of PAGES) {
   }
 }
 if (stale) process.exit(1);
+}

@@ -341,18 +341,23 @@ test('主持人：用演示存档完整走一回合（发放、轮换、换位�
   s = await read(page, HOST_DEMO);
   assert.deepEqual(s.today.plannerIds, [P(2), P(3)]);
   assert.deepEqual(s.today.skillUserIds, [P(4)]);
-  assert.equal(s.today.watchCandidates.length, 2);
-  assert.ok(s.today.watchCandidates.every((c) => c.options.length === 2), '每位计划者两份候选');
-  const candidatesBefore = JSON.stringify(s.today.watchCandidates);
-  await page.reload();
-  assert.equal(JSON.stringify((await read(page, HOST_DEMO)).today.watchCandidates), candidatesBefore, '刷新不重抽候选');
+  assert.equal(s.today.watchCandidates.length, 0, '候选卡由玩家在自己的页面抽，主持人端不自动抽');
 
-  // 阶段6：守夜（0／1／多份提交）
+  // 阶段6：守夜（0／1／多份提交）。这里模拟玩家无法使用页面：主持人代抽两张
   await tab(page, 'flow');
   await nextPhase(page);
   await tab(page, 'watch');
   await reveal(page, 'watch');
   await page.getByText('没有人提交名单').waitFor();
+  for (const pid of [P(2), P(3)]) await page.locator(`[data-planner="${pid}"]`).getByRole('button', { name: '主持人代抽两张（玩家无法使用页面时）' }).click();
+  s = await read(page, HOST_DEMO);
+  assert.equal(s.today.watchCandidates.length, 2);
+  assert.ok(s.today.watchCandidates.every((c) => c.options.length === 2), '每位计划者两张候选卡');
+  const candidatesBefore = JSON.stringify(s.today.watchCandidates);
+  await page.reload();
+  assert.equal(JSON.stringify((await read(page, HOST_DEMO)).today.watchCandidates), candidatesBefore, '刷新不重抽候选');
+  await tab(page, 'watch');
+  await reveal(page, 'watch');
   await page.locator(`[data-planner="${P(2)}"]`).getByRole('button', { name: '提交①' }).click();
   await page.getByText('只有一份提交').waitFor();
   await page.locator(`[data-planner="${P(3)}"]`).getByRole('button', { name: '提交②' }).click();
@@ -989,4 +994,192 @@ test('玩家：添加自定义物品会进库存；再次添加同名物品按�
   assert.equal(s.customItems.length, 1);
   assert.deepEqual(errors, []);
   await context.close();
+});
+
+// ---------------------------------------------------------------- 中英文
+
+const HAN = /[一-鿿]/;
+async function leftoverChinese(page) {
+  return page.evaluate((src) => {
+    const han = new RegExp(src);
+    const parts = [document.body.innerText, document.title];
+    document.querySelectorAll('[placeholder],[title],[aria-label]').forEach((e) => {
+      if (e.classList.contains('lang-btn')) return; // 切换按钮本来就显示「中文」
+      parts.push(e.getAttribute('placeholder') || '', e.getAttribute('title') || '', e.getAttribute('aria-label') || '');
+    });
+    document.querySelectorAll('textarea, input[type=text]').forEach((t) => parts.push(t.value));
+    return parts.join('\n').split('\n').filter((l) => han.test(l) && l.trim() !== '中文');
+  }, HAN.source);
+}
+
+test('中英文切换：按钮切换后整页变英文、刷新保持、可切回；存档数据不变', async () => {
+  const { context } = await newContext();
+  const { page, errors } = await open(context, HOST);
+  await hostDemo(page);
+  const before = await read(page, HOST_DEMO);
+  await tab(page, 'flow');
+  await page.locator('.lang-btn').click();
+  await btn(page, 'Start Day 1 →').waitFor();
+  assert.equal(await page.title(), 'Shelter Playtest · Host');
+  assert.equal(await page.evaluate(() => document.documentElement.lang), 'en');
+  await page.reload();
+  assert.ok(await btn(page, 'Start Day 1 →').isVisible(), '刷新后仍是英文');
+  // 英文界面下照样能操作：开始第1天、进入阶段2，存档里的数据格式不变
+  await btn(page, 'Start Day 1 →').click();
+  await modalBtn(page, 'Start');
+  const s = await read(page, HOST_DEMO);
+  assert.equal(s.phase, 'night');
+  assert.deepEqual(s.players.map((p) => p.name), before.players.map((p) => p.name), '已有存档里的名字不被改写');
+  await page.locator('.lang-btn').click();
+  await btn(page, '下一阶段 →').waitFor();
+  assert.equal(await page.title(), '避难所 Playtest · 主持人');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('英文界面：主持人与玩家每一页都没有残留中文（演示存档按英文生成）', async () => {
+  const { context } = await newContext({ init: () => localStorage.setItem('shelter-playtest:lang', 'en') });
+  const { page: host, errors } = await open(context, HOST);
+  await tab(host, 'settings');
+  await btn(host, 'Open demo save').click();
+  await host.waitForFunction((k) => !!localStorage.getItem(k), HOST_DEMO);
+  assert.ok((await read(host, HOST_DEMO)).players.some((p) => p.name === 'B·Jen'), '英文界面下生成的演示存档是英文');
+  await tab(host, 'flow');
+  await btn(host, 'Start Day 1 →').click();
+  await modalBtn(host, 'Start');
+  for (const id of ['flow', 'stage', 'supply', 'watch', 'events', 'records', 'log', 'settings']) {
+    await tab(host, id);
+    const gate = host.locator('[data-gate] button');
+    if (await gate.count()) {
+      await gate.first().click();
+      await host.check('#confirm-share-paused');
+      await modalBtn(host, 'Show');
+    }
+    assert.deepEqual(await leftoverChinese(host), [], 'host ' + id);
+  }
+  const { page: player } = await open(context, PLAYER);
+  await tab(player, 'save');
+  await btn(player, 'Open demo save').click();
+  await player.waitForFunction((k) => !!localStorage.getItem(k), PLAYER_DEMO);
+  for (const id of ['dashboard', 'status', 'inventory', 'scavenge', 'action', 'score', 'save']) {
+    await tab(player, id);
+    assert.deepEqual(await leftoverChinese(player), [], 'player ' + id);
+  }
+  await tab(player, 'inventory');
+  assert.equal((await read(player, PLAYER_DEMO)).thirst, '不渴', '规则用的状态值保持中文，不受界面语言影响');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('入口页：中英文切换，与两个面板共用同一个选择', async () => {
+  const { context } = await newContext();
+  const { page } = await open(context, 'file://' + join(ROOT, 'index.html'));
+  await page.locator('#lang-btn').click();
+  assert.equal(await page.locator('h1').innerText(), 'Shelter Playtest');
+  assert.equal(await page.title(), 'Shelter Playtest');
+  assert.ok(!HAN.test(await page.locator('main').innerText().then((t) => t.replace('中文', ''))), '入口页没有残留中文');
+  const { page: player } = await open(context, PLAYER);
+  assert.equal(await player.title(), 'Shelter Playtest · Player', '玩家页跟随入口页的选择');
+  await page.locator('#lang-btn').click();
+  assert.equal(await page.locator('h1').innerText(), '避难所 Playtest');
+  await context.close();
+});
+
+// ---------------------------------------------------------------- 守夜名单：玩家抽卡 → 代码 → 主持人候选池 → 末位拍板
+
+test('守夜名单：计划者在玩家页抽两张卡、复制代码；主持人粘贴进候选池；多人时末位用名单码拍板', async () => {
+  const { context: hc } = await newContext();
+  const { page: host, errors } = await open(hc, HOST);
+  await hostDemo(host);
+  await tab(host, 'flow');
+  await startDay1(host);
+  await nextPhase(host); // 2
+  await nextPhase(host); // 3
+  await nextPhase(host); // 4
+  await btn(host, '执行每日轮换').click();
+  await nextPhase(host); // 5 个人行动
+  // 规则包里带玩家名单
+  await tab(host, 'settings');
+  await host.locator('summary', { hasText: '规则包（发给玩家）' }).click();
+  const pack = await host.locator('details', { hasText: '规则包（发给玩家）' }).locator('textarea').inputValue();
+  assert.ok(JSON.parse(pack).roster.players.some((p) => p.name === 'B·阿珍'));
+
+  async function player(name) {
+    const { context } = await newContext({ viewport: { width: 390, height: 844 } });
+    const { page } = await open(context, PLAYER);
+    await tab(page, 'save');
+    await page.locator('details', { hasText: '导入主持人规则包' }).locator('textarea').fill(pack);
+    await btn(page, '校验并导入').click();
+    await tab(page, 'action');
+    const nameInput = page.locator('.field', { hasText: '姓名' }).locator('input');
+    await nameInput.fill(name);
+    await nameInput.press('Enter');
+    await nameInput.blur();
+    await page.waitForFunction((n) => JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).name === n, name);
+    return { context, page };
+  }
+  async function planAndCopy(page, index) {
+    await page.locator('[data-action="plan"]').click();
+    const cards = page.locator('.watch-section .watch-cards').first().locator('.watch-card');
+    assert.equal(await cards.count(), 2, '两张候选卡');
+    const before = await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).watchPlan.cards));
+    await cards.nth(index).click();
+    // 撤销选卡再重新点亮行动：还是同一对卡，不能重抽
+    await page.locator('[data-action="plan"]').click();
+    await page.locator('[data-action="plan"]').click();
+    const after = await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).watchPlan.cards));
+    assert.equal(after, before, '同一天重新点亮不会重抽');
+    await cards.nth(index).click();
+    return page.locator('.watch-section .copy-text').first().inputValue();
+  }
+  async function hostPaste(code) {
+    await tab(host, 'watch');
+    if (await host.locator('[data-gate="watch"]').count()) await reveal(host, 'watch');
+    await host.locator('.code-reader textarea').fill(code);
+    await btn(host, '读取代码').click();
+  }
+
+  // 第一位计划者：只有一份提交时直接成为最终名单
+  const p1 = await player('B·阿珍');
+  const code1 = await planAndCopy(p1.page, 0);
+  assert.match(code1, /^【守夜提交·第1天】B·阿珍：我选第 1 张。\nSHELTER-WATCH:/);
+  const card1 = JSON.parse(await p1.page.evaluate(() => localStorage.getItem('shelter-playtest:player:v1'))).watchPlan.cards[0];
+  if (card1.designatedNames) assert.equal(card1.designatedNames.length, 2, '6 人局随机抽 2 人');
+  await hostPaste(code1);
+  await modal(host).getByText('按代码里的名字「B·阿珍」自动匹配').waitFor();
+  await modalBtn(host, '加入今天的候选池');
+  let s = await read(host, HOST_DEMO);
+  assert.deepEqual(s.today.plannerIds, [P(2)], '收到代码时补记计划者');
+  assert.equal(s.today.watchCandidates[0].source, 'code');
+  assert.equal(s.today.watchCandidates[0].chosenIndex, 0);
+  await host.getByText('只有一份提交：B·阿珍 选中的名单直接成为最终名单。').waitFor();
+
+  // 第二位计划者 → 两份提交：末位拍板
+  const p2 = await player('C·胖虎');
+  await hostPaste(await planAndCopy(p2.page, 1));
+  await modalBtn(host, '加入今天的候选池');
+  const poolText = await host.locator('.copy-block', { has: host.getByRole('button', { name: '复制名单码' }) }).locator('textarea').inputValue();
+  assert.match(poolText, /SHELTER-POOL:/);
+  s = await read(host, HOST_DEMO);
+  const lastName = s.players.find((p) => p.id === s.seatOrder.at(-1)).name;
+  const p3 = await player(lastName);
+  await p3.page.locator('.pick-part > summary').click();
+  await p3.page.locator('.pick-part textarea').fill(poolText);
+  await btn(p3.page, '读取名单码').click();
+  const pickCards = p3.page.locator('.pick-part .watch-card');
+  assert.equal(await pickCards.count(), 2, '末位看到两份提交');
+  await pickCards.nth(1).click();
+  const pickCode = await p3.page.locator('.pick-part .copy-text').inputValue();
+  assert.match(pickCode, /SHELTER-PICK:/);
+  await hostPaste(pickCode);
+  s = await read(host, HOST_DEMO);
+  const chosen = s.today.watchCandidates.find((c) => c.id === s.today.watchDecision);
+  assert.equal(chosen.plannerId, P(3), '末位选了 C·胖虎 的提交');
+  await btn(host, '确认最终名单（保存人员快照）').click();
+  s = await read(host, HOST_DEMO);
+  assert.ok(s.today.finalWatch.memberIds.length >= 1);
+  assert.ok(!s.today.plannerIds.includes(s.seatOrder.at(-1)) || [P(2), P(3)].includes(s.seatOrder.at(-1)), '只拍板不算计划者');
+  assert.deepEqual(errors, []);
+  for (const c of [p1, p2, p3]) await c.context.close();
+  await hc.close();
 });

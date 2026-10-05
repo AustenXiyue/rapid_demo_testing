@@ -218,6 +218,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .reveal-bar { display: flex; align-items: center; gap: 8px; justify-content: space-between; flex-wrap: wrap; background: var(--orange-soft); border: 1px solid #eccaa6; color: #6a3205; padding: 6px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
 
 @media (max-width: 640px) {
+  /* 英文按钮文字较长：窄屏上允许换行，而不是把页面撑宽 */
+  .btn { white-space: normal; max-width: 100%; text-align: center; }
+  .btn.small, .btn.icon-btn, .lang-btn { white-space: nowrap; }
   .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
   .card { padding: 13px; }
 }
@@ -251,3 +254,30 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .m-warn { background: var(--orange-soft); } .m-warn .meter2-fill { background: var(--orange); }
 .m-crit { background: var(--red-soft); } .m-crit .meter2-fill { background: var(--red); }
 .m-info { background: var(--surface-3); } .m-info .meter2-fill { background: var(--muted); }
+
+/* ---------- 语言切换 ---------- */
+.lang-btn { min-width: 44px; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap; flex: 0 0 auto; }
+
+/* ---------- 守夜候选卡（两端共用） ---------- */
+.watch-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 8px 0; }
+.watch-card {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; padding: 12px 14px;
+  border-radius: 12px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit;
+}
+button.watch-card { cursor: pointer; }
+button.watch-card:hover { border-color: var(--teal); }
+button.watch-card:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+.watch-card.on { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); background: #f6fbf9; }
+.watch-card-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.watch-card-label { display: inline-flex; min-width: 26px; height: 26px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface-3); color: var(--ink); font-weight: 700; }
+.watch-card.on .watch-card-label { background: var(--teal); color: #fff; }
+.watch-card-title { flex: 1 1 auto; min-width: 0; }
+.watch-card-picked { display: inline-flex; align-items: center; gap: 3px; color: var(--teal-strong); font-weight: 650; }
+.watch-card-picked .icon svg { width: 14px; height: 14px; }
+.watch-card-who { font-size: 17px; font-weight: 700; line-height: 1.35; }
+.watch-card-tend { font-size: 14px; padding-left: 8px; border-left: 3px solid var(--line-strong); }
+.watch-card-tend.tend-rescue { border-left-color: var(--teal); color: var(--teal-strong); }
+.watch-card-tend.tend-danger { border-left-color: var(--orange); color: #8a3f08; }
+.watch-card-fx { display: flex; flex-wrap: wrap; gap: 4px; }
+.watch-card-fx .fx { font-size: 13px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.code-reader { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--surface-2); margin-bottom: 10px; }

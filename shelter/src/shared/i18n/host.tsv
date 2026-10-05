@@ -1,0 +1,1153 @@
+主持台	Console
+公开展示	Public display
+补给与公共池	Supplies & pool
+记录与结算	Records & settlement
+日志	Log
+设置与存档	Settings & save
+计划守夜名单	Plan watch roster
+使用技能	Use skill
+其他行动	Other action
+放弃行动	Pass
+【演示】停电的售货机	[Demo] The dead vending machine
+地下通道	Underpass
+地下通道里有台还亮着按钮的售货机。投币口卡着一枚旧硬币——也可能是一颗跳棋。	A vending machine in the underpass still has lit buttons. An old coin is stuck in the slot — or maybe a checkers piece.
+1～2人	1–2 players
+携带跳棋可冒充硬币	Carrying checkers can pass as a coin
+跳棋：冒充硬币	Checkers: pose as a coin
+未定义的修正由主持人裁定	Undefined modifiers are up to the host
+派人去试试	Send someone to try
+售货机吐出两瓶水，交给公共池。	The machine drops two bottles of water; they go to the pool.
+机器吞了硬币，一言不发。	The machine swallows the coin and says nothing.
+漏电！参与者生命-1。	Electric shock! Participants lose 1 HP.
+参与者	Participants
+不理它	Ignore it
+什么也没有发生。	Nothing happens.
+【演示】断续的军方广播	[Demo] A broken military broadcast
+避难所大厅	Shelter hall
+收音机里传来断断续续的广播：「……撤离……推迟……请保持……」	The radio crackles: “…evacuation… delayed… please stay…”
+全员投票	Everyone votes
+用信号回应	Signal back
+对方似乎收到了。营救进度+1。	They seem to have heard. Rescue progress +1.
+信号引来了掠夺者，公共池失去2个面包。	The signal draws raiders; the pool loses 2 bread.
+保持沉默	Stay silent
+广播渐渐沉寂。	The broadcast fades away.
+【演示】平安无事	[Demo] All quiet
+一夜无事。只有风声和远处的狗叫。	A quiet night. Just wind and a dog barking far away.
+【演示】野兽靠近	[Demo] A beast draws near
+有东西在门外徘徊。携带食物的守夜者可以用食物引开它；否则守夜者各生命-1（主持人裁定）。	Something is prowling outside the door. Watchers carrying food can lure it away with food; otherwise each watcher loses 1 HP (host decides).
+【演示】远处的信号弹	[Demo] A distant flare
+守夜者看见远处升起信号弹：营救进度+1（主持人确认后修改）。	The watchers see a flare rise in the distance: rescue progress +1 (update after the host confirms).
+A·老陈	A·Old Chen
+B·阿珍	B·Jen
+C·胖虎	C·Big Tiger
+D·修女	D·Sister
+E·二狗	E·Doggo
+F·教授	F·Professor
+【演示】每日补给	[Demo] Daily supply
+面包×3，普通水×3	Bread ×3, Water ×3
+【演示】开局物资由主持人自行设计，这里只是示例。	[Demo] The host designs opening supplies; this is only an example.
+载入演示存档（与正式存档完全分开）	Load demo save (fully separate from the real save)
+读取时校验失败：	Validation failed on load: 
+本地存档无法读取（	Can't read the local save (
+）。原数据已另存为备份，当前是空白存档，可在「设置与存档」查看备份。	). The original data was saved as a backup; this is now a blank save. See the backup under Settings & save.
+存档损坏	Save corrupted
+本地存档已损坏。原数据已另存为备份，当前是空白存档。	The local save is corrupted. The original data was saved as a backup; this is now a blank save.
+浏览器本地保存不可用（可能是隐私模式或存储被禁用）：页面仍在内存中运行，刷新即丢失——请随时在「设置与存档」导出 JSON。	Browser storage isn't available (private mode or storage blocked): the page runs in memory and is lost on refresh — export JSON from Settings & save often.
+自动保存失败（	Auto-save failed (
+未知错误	unknown error
+），可能是存储空间已满：请立即导出 JSON。	), maybe storage is full: export JSON now.
+撤销：	Undo: 
+已撤销：	Undone: 
+（已删除的玩家）	(deleted player)
+（无）	(none)
+：已隐藏	: hidden
+隐藏时内容不会写进页面：悬浮、页面搜索、通知和日志摘要都看不到。	While hidden, the content isn't written into the page: hovering, page search, notifications and log summaries can't see it.
+显示…（先暂停屏幕共享）	Show… (pause screen sharing first)
+」正在显示：恢复屏幕共享前请先隐藏	” is showing: hide it before you resume screen sharing
+隐藏	Hide
+确认已暂停屏幕共享？	Screen sharing paused?
+即将显示「	About to show “
+」。网站无法替 Discord 隐藏已经共享出去的画面——请先停止或切换屏幕共享。	”. The site can't hide what Discord has already shared — stop or switch your screen share first.
+我已暂停／切换屏幕共享	I've paused / switched screen sharing
+显示	Show
+请先勾选「我已暂停／切换屏幕共享」	Tick “I've paused / switched screen sharing” first
+已隐藏所有秘密	All secrets hidden
+空	Empty
+选择物品…	Choose an item…
+（占	 (takes 
+演示存档	Demo save
+数据仅供演示，与正式存档完全分开，可随时清空。	Demo data only; fully separate from the real save and can be cleared any time.
+返回正式存档	Back to the real save
+清空演示数据	Clear demo data
+关闭	Close
+你正在通过上游部署地址访问。正式入口是 www.xxxmnalx.com/game/shelter ——两个地址的存档互不相通。	You're on the upstream deployment address. The official entry is www.xxxmnalx.com/game/shelter — the two addresses don't share saves.
+避难所 Playtest	Shelter Playtest
+主持人	Host
+天数	Day
+ 天	~
+未开始	Not started
+存活	Alive
+ 人	~
+营救进度	Rescue
+（阈值待定）	 (threshold TBD)
+配置未完成 	Config incomplete: 
+← 回退	← Back
+开始第 1 天 →	Start Day 1 →
+进入第 	~
+ 天 →	~
+下一阶段 →	Next phase →
+没有可撤销的操作	Nothing to undo
+撤销	Undo
+手动调整	Manual adjust
+一键隐藏所有秘密	Hide all secrets
+秘密页（先暂停屏幕共享）	Secret pages (pause screen sharing first)
+可以共享的页	Pages safe to share
+设置	Settings
+先暂停共享	Pause sharing first
+公开结果	Public results
+当前进度	Current progress
+尚未开始	Not started yet
+退出展示（Esc）	Exit display (Esc)
+隐藏主持人工具栏，只留公开内容	Hide the host toolbar; show public content only
+全屏展示	Full-screen display
+座次	Seating
+今天的阶段	Today's phases
+事	~
+还没有座次。请在「设置与存档」登记玩家。	No seating yet. Register players under Settings & save.
+已死亡	Dead
+已行动 ✓	Acted ✓
+▶ 行动中	▶ Acting
+末位	Last seat
+轮到	Up next
+本轮行动全部完成	Everyone has acted this round
+已行动 	Acted 
+本轮行动顺序固定；换位只改变实际座次，不改变这个顺序。	This round's action order is fixed; swaps only change actual seats, not this order.
+补给领取	Supply pickup
+ · 已领取 	 · picked 
+公共池剩余：	Left in pool: 
+今日判定：触发事件，等待主持人公布	Today's roll: event triggered, waiting for the host to announce
+今日判定：无事件	Today's roll: no event
+Discord 投票	Discord vote
+阈值 	Threshold 
+（到达后由主持人宣布结算）	 (the host announces settlement once reached)
+阈值未知 · 军方热线：忙音	Threshold unknown · military hotline: busy
+暂无公开结果。	No public results yet.
+昨夜	Last night
+公告	Notice
+结算	Settlement
+第	~
+天 · 	~
+公开	Public
+时间到	Time's up
+计时中	Running
+已暂停	Paused
+ 计时	 Timer
+暂停	Pause
+开始	Start
+重置	Reset
+秒	~
+分钟	~
+计时开始	Timer started
+计时暂停	Timer paused
+计时重置	Timer reset
+设定计时	Set timer
+自定义计时（秒）	Custom timer (seconds)
+秒数	Seconds
+设定	Set
+请输入正整数秒数	Please enter a positive whole number of seconds
+计时结束	Time's up
+待办与概况	To-dos and overview
+每日流程	Daily flow
+开	~
+（已过）	 (passed)
+（当前）	 (current)
+点阶段可直接跳转：只移动进度，记入日志，不回滚数据。	Click a phase to jump to it: only moves progress, is logged, and doesn't roll back data.
+公共事件在	Public event 
+阶段2之前	before Phase 2
+阶段6之后	after Phase 6
+公共事件位置未配置：手动触发	Public event position not configured: trigger by hand
+主持人速查	Host cheat sheet
+「主持台」和「公开展示」都没有秘密，可以直接屏幕共享；给玩家看时用公开展示的「全屏展示」。	“Console” and “Public display” hold no secrets and can be shared directly; for players, use “Full-screen display” on the public display.
+带锁的页含秘密。打开前先暂停 Discord 共享；处理完点顶栏「一键隐藏所有秘密」再恢复共享。	Locked pages hold secrets. Pause Discord sharing before opening them; when done, click “Hide all secrets” in the top bar, then resume sharing.
+主持人端不会把任何东西「发」给玩家：发放、事件后果、治疗都生成可复制的文本，由玩家在自己的页面手动修改。	The host page never “sends” anything to players: handouts, event results and treatments all produce copyable text that players apply on their own pages.
+「下一阶段／回退／手动调整」都会写进日志；顶栏的「撤销」可以回滚最近的操作。	“Next phase / Back / Manual adjust” are all logged; “Undo” in the top bar rolls back recent actions.
+待办	To-do
+都处理完了	All done
+去处理	Handle
+前往	Go to
+当前阶段没有未收尾的事项，可以进入下一阶段。	Nothing left open in this phase; you can move on.
+死亡 	Dead 
+存活人数	Alive count
+座次 	Seating 
+今天的公开结果	Today's public results
+最新：	Latest: 
+还没有发布	Nothing published yet
+跳到「	Jump to “
+跳阶段只移动进度指针，不回滚任何数据，并会记入日志。需要回滚请用「撤销」。	Jumping only moves the progress pointer; no data is rolled back, and it's logged. Use “Undo” to roll back.
+跳转	Jump
+跳转阶段	Jump phase
+跳阶段：	Jumped phase: 
+请先在「设置与存档」登记玩家	Register players under Settings & save first
+座次按当前顺序：	Seating in current order: 
+开局领取只完成了 	Only 
+／2 次（每名玩家先领取两次）。仍可开始，之后可在「补给与公共池」补做。	/2 opening pickups done (each player picks twice first). You can still start and finish them later under “Supplies & pool”.
+开始第 1 天？	Start Day 1?
+开始游戏	Start game
+开始第 1 天	Start Day 1
+每日轮换发生在自由交流之后：当前末位移到首位，其余人后移。	Daily rotation happens after free talk: the last seat moves to the first, everyone else shifts back.
+不轮换，直接继续	Skip rotation and continue
+执行轮换并继续	Rotate and continue
+还有人未行动	Some players haven't acted
+尚未行动：	Not acted yet: 
+。仍要进入下一阶段吗？（会记入日志）	. Still go to the next phase? (logged)
+继续	Continue
+今日守夜名单尚未确认	Today's watch roster isn't confirmed
+仍要进入下一阶段吗？（会记入日志）	Still go to the next phase? (logged)
+进入下一阶段	Next phase
+每日轮换：	Daily rotation: 
+跳过每日轮换（主持人决定）	Skipped daily rotation (host's call)
+未行动即进入下一阶段：	Moved on before acting: 
+个人行动：保留本轮已有的行动顺序	Personal actions: kept this round's existing order
+个人行动顺序（本轮固定）：	Personal action order (fixed this round): 
+阶段：	Phase: 
+今天的行动、计划者、技能使用者和守夜候选会归档并清空；昨夜结果草稿保留到次日阶段1公布。	Today's actions, planners, skill users and watch options are archived and cleared; last night's result draft stays until Phase 1 tomorrow.
+还有 	There are still 
+ 个发放批次没有结束，它们会保留在「补给与公共池」中。	 supply batches open; they stay under “Supplies & pool”.
+今晚的守夜结果还没有保存为草稿。	Tonight's watch result isn't saved as a draft yet.
+ 天？	~
+进入下一天	Go to next day
+回退阶段	Phase back
+回退：	Back: 
+已执行的发放批次与事件结算不会自动回滚（它们改动了公共池与营救进度）；需要时请先在对应页面撤销，或用顶栏「撤销」。	Supply batches and event resolutions already applied are not rolled back automatically (they changed the pool and rescue progress); undo them on their pages first if needed, or use “Undo” in the top bar.
+回到开局准备？	Back to setup?
+第 1 天已记录的当日数据会被丢弃。	Day 1's recorded data will be discarded.
+回到开局准备阶段。	Back to the setup phase.
+回退	Back
+回到开局	Back to setup
+回退到开局准备	Went back to setup
+ 天已记录的数据（行动、名单、事件判定、公开结果等）将被丢弃。	~
+将恢复第 	~
+ 天的当日记录与当天结束时的座次。	~
+回退到第 	~
+跨日回退	Cross-day rollback
+跨日回退：第	~
+天 → 第	~
+天 	~
+手动调整进度	Manual progress adjust
+只修改「第几天／哪个阶段」的指针，不回滚任何数据（需要回滚请用撤销），并会记入日志。	Only changes the “which day / which phase” pointer; no data is rolled back (use Undo for that), and it's logged.
+天数无效	Invalid day
+手动调整：	Manual adjust: 
+ → 第	~
+未知阶段	Unknown phase
+游戏开始前	Before the game
+开局领取 	Opening pickup 
+已领取 	Picked 
+✓ 今日已轮换	✓ Rotated today
+尚未轮换	Not rotated yet
+✓ 名单已确认	✓ Roster confirmed
+已收到 	Received 
+ 份提交	 submissions
+✓ 昨夜结果已公布	✓ Last night's result announced
+昨夜结果待公布	Last night's result to announce
+没有待公布的结果	No result to announce
+这一阶段处理完后	When this phase is done
+进入「	Go to “
+结束今天，进入第 	~
+登记玩家：	Registered players: 
+ 人（计划 	 (planned 
+开局领取第 1 次：	~
+已完成	Done
+未完成	Not done
+开局领取第 2 次：	~
+登记玩家与规则	Register players & rules
+开局物资与领取（秘密）	Opening supplies & pickups (secret)
+有一条待公布的守夜结果（第 	~
+ 天夜间）。内容可在「守夜」页预览（需先暂停共享）。	~
+昨夜结果已公布。	Last night's result is announced.
+没有待公布的守夜结果（首日或昨夜未生成）：可以直接跳过。	No watch result to announce (first day, or none was made last night): you can skip.
+公布昨夜结果到公开页	Announce last night's result to the public page
+预览守夜结果	Preview watch result
+主持人确认状态与营救进度变化：营救进度在下方卡片修改；个人状态由玩家在自己的页面修改。	The host confirms status and rescue changes: change rescue progress in the card below; players update their own status on their pages.
+公布昨夜结果	Announce last night's result
+天夜间：	~
+公布昨夜结果（第	~
+天夜间）	~
+：已领取 	: picked 
+今天还没有发放批次。	No supply batch today yet.
+去抽取与发放（秘密）	Go draw and hand out (secret)
+按人数 N 从公共池实际物品中无放回抽 N 件；按座次秘密各选一件；玩家在自己的页面手动加入库存。	Draw N items without replacement from the actual pool for N players; each picks one in seating order, in secret; players add it to their inventory by hand.
+讨论、交易、赠予与预先协商换位都不收费；交易双方各自在玩家页增减库存。	Discussion, trades, gifts and pre-arranged swaps are free; both sides of a trade update their inventories on the player page.
+常用计时：	Common timers: 
+ 分钟并开始	 min and start
+今日已轮换。新座次：	Rotated today. New seating: 
+轮换后座次将变为：	After rotation the seating will be: 
+今日已轮换	Rotated today
+执行每日轮换	Do daily rotation
+换位请求	Swap request
+尚未生成本轮行动顺序。	This round's action order isn't generated yet.
+生成行动顺序	Generate action order
+按当前座次生成行动顺序	Generate action order from current seating
+行动顺序在进入阶段5时从座次复制，整轮固定；换位只改实际座次，不改这个顺序。	The action order is copied from seating when Phase 5 starts and stays fixed all round; swaps change actual seats only, not this order.
+状态	Status
+本轮记录	This round
+实际座次	Actual seat
+操作	Actions
+✓ 已行动	✓ Acted
+▶ 当前	▶ Current
+等待	Waiting
+（换位请求 	 (swap requests 
+ 座	~
+不在座次	Not seated
+记录行动	Record action
+撤销行动	Undo action
+今日换位请求	Today's swap requests
+同意，座次已交换	accepted, seats swapped
+；行动结束	; action ended
+；行动未结束	; action not ended
+；被请求者也消耗行动	; the other player also used an action
+（主持人覆盖次数上限）	 (host overrode the limit)
+可选；只写进秘密日志	Optional; written only to the secret log
+记录行动：	Record action: 
+备注	Note
+「计划守夜名单」会立即为该玩家抽取两份候选（秘密保存，刷新不变），内容在「守夜」页查看。换位请走「换位请求」。	“Plan watch roster” immediately draws two options for this player (kept secret; refreshing won't redraw); see them on the Watch page. For swaps, use “Swap request”.
+记录	Record
+ 行动备注：	 action note: 
+为 	Drew watch options for 
+ 抽取守夜候选：	: 
+没有可以换位的对象	No one to swap with
+对方同意	They agreed
+对方拒绝	They declined
+已发起 	Requested 
+ 次。换位消耗一次行动、双方同意才生效、没有战斗；只改变实际座次，不改变本轮行动顺序。	 times. A swap costs one action, needs both to agree, and involves no fight; it changes actual seats only, not this round's action order.
+请求对象	Ask
+（第 	~
+ 座）	~
+结果	Result
+被请求者也消耗行动（规则未定，默认不扣；勾选＝主持人裁定）	The other player also spends an action (rule TBD, default no; tick = host ruling)
+已到次数上限：主持人覆盖	Limit reached: host override
+失败后是否仍耗行动、成功后能否继续请求尚未确定——请选择本次请求后该玩家的行动是否结束。	Whether a failed request still costs the action, and whether a player can keep asking after success, are TBD — choose whether this player's action ends after this request.
+换位请求：	Swap request: 
+记录，行动未结束	Record, action continues
+记录，行动结束	Record, action ends
+ 请求与 	 asked 
+ 换位：	 to swap: 
+同意，座次已交换 → 	accepted, seats swapped → 
+（覆盖次数上限）	 (limit overridden)
+无法单独撤销	Can't undo on its own
+该玩家今天参与了已生效的换位。为保证座次准确，请用顶栏的「撤销」逐步回滚，或在下方座次卡手动调整。	This player took part in a completed swap today. To keep seating accurate, roll back step by step with “Undo” in the top bar, or adjust in the seating card below.
+撤销 	Undo 
+ 的行动？	's action?
+他已计划守夜名单：撤销会一并作废为他抽取的候选。	They already planned a watch roster: undoing also voids the options drawn for them.
+将清除本轮的行动标记。	This clears their action mark for this round.
+ 的本轮行动	's action this round
+今日计划者：	Today's planners: 
+。末位（按最新座次）：	. Last seat (latest seating): 
+今日最终名单已确认	Today's final roster is confirmed
+并已公开。	 and public.
+（未公开）。	 (not public).
+ 份提交。0 份：系统随机；1 份：直接成为最终名单；多份：末位从提交中选择。	 submitted. 0: random; 1: it becomes final; several: the last seat picks.
+去确认守夜（秘密）	Go confirm watch (secret)
+座次（实际座位）	Seating (actual seats)
+玩家用稳定 ID 识别，不用座位号当身份	Players are identified by a stable ID, not by seat number
+上移	Move up
+下移	Move down
+移出座次	Remove from seating
+座次为空。	Seating is empty.
+手动调整会记入日志。死亡后的领取人数、座次剔除、守夜人数都由主持人决定，不自动处理。	Manual changes are logged. After a death, the host decides pickup counts, seating removal and watch size; nothing is automatic.
+调整座次	Adjust seating
+手动调整座次：	Seating adjusted by hand: 
+ 移出座次：	 removed from seating: 
+加入座次	Add to seating
+ 加入座次末尾：	 added to the end of seating: 
+营救进度需为整数	Rescue progress must be an integer
+修改营救进度	Change rescue progress
+营救进度 	Rescue progress 
+已达阈值	Threshold reached
+阈值待定	Threshold TBD
+营救进度减一	Rescue progress minus one
+营救进度加一	Rescue progress plus one
+设定营救进度	Set rescue progress
+设为…	Set to…
+阈值未知：不会自动结束，主持人在「记录与结算」点击结算。	Threshold unknown: the game won't end on its own; the host clicks settle under “Records & settlement”.
+到达阈值也不会自动结束，由主持人点击结算。	Reaching the threshold doesn't end the game either; the host clicks settle.
+发布公开结果	Publish a public result
+例如：第2天自由交流结束；B 与 D 达成交易。会显示在公开展示页。	e.g. Day 2 free talk is over; B and D made a trade. Shown on the public display.
+请先输入内容	Enter some text first
+发布公告	Publish notice
+发布公开结果：	Published public result: 
+发布到公开页	Publish to public page
+撤下公开结果	Take down public result
+撤下公开结果：	Took down public result: 
+撤下	Take down
+公共池	Common pool
+共 	Total 
+ 件 · 	 pcs · 
+公开池总数开关	Pool total switch
+公开页显示公共池总件数	Public page shows pool total
+公开页隐藏公共池总件数	Public page hides pool total
+在公开展示页显示公共池总件数（默认关闭，数量一并遮住）	Show the pool's total count on the public display (off by default; the count is hidden too)
+公共池是空的。首次开启不会自动生成任何开局物资。	The pool is empty. Opening supplies are never generated automatically.
+请选择物品	Please choose an item
+加入公共池	Add to pool
+公共池加入：	Added to pool: 
+加入	Add
+批量录入（正数加入、负数取出）	Bulk entry (positive adds, negative removes)
+例如：面包×3，普通水+2，子弹-1	e.g. Bread×3, Water+2, Ammo-1
+解析并执行	Parse and apply
+存为模板	Save as template
+未知物品	Unknown item
+减少一件	One less
+增加一件	One more
+改剩余次数	Change uses left
+改储水	Change water
+标记完好	Mark intact
+标记破损	Mark damaged
+取出	Take out
+调整公共池	Adjust pool
+公共池：	Pool: 
+修改「	Edit “
+剩余次数	Uses left
+储水	Water
+储水（0～	Water (0–
+保存	Save
+请输入非负整数	Please enter a non-negative integer
+最多储存 	Holds at most 
+ 份	~
+剩余0次的能量棒应当取出	An energy bar with 0 uses left should be taken out
+修改实例	Edit instance
+公共池实例：	Pool instance: 
+标记物品状态	Mark item condition
+无法解析	Can't parse
+没有内容	Nothing entered
+公共池不足	Not enough in pool
+不能扣成负数：	Can't go negative: 
+ 需要 	 needs 
+、现有 	, has 
+批量录入公共池	Bulk pool entry
+公共池批量：	Pool bulk: 
+请先在批量录入框写好可解析的物品清单	Write a parseable item list in the bulk entry box first
+例如：每日补给	e.g. Daily supply
+保存为公共池模板	Save as pool template
+模板名称	Template name
+保存池模板	Save pool template
+保存公共池模板：	Saved pool template: 
+公共池模板	Pool templates
+公共池不足，模板里的扣除无法执行	Not enough in the pool; the template's removals can't run
+套用池模板	Apply pool template
+套用公共池模板「	Applied pool template “
+删除池模板	Delete pool template
+删除公共池模板：	Deleted pool template: 
+删除	Delete
+还没有模板。在上方批量录入框写好清单后点「存为模板」。	No templates yet. Write a list in the bulk entry box above and click “Save as template”.
+抽取权重	Draw weights
+ 默认每件等概率，可改权重	 Each item is equally likely by default; weights can change that
+权重需为非负数字	Weight must be a non-negative number
+修改抽取权重	Change draw weights
+抽取权重：	Draw weights: 
+公共池为空。	The pool is empty.
+补给发放	Supply handout
+按件数无放回抽取；随机抽取与公布结果分开，刷新不会重抽	Draws by piece count without replacement; drawing and announcing are separate, and refreshing never redraws
+已结束的批次（	Closed batches (
+ · 第	~
+天	~
+已撤销	Undone
+已结束	Closed
+将抽取 	Will draw 
+ 件（按件数，不是单位）。公共池现有 	 pcs (by count, not units). The pool has 
+ 件。	 pcs.
+开局领取第1次	Opening pickup #1
+开局领取第2次	Opening pickup #2
+其他发放	Other handout
+新建发放批次	New supply batch
+类型	Type
+参与领取：	Picking: 
+（已死亡）	 (dead)
+抽取	Draw
+发放	Handout
+请至少选择一名领取者	Choose at least one player to pick
+ 件。系统不会生成不存在的物资。	 pcs. The system never creates items that don't exist.
+请先补充公共池，或由主持人裁定只抽现有的 	Restock the pool first, or the host can rule to draw only the existing 
+只抽 	Draw only 
+ 件（主持人裁定）	 pcs (host ruling)
+抽取补给	Draw supplies
+：抽取 	: drew 
+ 件 → 	 pcs → 
+：已抽取，按座次领取（	: drawn; pick in seating order (
+开局	Opening
+【补给·	[Supply · 
+：轮到你选。可选：	: your turn to pick. Options: 
+。请私信回复编号。	. Reply with the number in a DM.
+已领 	Picked 
+剩余候选：	Remaining options: 
+（已全部选完）	(all picked)
+顺序	Order
+选择	Pick
+已选：	Picked: 
+交接文本	Handoff text
+撤回	Withdraw
+无可选物品	Nothing to pick
+记录选择	Record pick
+给 	DM text for 
+ 的私信文本	 
+暂停共享后私发	Send privately after pausing sharing
+结束批次（未选的放回公共池）	Close batch (unpicked items go back to the pool)
+撤销整个批次	Undo the whole batch
+【补给交接·	[Supply handoff · 
+：请在玩家页「库存」手动添加「	: please add “
+」。主持人端不会自动发送到你的页面。	” by hand on your Inventory page. The host page never sends it to your page automatically.
+交接文本（需对方手动修改）	Handoff text (the other side updates by hand)
+复制后私信对方	Copy and DM them
+ 选择 	 picked 
+ 已领取	 picked up
+撤回选择	Withdraw pick
+：撤回 	: withdrew 
+ 的选择（	's pick (
+ 的选择	's pick
+已撤回。若玩家已经把物品加进库存，请提醒其手动删除。	Withdrawn. If the player already added the item, remind them to delete it by hand.
+结束批次	Close batch
+：结束，	: closed, 
+ 件放回公共池	 pcs returned to the pool
+：结束	: closed
+撤销整个批次？	Undo the whole batch?
+抽到的物品（含已被领取的）会全部原样归还公共池。已领取的玩家需要在自己的页面手动删除——系统不会替玩家改库存。	Every drawn item (including picked ones) goes back to the pool as it was. Players who picked must delete it on their own page — the system never edits their inventory.
+撤销批次	Undo batch
+撤销发放批次	Undo supply batch
+：整批撤销，物品已归还公共池	: whole batch undone, items returned to the pool
+；需手动撤销：	; undo by hand: 
+：整批撤销	: whole batch undone
+【发放撤销】	[Handout undone]
+已撤销。以下玩家请在玩家页手动删除领到的物品：	Undone. These players please delete the item they picked on their player page: 
+需要提醒已领取者手动撤销	Remind pickers to undo by hand
+开局物资	Opening supplies
+主持人自行设计；每名玩家先领取两次	Designed by the host; each player picks twice first
+不会自动设定食物、水、武器配比，也不会自动添加任何默认套装。	No food/water/weapon ratio is set and no default kit is added.
+开局模板（物品清单）	Opening template (item list)
+例如：面包×6，普通水×6，绷带×2	e.g. Bread×6, Water×6, Bandage×2
+保存开局模板	Save opening template
+把开局模板加入公共池	Add opening template to pool
+开局领取第 	~
+ 次 	~
+公共池方式：抽取	Pool method: draw
+固定指定…	Fixed assignment…
+标记开局领取	Mark opening pickup
+开局领取第	~
+次：	~
+标记完成	Mark done
+取消完成标记	Unmark done
+开局模板不能有负数	The opening template can't have negatives
+保存开局模板：	Saved opening template: 
+开局模板是空的	The opening template is empty
+开局模板加入公共池	Opening template to pool
+开局模板加入公共池：	Opening template added to pool: 
+为每位玩家直接指定物品（不经过公共池）。会生成每人的交接文本，玩家手动加入库存。	Assign items to each player directly (not via the pool). Creates each player's handoff text; players add them by hand.
+例如：面包，普通水	e.g. Bread, Water
+ 次：固定指定	~
+生成交接文本	Create handoff text
+：不能有负数	: can't be negative
+：请在玩家页「库存」手动添加 	: please add by hand on your Inventory page: 
+没有填写任何物品	No items entered
+【开局领取第	~
+次·固定指定】\n	~
+\n（主持人端不会自动发送，请各自手动添加。）	\n(The host page never sends this automatically; everyone adds it by hand.)
+开局固定指定	Opening fixed assignment
+次（固定指定）：	~
+次完成（固定指定）	~
+开局交接文本	Opening handoff text
+守夜（候选、名单与夜间结果）	Watch (options, roster and night result)
+今日计划者与候选	Today's planners and options
+只统计真正消耗行动计划的人	Only counts players who actually spent their action planning
+今天还没有人计划守夜名单。在「主持台」记录行动时选择「计划守夜名单」。	No one has planned a watch roster today. When recording actions on the “Console”, choose “Plan watch roster”.
+没有候选（可能当时没有启用的名单模板）。	No options (maybe no roster template was enabled at the time).
+抽取守夜候选	Draw watch options
+抽取候选	Draw options
+【守夜候选·第	~
+天】	~
+。请私信回复 ① 或 ②。	. Reply ① or ② in a DM.
+已提交：	Submitted: 
+等待回复	Waiting for reply
+启用的名单模板不足两份，只抽到 	Fewer than two roster templates are enabled; only drew 
+ 份。	.
+私信文本	DM text
+提交	Submit
+撤回提交	Withdraw submission
+提交守夜名单	Submit watch roster
+最终名单已确认	Final roster confirmed
+ 撤回守夜名单提交	 withdrew their watch roster submission
+ 提交守夜名单	 submitted a watch roster
+没有人提交名单：由系统随机一份名单（抽取后存档，刷新不变）。	No one submitted a roster: the system picks one at random (saved once drawn; refreshing won't change it).
+系统随机	System random
+随机守夜名单	Random watch roster
+没有启用的名单模板	No roster templates enabled
+系统随机守夜名单：	System random watch roster: 
+系统随机一份名单	System picks one roster at random
+唯一提交（	Only submission (
+只有一份提交：	Only one submission: 
+ 选中的名单直接成为最终名单。	's chosen roster becomes the final roster.
+【守夜拍板·第	~
+：你是末位，请从以下名单中选择最终一份：	: you're in the last seat — choose the final roster from these: 
+收到 	Received 
+ 份提交：由实际座次最后的人 	 submissions: the player in the actual last seat, 
+（无人在座）	(nobody seated)
+ 从所有提交中选择最终一份（仅拍板不算计划者）。	, picks the final one from all submissions (deciding doesn't count as planning).
+给末位的私信文本	DM text for the last seat
+末位选择名单	Last seat picks roster
+末位 	Last seat 
+ 选择第 	~
+ 份名单	~
+末位选第 	~
+ 从 	 picks from 
+ 份提交中选择	 submissions
+确认最终名单	Confirm final roster
+名单：	Roster: 
+按当日记录解析的人员：	People resolved from today's records: 
+风险倾向：	Risk tendency: 
+最终守夜人员（可由主持人调整）：	Final watchers (the host can adjust): 
+6人局通常 	A 6-player game usually has 
+ 人，特殊条件可改变人数。是否实际守夜不会自动消耗本人额外行动。	 watchers; special conditions can change it. Watching doesn't cost the watcher an extra action.
+请至少选择一名守夜者	Choose at least one watcher
+确认守夜名单	Confirm watch roster
+确认守夜最终名单：	Confirmed final watch roster: 
+守夜最终名单已确认（是否公开由主持人决定）	Final watch roster confirmed (the host decides whether to make it public)
+确认最终名单（保存人员快照）	Confirm final roster (save a snapshot of people)
+最终名单	Final roster
+已公开	Public
+未公开	Not public
+守夜人员：	Watchers: 
+来源：	Source: 
+；名单：	; roster: 
+公开守夜人员	Make watchers public
+今晚守夜：	Tonight's watch: 
+公开守夜人员：	Watchers made public: 
+公开到公开页	Publish to public page
+作废最终名单？	Void the final roster?
+将清除今日最终名单（已公开的内容会一并撤下），可重新确认。	This clears today's final roster (anything public is taken down too); you can confirm again.
+作废	Void
+作废守夜名单	Void watch roster
+作废守夜最终名单	Voided final watch roster
+作废并重新确认	Void and confirm again
+守夜：	Watch: 
+手动选择结果…	Choose a result by hand…
+（权重	 (weight 
+夜间结果	Night result
+名单决定对象与风险倾向，结果库决定实际后果	The roster decides who and the risk; the result library decides what happens
+守夜者可携带物品：食物可用于避免野兽袭击，其他工具按遭遇生效。请按玩家上报填写（主持人端不会自动获取玩家库存）。	Watchers may carry items: food can avert beast attacks; other tools work per encounter. Fill in what players report (the host page can't see player inventories).
+上报的携带物品	Reported carried items
+记录守夜携带	Log watch carry
+ 守夜携带：	 watch carry: 
+ 携带	 carries
+还没有确认最终名单；仍可手动起草夜间结果。	The final roster isn't confirmed yet; you can still draft a night result by hand.
+显示全部结果（不按倾向筛选）	Show all results (don't filter by tendency)
+候选结果 	Candidate results: 
+ 条	 
+已	~
+按权重抽取（	Drawn by weight (
+手动选择	Chosen by hand
+（结果已删除）	(result deleted)
+。抽取结果已存档，刷新不变。	. The drawn result is saved; refreshing won't change it.
+抽取夜间结果	Draw night result
+权重不完整，请手动选择	Weights incomplete; choose by hand
+夜间结果按权重抽取：	Night result drawn by weight: 
+按权重抽取	Draw by weight
+有结果未填权重：不能自动抽签，请手动选择。	Some results have no weight: can't draw automatically; choose by hand.
+请选择一条结果	Choose a result
+手动选择夜间结果	Choose night result by hand
+夜间结果手动选择：	Night result chosen by hand: 
+作废抽取结果？	Void the drawn result?
+作废后可以重新抽取或选择（记入日志）。	After voiding you can draw or choose again (logged).
+作废夜间抽取	Void night draw
+作废夜间结果抽取	Voided night result draw
+作废抽取	Void draw
+结果草稿（次日阶段1公布的文字）	Result draft (text announced in Phase 1 tomorrow)
+例如：守夜：A、B。一夜无事。	e.g. Watch: A, B. A quiet night.
+保存为昨夜结果（次日阶段1公布）	Save as last night's result (announced in Phase 1 tomorrow)
+待公布	To announce
+已于第	~
+天公布	~
+（第	~
+天夜间）：	~
+结果草稿是空的	The result draft is empty
+上一晚的结果还没公布	Last night's result isn't announced yet
+天夜间的结果尚未公布，保存会覆盖它。确定吗？	~
+覆盖	Overwrite
+保存夜间结果	Save night result
+保存第	~
+天夜间结果草稿：	~
+夜间结果已保存，次日阶段1公布	Night result saved; announced in Phase 1 tomorrow
+名单模板	Roster templates
+ 与夜间遭遇结果分开存储；条目之间不擅自混合	 Stored separately from night encounter results; entries are never mixed on their own
+计划者从启用的模板中加权无放回抽两份。条目之间是替代、叠加还是组合随机尚未确定：多条目模板请标明组合方式，最终由主持人预览确认。	Planners draw two from the enabled templates, weighted, without replacement. Whether entries replace, stack or combine randomly is TBD: mark how multi-entry templates combine; the host previews and confirms.
+名称	Name
+权重	Weight
+启用	Enabled
+人数需为正整数	Headcount must be a positive integer
+组合方式	Combine
+新增名单模板	Add roster template
++ 新增模板	+ Add template
+恢复默认六条模板？	Restore the six default templates?
+会替换当前所有名单模板（已抽取的候选不受影响，它们保存了模板快照）。	This replaces all current roster templates (options already drawn keep their own template snapshot).
+恢复默认	Restore defaults
+恢复默认名单模板	Restore default roster templates
+修改名单模板	Edit roster template
+删除名单模板	Delete roster template
+删除名单模板：	Deleted roster template: 
+修改名单模板：	Edited roster template: 
+夜间遭遇结果库	Night encounter library
+ 权重全部填写才允许自动抽签；不使用统一的80%	 Auto-draw only when every weight is filled; no blanket 80%
+未填	Unset
+权重需为非负数字或留空	Weight must be a non-negative number or empty
+倾向	Tendency
+营救信息	Rescue info
+遭遇不测	Danger
+结果文字	Result text
+结果库为空（正式内容待设计）。可以手动起草夜间结果，或新增条目。	The library is empty (real content still to be designed). Draft a night result by hand, or add entries.
+新增夜间结果	Add night result
++ 新增结果	+ Add result
+复制演示夜间结果	Copy demo night results
+复制演示夜间结果到结果库	Copied demo night results to the library
+复制演示结果（标记为演示）	Copy demo results (marked as demo)
+修改夜间结果	Edit night result
+删除夜间结果	Delete night result
+事件结算与事件库	Event resolution & library
+每日一次判定：	Rolled once a day: 
+% 触发需要投票的公共事件。判定只控制是否触发，不等于事件成功率；各分支结果另按概率结算。	% chance of a public event to vote on. The roll only decides whether one triggers, not whether it succeeds; each branch's outcome has its own odds.
+事件位置未配置：由主持人手动触发。	Event position not configured: the host triggers it by hand.
+今日判定：掷出 	Today's roll: 
+ 触发）→ 	 triggers) → 
+触发公共事件	public event triggered
+无事件	No event
+（主持人裁定改为	 (host ruled: 
+触发	Triggered
+每日事件判定	Daily event roll
+今日已判定，一次每日判定只能结算一次	Already rolled today; the daily roll resolves only once
+每日事件判定：掷出 	Daily event roll: rolled 
+进行今日事件判定（	Roll today's event (
+主持人裁定	Host ruling
+把今日判定改为「	Change today's roll to “
+」？会记入日志。	”? This is logged.
+改判	Overrule
+改判事件	Overrule event
+主持人裁定：今日事件改为	Host ruling: today's event changed to 
+主持人裁定：改为	Host ruling: change to 
+选择与结算事件（秘密）	Choose and resolve event (secret)
+今日事件判定	Today's event roll
+公开页上的事件	Event on the public page
+投票选项：	Vote options: 
+撤下公开事件	Take down public event
+公开页目前没有事件。	No event on the public page right now.
+手动选择事件…	Choose an event by hand…
+（草案）	 (draft)
+（演示）	 (demo)
+今日事件结算	Today's event resolution
+今天还没做事件判定。也可以由主持人手动触发（记入日志）。	No event roll yet today. The host can also trigger one by hand (logged).
+今日判定为无事件。主持人仍可手动触发（记入日志）。	Today's roll was no event. The host can still trigger one by hand (logged).
+从事件库随机（非草案）	Random from library (no drafts)
+从事件库随机一件（不含草案）	Random event from the library (drafts excluded)
+请先选择事件	Choose an event first
+主持人手动选择	Host's manual choice
+使用所选事件	Use chosen event
+临时录入事件	Enter an event on the spot
+正式事件库为空（约20个公共事件的内容待设计）：请手动选择草案、临时录入，或在下方新建／导入。	The real event library is empty (about 20 public events still to be designed): choose a draft, enter one on the spot, or create/import below.
+选择 Discord 投票结果…	Choose the Discord vote result…
+公布事件正文	Announce event text
+已公布	Announced
+公布到公开页	Publish to public page
+录入 Discord 投票结果	Enter the Discord vote result
+投票结果：	Vote result: 
+修改	Edit
+请选择投票结果	Please choose the vote result
+录入	Enter
+按该选项的结果概率结算	Resolve with that option's outcome odds
+预览效果	Preview effects
+结算完成	Resolved
+放弃今日事件流程？	Abandon today's event flow?
+会清除所选事件、投票与预览（记入日志），可以重新选择。	This clears the chosen event, vote and preview (logged); you can choose again.
+放弃	Abandon
+放弃事件流程	Abandon event flow
+放弃今日事件流程	Abandoned today's event flow
+放弃并重新选择事件	Abandon and choose another event
+地点：	Location: 
+标签：	Tags: 
+参与：	Participants: 
+携带容量：	Carry capacity: 
+条件：	Conditions: 
+物品用途：	Item uses: 
+修正：	Modifiers: 
+选项：	Options: 
+选择今日事件	Choose today's event
+今日已有事件流程	There's already an event flow today
+主持人手动触发公共事件	Host triggered a public event by hand
+选择今日事件：	Chose today's event: 
+临时录入	Entered on the spot
+临时录入事件：	Event entered on the spot: 
+公布事件	Announce event
+公布公共事件：	Announced public event: 
+录入投票结果	Enter vote result
+已结算，请先撤销结算	Already resolved; undo the resolution first
+清除投票结果	Clear vote result
+已按概率抽签：掷出 	Drawn by probability: rolled 
+（抽签结果已存档，刷新不会重抽）	 (the draw is saved; refreshing won't redraw)
+主持人手动指定结果	Host set the result by hand
+作废预览？	Void the preview?
+作废后可以重新抽签或手动指定（记入日志）。	After voiding you can draw again or set the result by hand (logged).
+作废事件预览	Void event preview
+作废事件结果预览	Voided event result preview
+作废预览	Void preview
+（无文字）	(no text)
+概率合计100%：允许自动抽签。	Probabilities total 100%: auto-draw allowed.
+概率未完成（	Probabilities incomplete (
+）：不能自动抽签，请手动录入结果。	): can't draw automatically; enter the result by hand.
+事件抽签	Event draw
+已有预览	Preview already exists
+概率不完整，不能自动抽签	Probabilities incomplete; can't draw automatically
+事件抽签：	Event draw: 
+ → 掷出 	 → rolled 
+按概率抽签	Draw by probability
+请选择结果	Please choose a result
+手动指定事件结果	Set event result by hand
+事件结果手动指定	Event result set by hand
+手动指定	Set by hand
+结果：	Result: 
+营救进度：	Rescue progress: 
+不变	unchanged
+个人效果：	Personal effects: 
+（对象：	 (target: 
+由主持人宣布	announced by the host
+ —— 只生成通知，玩家自行录入	 — notification only; players enter it themselves
+无	None
+本次结算使用了主持人覆盖的效果。	This resolution uses effects overridden by the host.
+公共池不足，结算已暂停：	Not enough in the pool; resolution paused: 
+。不会静默扣成负数——请修改效果或由主持人覆盖。	. It never silently goes negative — edit the effects or override as host.
+修改本次效果（主持人覆盖）	Edit this resolution's effects (host override)
+按现有数量扣除	Deduct what exists
+主持人覆盖：公共池按现有数量扣除	Host override: pool deducts what exists
+按现有数量扣除（主持人覆盖）	Deduct what exists (host override)
+确认结算	Confirm resolution
+例如：面包+2，子弹-1	e.g. Bread+2, Ammo-1
+修改本次结算效果	Edit this resolution's effects
+只影响本次结算，不改事件库。个人效果只生成通知，不在这里扣玩家物品。	Affects only this resolution, not the event library. Personal effects only create notifications; player items aren't deducted here.
+营救进度 ±	Rescue progress ±
+公共池增减	Pool changes
+应用	Apply
+覆盖事件效果	Override event effects
+主持人覆盖本次事件效果：营救	Host overrode this event's effects: rescue 
+；公共池 	; pool 
+确认事件结算	Confirm event resolution
+没有可确认的预览	No preview to confirm
+该结果已确认，不会重复结算	That result is already confirmed; it won't resolve twice
+公共池不足，结算已暂停	Not enough in the pool; resolution paused
+事件结算 	Event resolved 
+；营救	; rescue 
+（事件结算）	 (event resolution)
+事件结算完成（结果待公布）	Event resolved (result to be announced)
+【事件结果·第	~
+：投票「	: vote “
+个人效果（对象：	Personal effects (target: 
+见主持人说明	see the host's notes
+请相关玩家在玩家页手动修改。主持人端不会修改任何人的私人物品。	Affected players, please update by hand on your player page. The host page never changes anyone's private items.
+结算编号 	Resolution ID 
+已应用	Applied
+营救 	Rescue 
+复制结果通知	Copy result notice
+玩家自行录入个人效果	Players enter personal effects themselves
+结果已公布	Result announced
+公布事件结果	Announce event result
+公布事件结果：	Announced event result: 
+公布结果到公开页	Publish result to public page
+撤销这次结算？	Undo this resolution?
+营救进度与公共池的变化会按记录精确回滚；已公布的结果会撤下。玩家已手动录入的个人效果需要另行通知撤回。	Rescue progress and pool changes are rolled back exactly as recorded; any published result is taken down. Players who already entered personal effects need to be told separately.
+撤销结算	Undo resolution
+撤销事件结算	Undo event resolution
+该结算已撤销	That resolution is already undone
+撤销事件结算 	Undid event resolution 
+（问题：	 (issue: 
+营救进度回滚：	Rescue progress rolled back: 
+撤销一次事件结算	Undid an event resolution
+撤销已完成，但有物品无法收回	Undo done, but some items couldn't be taken back
+事件库	Event library
+正式库可为空；约20个事件的内容与概率待设计	The real library can be empty; about 20 events' content and odds are still to be designed
++ 新建事件	+ New event
+导入 JSON	Import JSON
+导出 JSON	Export JSON
+（未命名）	(unnamed)
+参与随机	In random pool
+正式	Real
+ 个选项 · 	 options · 
+（可抽签）	 (auto-draw ok)
+（需手动）	 (manual)
+编辑	Edit
+事件库为空。可以新建、导入，或复制下方的演示模板。	The event library is empty. Create, import, or copy the demo templates below.
+演示模板	Demo templates
+ 明确标记为演示，不是用户确认的正式内容	 Clearly marked as demo; not confirmed content
+复制演示事件	Copy demo event
+复制演示事件到事件库：	Copied demo event to library: 
+复制到事件库	Copy to library
+导入格式说明	Import format
+{\n  "kind": "shelter-events",\n  "schemaVersion": 1,\n  "events": [{\n    "name": "停电的售货机", "location": "地下通道", "tags": ["售货机"],\n    "body": "正文……", "isDraft": true, "participants": "1～2人", "carryTicks": 2,\n    "conditions": "", "itemUses": "", "modifiers": "",\n    "options": [{ "label": "参与", "outcomes": [\n      { "text": "得到两瓶水", "probability": 60,\n        "effects": { "rescue": null, "pool": [{ "defId": "water", "qty": 2 }],\n                     "personal": { "target": "参与者", "hp": -1, "items": [] } } }\n    ] }]\n  }]\n}\n（也可以直接导入事件数组。carryTicks 以半格计：2 = 1 单位。）	{\n  "kind": "shelter-events",\n  "schemaVersion": 1,\n  "events": [{\n    "name": "Dead vending machine", "location": "Underpass", "tags": ["vending"],\n    "body": "Text…", "isDraft": true, "participants": "1–2 players", "carryTicks": 2,\n    "conditions": "", "itemUses": "", "modifiers": "",\n    "options": [{ "label": "Join", "outcomes": [\n      { "text": "Get two bottles of water", "probability": 60,\n        "effects": { "rescue": null, "pool": [{ "defId": "water", "qty": 2 }],\n                     "personal": { "target": "participants", "hp": -1, "items": [] } } }\n    ] }]\n  }]\n}\n(You can also import a bare array of events. carryTicks counts half-units: 2 = 1 unit.)
+导入失败	Import failed
+不是有效的 JSON：	Not valid JSON: 
+没有找到 events 数组。事件库未改动。	No events array found. The event library is unchanged.
+个事件：	 events: 
+导入 	Import 
+ 个事件？	 events?
+有待补全的地方（仍可导入，之后编辑）：	Some parts need filling in (you can still import and edit later): 
+导入	Import
+导入事件	Import events
+导入事件 	Imported events: 
+ 个	~
+编辑事件	Edit event
+新建事件	New event
+保存事件	Save event
+修改事件：	Edited event: 
+新建事件：	New event: 
+复制事件	Duplicate event
+（副本）	 (copy)
+复制事件：	Duplicated event: 
+删除事件？	Delete event?
+删除「	Delete “
+未命名	Unnamed
+」。已结算的记录不受影响。	”. Resolved records are not affected.
+删除事件	Delete event
+删除事件：	Deleted event: 
+例如：售货机，营救	e.g. vending machine, rescue
+携带容量需为 0.5 的倍数或留空	Carry capacity must be a multiple of 0.5 or empty
+结果 	Outcome 
+删除结果	Delete outcome
+概率 %（留空＝待定）	Probability % (empty = TBD)
+结果文字（公布用）	Outcome text (for announcing)
+效果（营救、公共池、个人通知）	Effects (rescue, pool, personal notices)
+个人效果对象	Personal effect target
+例如：参与者	e.g. participants
+生命 ±	HP ±
+饥饿值 ±	Hunger value ±
+例如：口渴	e.g. thirsty
+例如：流血伤口	e.g. bleeding wound
+地图笔记 ±	Map notes ±
+个人物品增减（只生成通知）	Personal item changes (notification only)
+例如：绷带+1	e.g. Bandage+1
+其他说明	Other notes
+选项 	Option 
+删除选项	Delete option
+选项名称（Discord 投票项）	Option name (Discord vote choice)
+概率合计100%：允许自动抽签	Probabilities total 100%: auto-draw allowed
+）：结算时改为手动录入结果	): enter the result by hand when resolving
++ 添加结果	+ Add outcome
+地点	Location
+正文（公开展示）	Text (shown publicly)
+标签（逗号分隔）	Tags (comma-separated)
+参与人数／对象	Participants / targets
+携带容量（单位，可空）	Carry capacity (units, optional)
+条件	Conditions
+物品用途	Item uses
+修正（道具、饥饿状态、力量的影响；未定义时主持人裁定）	Modifiers (items, hunger state, strength; host decides when undefined)
+草案（不参与「从事件库随机」）	Draft (excluded from “random from library”)
+同时存入事件库	Also save to the event library
+新选项	New option
++ 添加选项	+ Add option
+使用这个事件	Use this event
+结果日志（公开）	Results log (public)
+玩家分数、爱恨与私信记录	Player scores, love/hate and DM records
+未上报	Not reported
+待填	To fill
+请输入数字或留空	Enter a number or leave empty
+件数需为非负整数	Piece count must be a non-negative integer
+录入分数	Enter scores
+分数：	Scores: 
+玩家上报分数	Player-reported scores
+财富基础分＝钞票×1＋名画×6＋珠宝查表（1～5件：1、4、8、11、15；超过5件需主持人计分）；死亡后不保留财富分。地图分、爱恨分、生存分、任务分为手动项：留空＝待定，不当作0分。	Base wealth = cash ×1 + paintings ×6 + jewels by table (1–5: 1, 4, 8, 11, 15; above 5 the host scores); wealth is lost on death. Map, love/hate, survival and mission points are manual: empty = TBD, never counted as 0.
+规则值：生存 	Rule values: survival 
+、爱 	, love 
+、恨 	, hate 
+、任务奖励 	, mission reward 
+财富裁定	Wealth ruling
+裁定调整	Ruling adjustment
+合计	Total
+部分分数／待裁定	Partial score / pending rulings
+还没有玩家。	No players yet.
+地图分：转移后笔记归属、损坏后分数及死亡后的地图分数由主持人裁定，不并入死亡即清零的财富类别。	Map points: note ownership after a transfer, and points after damage or death, are up to the host; not part of the wealth that resets on death.
+主持人结算	Host settlement
+营救阈值未知时不会自动结束。点击结算会保存当前分数快照；存在未定项时显示「部分分数／待裁定」，不会显示为完整最终排名。	With the rescue threshold unknown, the game never ends on its own. Settling saves a snapshot of the current scores; with undecided items it shows “Partial score / pending rulings”, never a complete final ranking.
+（部分分数／待裁定）	 (partial / pending rulings)
+结算（保存分数快照）	Settle (save score snapshot)
+部分分数／待裁定（不是最终排名）	Partial score / pending rulings (not a final ranking)
+最终排名	Final ranking
+天 · 营救进度 	~
+ 分	 pts
+（待定：	 (TBD: 
+公布结算	Announce settlement
+结算（部分分数／待裁定）：	Settlement (partial / pending rulings): 
+最终结算：	Final settlement: 
+（*含待定项）	 (*includes TBD items)
+未分配	Unassigned
+私信分配记录	DM assignment records
+爱恨由主持人私信分配，可以指向自己；是否可以重合尚未确定，不擅自禁止。职业与任务为草案	Love and hate are assigned by the host in DMs and may point to oneself; whether they can be the same person is TBD and not forbidden. Professions and missions are drafts
+（当前均未启用）	 (currently off)
+。玩家在自己的页面手动填写。	. Players fill them in on their own pages.
+私信记录	DM record
+私信记录：	DM record: 
+【私信·身份】	[DM · identity] 
+：爱的人 	: loved one 
+（未分配）	(unassigned)
+；恨的人 	; hated one 
+；职业 	; profession 
+；秘密任务 	; secret mission 
+。请在玩家页「身份」手动填写。	. Please fill these in by hand on the player page (Action & identity).
+爱的人	Loved one
+恨的人	Hated one
+职业	Profession
+秘密任务	Secret mission
+公开日志	Public log
+不含秘密内容；跳阶段、回退与手动调整都在这里	No secrets; phase jumps, rollbacks and manual adjustments are here
+暂无日志。	No log entries yet.
+完整日志（含秘密）	Full log (with secrets)
+完整日志	Full log
+秘密	Secret
+玩家名字	Player name
+请输入名字	Please enter a name
+新增玩家	Add player
+新增玩家：	Added player: 
+（加入座次末尾）	 (added to the end of seating)
+玩家名单	Players
+计划 	Planned 
+ 人；每人有稳定 ID，不以座位号当身份	; each has a stable ID, seat numbers are not identities
+改名	Rename
+改名：	Renamed: 
+存活状态	Alive status
+ 标记为死亡（座次、领取、守夜人数由主持人另行调整）	 marked dead (the host adjusts seating, pickups and watch size separately)
+ 恢复为存活	 restored to alive
+删除玩家「	Delete player “
+会从名单与座次移除。历史记录里会显示为「已删除的玩家」。若只是死亡，请勾选「已死亡」。	They're removed from the list and seating. History shows them as “deleted player”. If they just died, tick “Dead” instead.
+删除玩家	Delete player
+删除玩家：	Deleted player: 
+补足玩家	Fill up players
+按计划人数补足玩家：	Filled players to the planned count: 
+按计划人数补足	Fill to planned count
+修改规则	Change rule
+规则：	Rule: 
+未设置（	Not set (
+该项不能留空	This field can't be empty
+请输入 0.5 的倍数	Enter a multiple of 0.5
+请输入有效整数	Enter a valid integer
+单位	units
+关	~
+规则配置	Rules
+暂定项必须可编辑；待定项留空＝「待配置／主持人裁定」，不会悄悄补值	Tentative items must be editable; empty TBD items = “to configure / host decides”, never silently filled
+物品默认使用次数	Default item uses
+请输入正整数或留空	Enter a positive integer or leave empty
+能量棒使用3次是已确认规则，不能留空	Energy bar uses (3) is a confirmed rule and can't be empty
+修改使用次数	Change uses
+职业与秘密任务（草案）	Professions & secret missions (drafts)
+两端共享同一份内置列表与规则说明。默认停用，主持人明确启用后使用；职业与任务是独立开关。玩家页也有同样的开关，需由玩家按你的通知手动打开。	Both pages share the same built-in lists and rule text. Off by default; use only after the host enables them. Professions and missions have separate switches. The player page has the same switches, which players turn on by hand when you tell them.
+职业草案	Profession drafts
+秘密任务草案	Secret mission drafts
+任务改为完成后统一固定奖励（奖励值待定）；完成即锁定还是结算时判断，按任务与配置处理。职业无专属分数。	Missions now give one fixed reward on completion (value TBD); whether they lock on completion or are judged at settlement depends on the mission and config. Professions have no score of their own.
+停用草案：	Retired drafts: 
+负面状态	Negative statuses
+（默认停用）	 (off by default)
+物品名称	Item name
+效果说明	Effect description
+同时加入公共池的件数	Pieces to add to the pool too
+自定义物品	Custom items
+支持主持人自定义物品。背包扩容只在概念阶段提过、没有具体数值，不内置为正式道具。玩家页也可以添加同名自定义物品，或导入你的规则包。	The host can define custom items. Bag expansion was only mentioned as a concept with no numbers, so it isn't a built-in item. Players can also add a custom item with the same name, or import your rules pack.
+ · 占	 · takes 
+单位 · 	 units · 
+删除自定义物品？	Delete custom item?
+公共池里还有这个物品，删除后会显示为「未知物品」。	The pool still has this item; after deleting it shows as “Unknown item”.
+删除自定义物品	Delete custom item
+删除自定义物品：	Deleted custom item: 
+暂无自定义物品。	No custom items yet.
+同时加入公共池	Also add to pool
+件	pcs
+请输入名称	Please enter a name
+件数不能是负数	Piece count can't be negative
+占位需为 0.5 的倍数	Space must be a multiple of 0.5
+已有同名物品「	An item named “
+」，不必重复创建；填写件数即可直接加入公共池	” already exists; no need to create it again — just enter a count to add it to the pool
+新增自定义物品	Add custom item
+新增自定义物品：	Added custom item: 
+新增	Add
+道具字典（内置）	Item dictionary (built-in)
+占位	Space
+已确认效果	Confirmed effect
+存档	Save
+自动保存到本机浏览器	Auto-saved in this browser
+本地保存不可用：仅内存运行	Local storage unavailable: running in memory only
+主持人存档与玩家存档使用不同的命名空间，互不覆盖。导入前会校验结构并备份旧存档；导入失败不会改动当前存档。	Host and player saves use different namespaces and never overwrite each other. Imports are validated and the old save is backed up first; a failed import never changes the current save.
+已复制存档 JSON	Save JSON copied
+复制失败	Copy failed
+复制 JSON	Copy JSON
+导入 JSON 文件	Import JSON file
+粘贴导入	Paste to import
+撤销最近操作	Undo last action
+重置存档	Reset save
+备份（	Backups (
+恢复此备份	Restore this backup
+演示存档使用独立的存储位置，载入、修改、清空都不会碰到正式存档。	The demo save uses its own storage slot; loading, editing or clearing it never touches the real save.
+打开演示存档	Open demo save
+不是有效的 JSON（	Not valid JSON (
+）。当前存档未改动。	). The current save is unchanged.
+导入失败：当前存档未改动	Import failed: the current save is unchanged
+导入存档？	Import save?
+将用导入的存档替换当前	This replaces the current 
+存档。当前存档会先备份。	 save with the imported one. The current save is backed up first.
+导入前自动备份	Auto-backup before import
+导入存档	Import save
+导入成功	Imported
+把存档 JSON 粘贴到这里	Paste the save JSON here
+校验并导入	Validate and import
+重置存档？	Reset save?
+会清空当前	This clears the current 
+存档（先自动备份，可在「备份」恢复）。	 save (backed up first; restore it under “Backups”).
+重置前自动备份	Auto-backup before reset
+已切换到演示存档（正式存档未改动）	Switched to the demo save (real save unchanged)
+已返回正式存档	Back to the real save
+清空演示数据？	Clear demo data?
+只删除演示存档，正式存档不受影响。	Only the demo save is deleted; the real save is unaffected.
+清空	Clear
+演示数据已清空	Demo data cleared
+规则包（发给玩家）	Rules pack (for players)
+只包含规则配置与自定义物品，不含任何秘密。玩家在自己页面的「存档」里粘贴导入。	Contains only rule settings and custom items, no secrets. Players paste it under Save on their page.
+复制规则包	Copy rules pack
+下载规则包	Download rules pack
+另一个标签页修改了同一份主持人存档。为避免互相覆盖，请只保留一个主持人标签页，然后刷新本页。	Another tab changed the same host save. To avoid overwriting each other, keep only one host tab open, then refresh this page.
+「计划守夜名单」：玩家在自己的页面抽两张候选卡、选一张，把代码发给你，在「守夜」页粘贴即可。玩家没法用页面时，可在「守夜」页代抽。换位请走「换位请求」。	“Plan watch roster”: the player draws two cards on their own page, picks one and sends you the code; paste it on the Watch page. If a player can't use their page, you can draw for them on the Watch page. For swaps, use “Swap request”.
+ 代抽守夜候选：	 — host drew watch options: 
+今天还没有人计划守夜名单。玩家在自己的页面点亮「计划守夜名单」后会抽到两张卡，选好后把代码发给你。	No one has planned a watch roster today. When a player lights up “Plan watch roster” on their page they get two cards, pick one and send you the code.
+等待玩家发来代码	Waiting for the player's code
+玩家在自己的页面抽卡、选卡后会发来以 SHELTER-WATCH 开头的代码，粘贴到上面即可。	After drawing and picking on their page, the player sends a code starting with SHELTER-WATCH — paste it above.
+主持人代抽两张（玩家无法使用页面时）	Host draws two (when the player can't use their page)
+（代码）	 (code)
+粘贴玩家发来的代码（SHELTER-WATCH… 或 SHELTER-PICK…）	Paste a code from a player (SHELTER-WATCH… or SHELTER-PICK…)
+粘贴玩家发来的代码	Paste a code from a player
+读取代码	Read code
+整条消息粘进来也可以，页面只认 SHELTER- 开头的那段。	Pasting the whole message is fine; the page only reads the part starting with SHELTER-.
+这不是守夜代码（	This isn't a watch code (
+代码里没有选中的卡片	The code has no chosen card
+今日最终名单已确认：如需重来，请先作废	Today's final roster is already confirmed: void it first to start over
+计划者	Planner
+按代码里的名字「	Matched automatically by the name “
+」自动匹配	” in the code
+代码里的名字「	The name “
+」不在玩家名单里：请手动选择	” in the code isn't on the player list: choose by hand
+代码是第 	~
+ 天抽的，现在是第 	~
+ 天。	~
+卡片里有不在玩家名单中的名字：	The cards contain names not on the player list: 
+（会被忽略，确认名单时可手动调整）。	 (they're ignored; adjust by hand when confirming the roster).
+加入后就是该玩家的提交：只有一份时直接成为最终名单；两份及以上时由末位从提交里拍板。	Once added, this is the player's submission: with only one it becomes the final roster; with two or more the last seat decides.
+收到守夜提交	Watch submission received
+加入今天的候选池	Add to today's pool
+：计划守夜名单（收到代码时补记）	: plan watch roster (recorded when the code arrived)
+ 发来守夜提交	 sent a watch submission 
+已加入今天的候选池	Added to today's pool
+找不到这张卡：名单可能已变化，请重新发名单码给末位	Can't find this card: the list may have changed — send the list code to the last seat again
+ 通过代码拍板：	 decided by code: 
+已按末位的选择更新，请在下方确认最终名单	Updated with the last seat's choice; confirm the final roster below
+发给末位的名单码	List code for the last seat
+：你是末位，请在玩家页「行动与身份 → 守夜名单」粘贴这段代码，选好后把拍板码发回来。\n	: you're in the last seat — paste this code under Action & identity → Watch roster on your player page, pick one, and send the pick code back.\n
+复制名单码	Copy list code
+暂停共享后私发；末位发回的拍板码粘贴到上方「今日计划者与候选」	Send privately after pausing sharing; paste the pick code they send back into “Today's planners and options” above
+给末位的私信文本（不用代码时）	DM text for the last seat (without codes)
+名单	Roster
+随机抽人时为 	Random draws pick 
+ 人（存活人数的三分之一，向上取整；可在规则里固定人数）。是否实际守夜不会自动消耗本人额外行动。	 players (one third of the living players, rounded up; you can fix the number in the rules). Watching doesn't cost the watcher an extra action.
+只包含规则配置、自定义物品、玩家名单与守夜名单模板，不含任何秘密。玩家在自己页面的「存档」里粘贴导入（守夜候选卡要用名单显示名字）。	Contains only rule settings, custom items, the player list and watch roster templates — no secrets. Players paste it under Save on their page (watch cards use the list to show names).

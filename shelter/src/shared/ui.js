@@ -6,6 +6,13 @@
 (function (root) {
   'use strict';
 
+  // ---------------------------------------------------------------- 语言
+
+  /* 所有界面文字都经过 h() 写入，因此只在这里翻译一次（存档里的数据保持原样）。 */
+  var I18N = root.ShelterI18n || { T: function (s) { return s; }, TC: function (c, s) { return s; }, isEn: function () { return false; }, getLang: function () { return 'zh'; }, setLang: function () {} };
+  var T = I18N.T;
+  var TRANSLATED_ATTRS = { placeholder: 1, title: 1, 'aria-label': 1, alt: 1 };
+
   // ---------------------------------------------------------------- DOM
 
   var PROPS = { value: 1, checked: 1, disabled: 1, selected: 1, htmlFor: 1, indeterminate: 1 };
@@ -19,7 +26,7 @@
         if (k === 'class') el.className = v;
         else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
         else if (PROPS[k]) el[k] = v;
-        else el.setAttribute(k, v === true ? '' : String(v));
+        else el.setAttribute(k, v === true ? '' : TRANSLATED_ATTRS[k] ? T(String(v)) : String(v));
       });
     }
     appendKids(el, Array.prototype.slice.call(arguments, 2));
@@ -31,7 +38,7 @@
       if (c == null || c === false || c === true) return;
       if (Array.isArray(c)) appendKids(el, c);
       else if (c instanceof Node) el.appendChild(c);
-      else el.appendChild(document.createTextNode(String(c)));
+      else el.appendChild(document.createTextNode(T(String(c))));
     });
   }
 
@@ -181,6 +188,7 @@
   /** 可复制的交接文本框：一律提醒「需要对方手动修改」，不假装跨端同步。 */
   function copyBlock(text, opts) {
     opts = opts || {};
+    text = T(text); // 交接文本按当前语言生成，复制出去的就是看到的
     var ta = h('textarea', { class: 'copy-text', readonly: true, rows: opts.rows || Math.min(8, Math.max(2, text.split('\n').length + 1)) });
     ta.value = text;
     var btn = h('button', {
@@ -435,7 +443,80 @@
       o.sub ? h('span', { class: 'tile-sub' }, o.sub) : null);
   }
 
+  /**
+   * 演示存档在英文界面下用英文内容生成（名字、事件、笔记……）。
+   * 规则判断要用的中文状态值（口渴、意识、饥饿状态）不翻译，否则逻辑比较会失效。
+   */
+  var KEEP_KEYS = { thirst: 1, consciousness: 1, hungerManual: 1 };
+  function localizeDemo(obj) {
+    if (!I18N.isEn()) return obj;
+    (function walk(o) {
+      Object.keys(o).forEach(function (k) {
+        var v = o[k];
+        if (typeof v === 'string') { if (!KEEP_KEYS[k]) o[k] = T(v); }
+        else if (v && typeof v === 'object') walk(v);
+      });
+    })(obj);
+    return obj;
+  }
+
+  /**
+   * 守夜候选卡。t 来自 ShelterCore.watchCardText：{ title, who, tendency, tendencyKind, effects }。
+   * opts: { label（①／②）, selected, onclick（可点选时整张卡是按钮）, id }
+   */
+  function watchCard(t, opts) {
+    opts = opts || {};
+    var clickable = typeof opts.onclick === 'function';
+    return h(clickable ? 'button' : 'div', {
+      type: clickable ? 'button' : null,
+      class: 'watch-card' + (opts.selected ? ' on' : ''),
+      'aria-pressed': clickable ? (opts.selected ? 'true' : 'false') : null,
+      'data-watch-card': opts.id || null,
+      onclick: clickable ? opts.onclick : null
+    },
+      h('span', { class: 'watch-card-head' },
+        opts.label ? h('span', { class: 'watch-card-label' }, opts.label) : null,
+        h('span', { class: 'watch-card-title' }, t.title),
+        opts.selected ? h('span', { class: 'watch-card-picked' }, icon('check'), '已选') : null),
+      h('span', { class: 'watch-card-who' }, t.who),
+      t.tendency ? h('span', { class: 'watch-card-tend tend-' + t.tendencyKind }, t.tendency) : null,
+      t.effects.length ? h('span', { class: 'watch-card-fx' }, t.effects.map(function (e) { return h('span', { class: 'fx' }, e); })) : null);
+  }
+
+  /** 「从剪贴板粘贴」：浏览器不允许时提示手动粘贴。 */
+  function pasteButton(onText) {
+    return h('button', {
+      type: 'button', class: 'btn', onclick: function () {
+        var fail = function () { toast('浏览器不允许读取剪贴板：请长按或右键粘贴到框里', 'warn'); };
+        try {
+          if (!navigator.clipboard || !navigator.clipboard.readText) { fail(); return; }
+          navigator.clipboard.readText().then(function (text) { if (text) onText(text); else fail(); }, fail);
+        } catch (e) { fail(); }
+      }
+    }, '从剪贴板粘贴');
+  }
+
+  /** 语言切换按钮：显示「要切换到的语言」，点了保存选择并重画页面。 */
+  function langToggle(onChange) {
+    var en = I18N.isEn();
+    return h('button', {
+      type: 'button', class: 'btn small lang-btn', lang: en ? 'zh-CN' : 'en',
+      'aria-label': en ? '切换到中文' : 'Switch to English', title: en ? '切换到中文' : 'Switch to English',
+      onclick: function () {
+        I18N.setLang(en ? 'zh' : 'en');
+        if (onChange) onChange();
+      }
+    }, en ? '中文' : 'EN');
+  }
+
   root.ShelterUI = {
+    T: T,
+    TC: I18N.TC,
+    i18n: I18N,
+    langToggle: langToggle,
+    localizeDemo: localizeDemo,
+    watchCard: watchCard,
+    pasteButton: pasteButton,
     sevBadge: sevBadge,
     meter: meter,
     statTile: statTile,

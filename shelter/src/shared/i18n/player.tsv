@@ -1,0 +1,708 @@
+总览	Overview
+库存	Inventory
+库存与携带	Inventory & carry
+搜刮	Scavenge
+行动	Action
+行动与身份	Action & identity
+分数	Score
+演示·小周	Demo · Zhou
+【演示】公共池还剩不少面包；D 想用子弹换水。	[Demo] The pool still has plenty of bread; D wants to trade ammo for water.
+北门外有辆翻倒的补给车	An overturned supply truck outside the north gate
+地铁站B口积水，别走	Metro exit B is flooded — avoid it
+【演示】第1天在超市割伤	[Demo] Cut at the supermarket on day 1
+下一次行动判定视为充盈（功能饮料）	Next action counts as Full (energy drink)
+）。原数据已另存为备份，当前是空白存档，可在「存档」页查看备份。	). The original data was saved as a backup; this is now a blank save. See the backup on the Save page.
+浏览器本地保存不可用（可能是隐私模式或存储被禁用）：页面仍在内存中运行，刷新即丢失——请随时在「存档」页导出 JSON。	Browser storage isn't available (private mode or storage blocked): the page runs in memory and is lost on refresh — export JSON from the Save page often.
+交接文本（需要对方手动修改）	Handoff text (the other side updates by hand)
+复制后发到 Discord	Copy and post to Discord
+玩家端不会自动同步到任何人的页面。	The player page never syncs to anyone else's page.
+我	Me
+仅供试用，与正式存档完全分开。	Trial only; fully separate from your real save.
+清空演示	Clear demo
+未命名玩家	Unnamed player
+前一天	Previous day
+后一天	Next day
+简要状态	Quick status
+未记录	Not recorded
+意识	Consciousness
+库存占位	Inventory space
+携带中	Carrying
+修改天数	Change day
+记录当前天数：第	~
+更多	More
+核心状态	Core status
+生命为 0	HP is 0
+基础战斗力 	Base combat 
+ · 生命上限待配置	 · max HP not configured
+自动	Auto
+手动	Manual
+按阈值自动判定	Auto from thresholds
+阈值待配置	Thresholds not configured
+负面状态 	Negative statuses: 
+没有负面状态	No negative statuses
+超出上限	Over the limit
+未超出	Within limit
+ · 携带中 	 · carrying 
+财富估算	Wealth estimate
+死亡清零	Lost on death
+待主持人计分	Host scores this
+钞票 	Cash 
+ · 名画 	 · Painting 
+ · 珠宝 	 · Jewel 
+ · 地图笔记 	 · Map notes 
+今天	Today
+未行动	Not acted
+座次未记录	Seat not recorded
+快捷操作	Quick actions
+添加物品	Add item
+继续搜刮	Continue scavenging
+携带模式	Carry mode
+今日：	Today: 
+选择今日行动	Choose today's action
+查看	View
+一切正常	All clear
+ 没有需要处理的提醒。	 Nothing needs attention.
+需要留意	Needs attention
+ · 占上限 	 · of limit 
+各分类占位（单位）	Space by category (units)
+ 单位，	 units, 
+比例尺 0–	Scale 0–
+（个人总库存上限 	 (personal limit 
+；已用 	; used 
+库存是空的。主持人发放物资后在「库存」页手动添加。	Inventory is empty. Add items by hand on the Inventory page after the host hands them out.
+占位构成	Space by category
+上限待定	Limit TBD
+ 单位 · 	 units · 
+战斗力 	Combat 
+（叠加待定）	 (stacking TBD)
+进行中：第 	In progress: round 
+ 轮	 
+待整理提交	Waiting to sort and submit
+临时效果	Temporary effect
+公共笔记	Public notes
+没有携带中的物品、进行中的搜刮或临时效果。	Nothing being carried, no scavenge in progress, no temporary effects.
+进行中	In progress
+ 天获得 · 第 	~
+ 天提醒	~
+效果见状态页	See the Status page for effects
+到期	Due
+ 没有负面状态。	 No negative statuses.
+遮住	Hide
+身份与目标已遮住（只在这台设备上生效）。	Identity and goals are hidden (on this device only).
+未填写	Not filled in
+结算时判断	Decided at settlement
+身份与目标	Identity & goals
+还没有记录。	Nothing recorded yet.
+最近记录	Recent log
+全部	All
+流血提醒：	Bleeding reminder: 
+ 天到期（获得于第 	~
+ 天）。每两个回合失去1生命——请先与主持人确认，避免两端重复扣血。	~
+流血扣血	Bleeding HP loss
+流血伤口：经主持人确认扣1生命 → 	Bleeding wound: lost 1 HP (host confirmed) → 
+；下次提醒第	~
+已确认，扣1生命	Confirmed, lose 1 HP
+流血不扣	No bleeding loss
+流血伤口：主持人裁定本次不扣血；下次提醒第	~
+主持人裁定不扣	Host ruled no loss
+生命需为整数	HP must be an integer
+修改生命	Change HP
+生命 	HP 
+初始 	start 
+ · 上限 	 · max 
+生命减一	HP minus one
+生命加一	HP plus one
+基础战斗力＝当前生命：	Base combat = current HP: 
+生命为 0：0 生命的处理与死亡时点尚未确定（	HP is 0: how 0 HP is handled and the time of death are TBD (
+）。页面不会自动判定死亡。	). The page never decides death on its own.
+超过生命上限 	Above max HP 
+：请确认是否录入有误。	: please check the entry.
+修改饥饿值	Change hunger value
+饥饿值 	Hunger value 
+充盈／普通／饥饿／饥荒	Full / Normal / Hungry / Starving
+区间：	Zone: 
+（按阈值自动判定）	 (auto from thresholds)
+（手动）	 (manual)
+ 未填阈值时禁用自动判定，保留手动状态：	 Without thresholds, auto-detection is off and the manual state is kept:
+手动饥饿状态	Manual hunger state
+饥饿状态（手动）：	Hunger state (manual): 
+饥荒阈值待配置	Starving threshold not configured
+ 自动判定只到「饥饿」；饥荒阈值填写后才会自动判为饥荒。	 Auto-detection only goes down to “Hungry”; it detects Starving once the Starving threshold is filled.
+充盈改善力气和相关成功率，饥饿降低相关成功率，饥荒比饥饿更严重（具体修正与后果未定）。按行动消耗前的状态判定，再扣事件消耗；事件开启后不能靠临时进食提升本次状态（提示，不强制）。	Full improves strength and related success rates; Hungry lowers them; Starving is worse than Hungry (exact modifiers and consequences TBD). Judge by your state before the action's cost, then apply the event's cost; once an event starts, eating on the spot can't improve this check (a reminder, not enforced).
+口渴与意识	Thirst & consciousness
+修改意识	Change consciousness
+意识 	Consciousness 
+脱水直接昏迷（已确认）。没有固定的每日口渴扣减，由结算结果触发；补水幅度、昏迷如何解除及能做哪些事尚未确定——请手动切换，不会自动判成死亡。	Dehydration means falling unconscious (confirmed). There's no fixed daily thirst loss; results trigger it. How much water restores, how unconsciousness ends and what you can do meanwhile are TBD — switch by hand; the page never marks you dead.
+修改口渴	Change thirst
+口渴 	Thirst 
+脱水直接昏迷	Dehydrated: falls unconscious
+脱水直接昏迷（已确认规则）	Dehydration means falling unconscious (confirmed rule)
+自定义状态…	Custom status…
+获得于第 	~
+ 天；下次提醒第 	~
+ 天（主持人确认后扣血）	~
+改日期	Change dates
+移除状态	Remove status
+移除状态：	Removed status: 
+移除	Remove
+没有负面状态。	No negative statuses.
+添加	Add
+感染、腹泻、虚弱、拉伤、眩晕：候选状态，效果未被确认。	Infection, diarrhea, weakness, strain, dizziness: candidate statuses, effects not confirmed.
+感染、腹泻、虚弱、拉伤、眩晕是草案状态，默认停用（可在「存档 → 规则」按主持人通知启用）。	Infection, diarrhea, weakness, strain and dizziness are draft statuses, off by default (turn on under Save → Rules when the host says so).
+状态名称	Status name
+说明（可选）	Description (optional)
+自定义状态	Custom status
+说明	Description
+添加状态	Add status
+添加状态：	Added status: 
+（草案，效果未确认）	 (draft, effect not confirmed)
+添加流血伤口	Add bleeding wound
+已经有流血伤口。重复流血是否叠加尚未确定——请先与主持人确认。	You already have a bleeding wound. Whether bleeding stacks is TBD — check with the host first.
+获得日期（第几天）	Acquired on (day)
+下次触发日期	Next trigger day
+每两个回合失去1生命，直到清除。获得当天是否计入两回合待定：默认下次为获得日+2，可改。到期只提醒，扣血前与主持人确认。	Lose 1 HP every two turns until cleared. Whether the acquiring day counts toward the two turns is TBD: next defaults to acquired day + 2 and can be changed. Due dates only remind you; confirm with the host before losing HP.
+日期需为整数	Date must be an integer
+添加流血	Add bleeding
+添加流血伤口：第	~
+天获得，第	~
+天提醒	~
+修改流血日期	Change bleeding dates
+获得日期	Acquired on
+修改流血日期：第	~
+天获得，下次第	~
+例如：下一任务临时攻击+2（酒）	e.g. next mission: temporary attack +2 (liquor)
+攻击+	Attack +
+清除临时效果	Clear temporary effect
+清除临时效果：	Cleared temporary effect: 
+清除	Clear
+没有临时效果。	No temporary effects.
+添加临时效果	Add temporary effect
+添加临时效果：	Added temporary effect: 
+临时效果只记录到下一次任务或行动，不自动扩展为全回合加成；用完请手动清除。	Temporary effects only last until your next mission or action; they don't become whole-round bonuses. Clear them by hand when used.
+标记为死亡（由主持人宣布）	Mark as dead (announced by the host)
+恢复为存活	Restore to alive
+我已死亡（由主持人宣布）	I'm dead (announced by the host)
+死亡后不保留财富分；爱恨与任务分保留，各任务是否仍可继续完成待定。	Wealth points are lost on death; love/hate and mission points stay. Whether missions can still be completed is TBD.
+其他	Other
+这个分类下没有物品。	No items in this category.
+库存是空的。主持人发放物资后，请在这里手动添加。	Inventory is empty. Add items here by hand after the host hands them out.
+总占位 	Total space 
+超出总库存上限 	Over the inventory limit by 
+ 单位：只警告，不阻断主持人裁定。	 units: warning only; the host still decides.
+水壶内的水是否额外占容量：待配置	Whether water in the canteen takes space: to configure
+ 目前只计算水壶本身。	 For now only the canteen itself counts.
+排列	Sort
+按类别	By category
+默认顺序	Default order
++ 添加物品	+ Add item
+添加自定义物品	Add custom item
+携带中：暂不可操作	Carrying: locked for now
+使用	Use
+赠予／交公	Give / to pool
+赠予他人或交给公共池	Give to someone or hand in to the pool
+赠予	Give
+ · 每件 	 · each 
+ · 合计 	 · total 
+携带中 	Carrying 
+备注：	Remark: 
+囤积者：秘密消耗1件记进度	Hoarder: secretly use 1 to log progress
+少带一件	Carry one less 
+带 	Carry 
+多带一件	Carry one more 
+✓ 已带上	✓ Taken
+带上	Take
+挑选携带 · 	Choosing carry · 
+携带中 · 	Carrying · 
+不限（上限未设）	No limit (not set)
+携带占位	Carry space
+在下面的物品卡上点「带上」。最多 	Tap “Take” on the item cards below. Up to 
+不限	no limit
+，超出的物品选不上；上限可在「设置上限」里改（以主持人或事件规定为准）。	; items over the limit can't be picked. Change the limit with “Set limit” (the host's or the event's rule wins).
+已选超出上限：请减少后再确认。	Over the limit: remove something before confirming.
+确认携带	Confirm carry
+ 种）	 kinds)
+设置上限	Set limit
+取消携带	Cancel carry
+取消携带模式	Carry mode cancelled
+带着：	Carrying: 
+（没有物品）	(no items)
+。主持人宣布结果后，直接在高亮的物品卡上「删除」或「修改」；其他物品暂时锁定。	. When the host announces the result, delete or edit the highlighted cards directly; other items stay locked.
+战斗力：基础 	Combat: base 
+；未带武器	; no weapon
+；临时 +	; temporary +
+；合计 	; total 
+（多武器是否叠加待定）	 (whether weapons stack is TBD)
+ 单位：只警告，由主持人裁定。	 units: warning only; the host decides.
+结束携带（返回）	End carry (return)
+重新挑选携带	Re-choose carry
+重新挑选携带物品	Re-choosing carried items
+重新挑选	Re-choose
+可选：事件名或第几夜	Optional: event name or which night
+进入携带模式	Enter carry mode
+带去哪里	Carry for
+携带上限（单位）	Carry limit (units)
+默认 2 单位；以主持人或具体事件的规定为准	Defaults to 2 units; the host's or the event's rule wins
+携带只是给库存里的物品做标记，不复制物品。确认后其他物品暂时锁定，结束携带时解锁。	Carrying only marks items in your inventory; nothing is copied. After you confirm, other items lock until you end the carry.
+开始挑选	Start choosing
+上限需为 0.5 的倍数或留空	The limit must be a multiple of 0.5, or empty
+准备携带	Prepare carry
+携带（上限 	 carry (limit 
+携带上限	Carry limit
+上限（单位，留空＝不限）	Limit (units, empty = no limit)
+以主持人或具体事件的规定为准	The host's or the event's rule wins
+修改携带上限	Change carry limit
+携带上限：	Carry limit: 
+确认携带（	Confirmed carry (
+已确认携带：其他物品暂时锁定	Carry confirmed: other items are locked for now
+结束携带？	End carry?
+只清除携带标记、解锁其他物品。事件中用掉或丢失的物品，请先在高亮的卡片上删除或修改。	This only clears the carry marks and unlocks other items. Delete or edit anything used up or lost in the event on its highlighted card first.
+结束携带	End carry
+结束携带（	Ended carry (
+），物品不重复添加	); items are not added again
+调整携带	Adjust carry
+超出携带上限 	Over the carry limit of 
+删除数量（现有 	Quantity to delete (have 
+ 件）	 pcs)
+从你的库存移除，可以用顶部的「撤销」恢复。	Removes it from your inventory; “Undo” at the top brings it back.
+交给别人或交公请用「赠予／交公」，那样会生成给对方的交接文本。	To hand it to someone or the pool, use “Give / to pool” — that creates a handoff text for them.
+数量需在 1～	Quantity must be 1–
+ 之间	 
+删除物品	Delete item
+删除：	Deleted: 
+（携带中）	 (carried)
+剩余 	Left: 
+ 次（用完消失；未用完整件仍占 	 uses (gone when used up; a partly used one still takes 
+储水 	Water: 
+破损	Damaged
+完好	Intact
+笔记 	Notes: 
+ 条（每条1分）· 状态：	 (1 pt each) · condition: 
+损坏	Damaged
+可选，例如：主持人第2天发放	Optional, e.g. handed out by the host on day 2
+每件剩余次数	Uses left per item
+每个水壶储水（0～	Water per canteen (0–
+已损坏	Damaged
+物品	Item
+数量（件）	Quantity (pcs)
+主持人端不会自动发物资：拿到什么就在这里记什么。超出容量只警告。	The host page doesn't send you items: record here whatever you receive. Going over capacity only warns.
+剩余次数需为正整数	Uses left must be a positive integer
+储水需在 0～	Water must be 0–
+添加物品：	Added item: 
+库存已超出上限（只警告）	Inventory is over the limit (warning only)
+效果（按主持人说明）	Effect (as the host described)
+可选	Optional
+分类	Category
+占位（单位）	Space (units)
+效果	Effect
+内置	built-in
+，每件占 	, each takes 
+ 单位）：会按原有定义加入库存。	 units): it will be added using the existing definition.
+主持人也可以把自定义物品放进规则包，你在「存档」页导入即可。	The host can also put custom items in the rules pack — import it on the Save page.
+加入库存	Add to inventory
+新建自定义物品：	New custom item: 
+（每件占 	 (each takes 
+ 单位）	 units)
+已按原有的「	Added using the existing “
+」加入库存 ×	” ×
+已创建并加入库存：	Created and added to inventory: 
++ 添加笔记	+ Add note
+修改：	Edit: 
+手动覆盖用于纠错，会记入日志。	Manual override for fixing mistakes; it's logged.
+数量（0＝删除）	Quantity (0 = delete)
+剩余次数（0＝用完，删除）	Uses left (0 = used up, delete)
+删除这件物品？	Delete this item?
+删除物品：	Deleted item: 
+删除这件	Delete it
+数量不能是负数	Quantity can't be negative
+剩余次数不能是负数	Uses left can't be negative
+修改物品	Edit item
+手动修改：	Manual edit: 
+已删除	Deleted
+囤积者进度	Hoarder progress
+需要持有3件相同物品	Needs 3 identical items
+囤积者：秘密消耗1件	Hoarder: secretly use 1
+，进度 	, progress 
+对方名字	Their name
+赠予／交易给玩家	Give / trade to a player
+交给公共池	Hand in to the pool
+转出：	Transfer: 
+对方（赠予时填写）	Recipient (for gifts)
+数量（现有 	Quantity (have 
+会从你的库存扣除并生成交接文本：对方（或主持人）需要手动添加，不会自动同步。	This is deducted from your inventory and a handoff text is created: the other player (or host) adds it by hand; nothing syncs automatically.
+转出并生成文本	Transfer and create text
+请填写对方名字	Please enter their name
+交公	To pool
+（地图笔记：	 (map notes: 
+【赠予／交易·第	~
+ 把「	 gave “
+」交给了 	” to 
+。请 	. 
+ 在玩家页「库存」手动添加。	 — please add it by hand on your Inventory page.
+转出给 	Transferred to 
+【交公·第	~
+ 交出「	 handed in “
+。请主持人在公共池手动加入。	. Host, please add it to the pool by hand.
+交给公共池：	Handed in to the pool: 
+不改	No change
+饮用：	Drink: 
+消耗 1 件。补水幅度待定——请按主持人裁定手动设置口渴状态：	Uses 1. How much thirst it restores is TBD — set your thirst by hand as the host rules:
+已确认：下一次行动判定视为充盈（实际饥饿值不变）。会记录为临时效果。	Confirmed: your next action counts as Full (hunger value unchanged). Recorded as a temporary effect.
+饮用	Drink
+：口渴 	: thirst 
+；下一次行动视为充盈	; next action counts as Full
+吃一次：	Eat once: 
+食用：	Eat: 
+ 次 → 用后 	 uses → after use 
+ 次	 left
+（用完消失）	 (gone when used up)
+。每次约等于一份普通食物／面包。	. Each use is about one plain food / bread.
+消耗 1 件。	Uses 1.
+饥饿值变化（恢复量待定：按主持人裁定手动填写，留空＝不改）	Hunger change (amount TBD: enter as the host rules; empty = no change)
+口渴（补水幅度待定，手动设置）	Thirst (amount TBD; set by hand)
+提示：事件开启后不能通过临时进食提升本次状态；携带的食物可按事件规则消耗。	Reminder: once an event starts, eating on the spot can't improve this check; carried food is used by the event's rules.
+饥饿值变化需为数字或留空	Hunger change must be a number or empty
+食用	Eat
+饥饿值未改（恢复量待定）	Hunger value unchanged (amount TBD)
+吃一次	Eat once
+自己	Self
+他人	Someone else
+恢复1生命	Restore 1 HP
+止血	Stop bleeding
+使用绷带	Use bandage
+对象	Target
+效果（二选一，已确认）	Effect (pick one; confirmed)
+你目前没有流血伤口：对自己只能选「恢复1生命」。	You have no bleeding wound: on yourself you can only “Restore 1 HP”.
+没有可以止血的伤口	No wound to stop bleeding
+绷带：恢复1生命 → 	Bandage: restored 1 HP → 
+绷带：止血（清除一处流血伤口）	Bandage: stopped bleeding (cleared one bleeding wound)
+【治疗·第	~
+ 对 	 used a bandage on 
+ 使用了绷带：	: 
+止血（清除一处流血伤口）	stop bleeding (clear one bleeding wound)
+ 在玩家页手动修改。	 — please update it by hand on your player page.
+对 	Used a bandage on 
+ 使用绷带（	 (
+治疗他人：请对方手动修改	Treating others: they update it by hand
+伤病类	Injury/illness
+是否属伤病类待裁定	Whether it's an injury/illness is up to the host
+你没有负面状态。	You have no negative statuses.
+使用医疗箱	Use medkit
+已确认：清除伤病类负面状态，并恢复2生命；不处理饥饿、口渴及脱水昏迷。不会把所有非正常状态清零。	Confirmed: clears injury/illness statuses and restores 2 HP; doesn't treat hunger, thirst or dehydration coma. It does not reset every abnormal state.
+对自己时清除的状态	Statuses cleared when used on yourself
+医生（草案）：治疗他人时消耗医疗箱并获得1份绷带	Doctor (draft): treating others uses the medkit and gives 1 bandage
+医疗箱：恢复2生命 → 	Medkit: restored 2 HP → 
+；清除 	; cleared 
+ 使用了医疗箱：清除伤病类负面状态，并恢复2生命（不处理饥饿、口渴及脱水昏迷）。请 	 used a medkit: clears injury/illness statuses and restores 2 HP (not hunger, thirst or dehydration coma). 
+ 使用医疗箱	 Use medkit
+医生（草案）：治疗他人后获得1份绷带	Doctor (draft): gained 1 bandage after treating someone
+笔记内容：地点、时间或可能的回报	Note: a place, time or possible reward
+携带参加一次任务加1笔记（已确认），每条笔记1分。	+1 note each time it's carried on a mission (confirmed); 1 pt per note.
+新笔记	New note
+移交地图时，笔记会写进交接文本告知对方；转移后笔记归属、损坏后及死亡后的分数由主持人裁定。	When you hand the map over, its notes go into the handoff text; note ownership after a transfer, and points after damage or death, are up to the host.
+标记损坏	Mark damaged
+加1笔记	Add 1 note
+地图加笔记	Map note added
+地图状态	Map condition
+任务笔记	Mission note
+地图加1笔记：	Map +1 note: 
+（共	 (total 
+条）	)
+地图标记为	Map marked as 
+军用水壶（储水 	Army canteen (water: 
+水源或下雨条件下可获得1份水，最多储存	Collects 1 water at a water source or in rain; holds up to 
+份。取水频率、饮用后是否生成普通水物品未定。	. Refill frequency and whether drinking creates a Water item are TBD.
+饮用后的口渴（补水幅度待定，手动设置）	Thirst after drinking (amount TBD; set by hand)
+取水 +1	Refill +1
+饮用 −1	Drink −1
+水壶是空的	The canteen is empty
+水壶取水	Canteen refill
+水壶饮用	Canteen drink
+水壶取水：储水 	Canteen refill: water 
+水壶饮用：储水 	Canteen drink: water 
+；口渴 	; thirst 
+事件中使用酒？	Use liquor in the event?
+消耗1件。已确认：临时攻击力+2，并承担一次口渴消耗。只记录到下一任务，不扩展为全回合加成；口渴变化请按结算手动修改。	Uses 1. Confirmed: temporary attack +2, at the cost of one thirst step. Only lasts until the next mission, not the whole round; update thirst by hand per the result.
+使用酒	Use liquor
+下一任务：临时攻击+2（酒）	Next mission: temporary attack +2 (liquor)
+承担一次口渴消耗（酒，按结算手动修改）	One thirst step (liquor; update by hand per the result)
+使用酒：下一任务临时攻击+2，并承担一次口渴消耗	Used liquor: temporary attack +2 next mission, plus one thirst step
+防弹背心（	Bulletproof vest (
+防止任务中一次负面状态或生命损失。损坏时点、伤害范围待定：不会自动判定每次保护都会损坏。	Blocks one negative status or HP loss during a mission. When it breaks and what it covers are TBD: it doesn't assume every block breaks it.
+军人（草案）修复技能需要破损的背心。	The soldier (draft) repair skill needs a damaged vest.
+记录抵挡一次	Log one block
+标记完好（已修复）	Mark intact (repaired)
+背心抵挡	Vest block
+背心状态	Vest condition
+防弹背心抵挡一次（是否因此破损由主持人裁定）	The vest blocked one hit (the host decides whether it broke)
+防弹背心标记为	Vest marked as 
+用在哪里（可选）	Where it was used (optional)
+记录使用：	Log use: 
+使用次数：	Uses: 
+。未确定的使用不会自动扣数量。	. Undecided uses don't deduct quantity automatically.
+同时扣除数量	Also deduct quantity
+扣除件数	Pieces to deduct
+扣除件数需在 1～	Pieces to deduct must be 1–
+记录使用	Log use
+，扣除 	, deducted 
+，未扣数量	, quantity not deducted
+阶段性搜刮	Scavenge
+轮 × 	 rounds × 
+选项 × 	 options × 
+每轮几组物资组合（每组 	A few supply combos each round (each 
+ 单位；补给之外的物品每组最多一件），超时自动选默认项（第一项，已标明）。计时按截止时间计算，候选与选择立即存档：刷新或切到后台都不会多领一轮。	 units; non-supply items at most once per combo); on timeout the marked default (first option) is picked. The timer runs on deadlines and options and choices are saved right away: refreshing or switching away never gives an extra round.
+新所得进入待整理区：自留不超过 	New finds go to a sorting area: keep up to 
+ 单位，同时检查总库存 	 units, while also checking the inventory limit of 
+ 单位，其余形成交公清单。	 units; the rest becomes a hand-in list.
+开始搜刮（主持人通知后）	Start scavenging (after the host says go)
+候选从下方的搜刮模板生成，不扣公共池（实现假设，主持人可改）。	Options come from the scavenge template below and don't take from the pool (implementation choice; the host can change it).
+开始搜刮？	Start scavenging?
+请确认主持人已经通知开始。开始后计时不能暂停，刷新也不会重置。	Make sure the host has said go. Once started, the timer can't pause and refreshing won't reset it.
+开始搜刮	Start scavenging
+开始搜刮（第	~
+天）	~
+处理中…	Working…
+ 秒	s
+默认：超时自动选择	Default: picked on timeout
+（空）	(empty)
+已完成：	Done: 
+轮选 	~
+（超时默认）	 (timeout default)
+搜刮选择	Scavenge pick
+搜刮第	~
+轮选择 	~
+轮超时，按默认项记录	~
+搜刮超时	Scavenge timeout
+搜刮超时：自动选默认项（第一项）	Scavenge timed out: default picked (first option)
+，进入下一轮	, moving to the next round
+待整理区	Sorting area
+三轮已完成	Three rounds done
+轮 	~
+ · 每件	 · each 
+自留	Keep
+交公 	To pool 
+这次什么也没搜到。	Nothing found this time.
+本次自留：	Keeping this time: 
+（超出自留额度）	 (over the keep allowance)
+提交后总库存：	Inventory after submitting: 
+（超出总库存，只警告）	 (over the inventory limit, warning only)
+单独转出旧物品	Hand off old items separately
+ 腾出库存；不算进本次搜刮所得	 to free up space; they don't count as this scavenge's finds
+库存是空的。	Inventory is empty.
+预览并提交	Preview and submit
+预览：一次性提交	Preview: submit once
+自留（加入库存）：	Keep (added to inventory): 
+本次所得交公：	Finds handed in to the pool: 
+旧物品转出（不算本次所得）：	Old items handed off (not this scavenge's finds): 
+件）	 pcs)
+自留超过 	Keeping more than 
+ 单位。	 units. 
+提交后总库存超过 	After submitting, inventory exceeds 
+只警告，不阻断主持人裁定。	Warning only; the host still decides.
+主持人已裁定，仍然提交	The host has ruled — submit anyway
+提交后只能提交一次：自留物品加入库存，交公清单生成交接文本给主持人手动加入公共池。	You can only submit once: kept items go into your inventory, and the hand-in list becomes a handoff text for the host to add to the pool.
+返回修改	Back to edit
+确认提交	Confirm submit
+超出额度：请先勾选「主持人已裁定」	Over the allowance: tick “The host has ruled” first
+提交搜刮	Submit scavenge
+本次搜刮已提交，不会重复领取	This scavenge has been submitted; it won't pay out twice
+【搜刮交公·第	~
+另交出旧物品（不算本次所得）：	Also handing in old items (not this scavenge's finds): 
+自留 	Keep 
+（超出额度，已由主持人裁定）	 (over the allowance, ruled by the host)
+提交搜刮：自留 	Submitted scavenge: keep 
+；交公 	; to pool 
+；旧物品转出 	; old items handed off 
+交公清单：发给主持人	Hand-in list: send to the host
+上一次搜刮	Last scavenge
+已提交 	Submitted 
+复制交公清单	Copy hand-in list
+搜刮模板：	Scavenge template: 
+权重需为非负数字（0＝不出现）	Weight must be a non-negative number (0 = never appears)
+修改搜刮模板	Edit scavenge template
+自定义搜刮模板	Custom scavenge template
+所有物品都已在模板中	Every item is already in the template
+模板加入物品	Add items to template
+加入自定义物品（权重0）	Add custom items (weight 0)
+恢复示例模板	Restore sample template
+为今晚抽两份守夜候选，交给主持人	Draw two watch roster options for tonight and give them to the host
+尝试换位	Try a seat swap
+请求与别人交换实际座位，双方同意才生效	Ask someone to swap actual seats; it only happens if both agree
+使用职业技能	Use profession skill
+主持人允许的其他行动	Another action the host allows
+今天不行动	No action today
+已使用（未注明）	Used (type not noted)
+今日行动	Today's action
+取消今日行动：	Cancelled today's action: 
+技能	skill
+今日行动：	Today's action: 
+（改选，原为	 (changed from 
+可选：对谁、做了什么	Optional: on whom, what you did
+行动备注	Action note
+例如：制造子弹	e.g. make ammo
+回合	Turns
+ 天的行动	~
+还没选	Not chosen
+每天一次行动。点一个按钮点亮它，就记为今天的行动；再点一次取消，点别的就改选。只记在你自己的页面上，不会自动通知主持人。	One action per day. Tap a button to light it up and record it as today's action; tap again to cancel, or tap another to switch. It's only saved on your page and doesn't notify the host.
+先在下方选择职业	Choose a profession below first
+职业草案未启用	Profession drafts are off
+今天已标记使用行动（旧记录，未注明类型）。点一个按钮可补上类型。	Today's action was already marked as used (old record, type not noted). Tap a button to add the type.
+职业技能	Profession skill
+未选择	Not chosen
+选择职业	Choose profession
+职业：	Profession: 
+的技能	's skill
+还没有选择职业。	No profession chosen yet.
+使用职业技能会占用当天的行动：在上方点亮「使用职业技能」。职业没有专属分数，除非之后确认。	Using your profession skill takes today's action: light up “Use profession skill” above. Professions have no score of their own unless confirmed later.
+使用记录	Use log
+天：	~
+职业草案未启用（主持人明确启用后，在「存档 → 规则」打开）。	Profession drafts are off (turn them on under Save → Rules once the host enables them).
+制作进度	Crafting
+ 回合	 turns
+完成	Done
+删除制作	Delete crafting
+删除制作项：	Deleted crafting: 
+没有进行中的制作。	Nothing being crafted.
+请输入制作内容	Please enter what you're crafting
+回合数需为正整数或留空	Turns must be a positive integer or empty
+新增制作	Add crafting
+新增制作项：	Added crafting: 
+例如军人（草案）：持枪两个回合制造1份子弹、两个回合修复破损背心；两回合是否各耗行动未定。完成后请手动修改库存。	e.g. Soldier (draft): two turns with a rifle make 1 ammo; two turns repair a damaged vest; whether each turn costs an action is TBD. Update your inventory by hand when done.
+制作进度：	Crafting progress: 
+指向自己	Point to self
+：自己	: self
+身份与秘密	Identity & secrets
+姓名	Name
+由主持人私信分配，手动填写；可以是自己	Assigned by the host in a DM; enter it by hand. Can be yourself
+可以是自己；爱与恨能否是同一人尚未确定	Can be yourself; whether love and hate can be the same person is TBD
+选择任务	Choose mission
+秘密任务：	Secret mission: 
+任务完成后统一固定奖励（奖励值：	Completing a mission gives a fixed reward (value: 
+）。完成即锁定还是结算时判断，按任务与配置处理。停用草案：	). Whether it locks on completion or is judged at settlement depends on the mission and config. Retired drafts: 
+（不可选择）。	 (not selectable).
+秘密任务草案未启用。	Secret mission drafts are off.
+亲自参与的公共事件名称	Name of a public event you joined
+不同公共事件：	Different public events: 
+移除事件	Remove event
+这件事件已记录过（需不同事件）	That event is already recorded (must be different)
+记录参与事件	Log event joined
+冒险家：参与事件「	Adventurer: joined event “
+进度：	Progress: 
+任务进度	Mission progress
+进度 	Progress 
+库存里同一物品（面包、普通水除外）持有3件时，物品卡上会出现「囤积者：秘密消耗1件」按钮。	When you hold 3 of the same item (not bread or water), its card shows a “Hoarder: secretly use 1” button.
+在营救结算时由主持人判断：初始 	Judged by the host at rescue settlement: with 
+ 人时最多 	 starting players, at most 
+ 人死亡。	 may die.
+任务完成标记	Mission done mark
+：标记完成	: marked done
+：取消完成标记	: done mark removed
+已完成（由主持人确认）	Done (confirmed by the host)
+手动分数	Manual scores
+【分数上报·第	~
+：钞票	: cash 
+、名画	, paintings 
+、珠宝	, jewels 
+ → 财富分 	 → wealth pts 
+需主持人计分	host must score
+；地图笔记 	; map notes 
+；任务 	; mission 
+（已完成）	 (done)
+（进度 	 (progress 
+ × 1 ＋ 名画 	 × 1 + paintings 
+ × 6 ＋ 珠宝 	 × 6 + jewels 
+ 件（查表：	 pcs (table: 
+超过5件	more than 5
+珠宝 1～5 件总分依次 1、4、8、11、15；超过5件不自行外推。	1–5 jewels score 1, 4, 8, 11, 15 in total; beyond 5 isn't extrapolated.
+笔记合计 	Notes total 
+ 条（每条1分）	 (1 pt each)
+转移后笔记归属、损坏后分数与死亡后的地图分由主持人裁定，不并入死亡即清零的财富。	Note ownership after a transfer, and points after damage or death, are up to the host; map points are not part of the wealth that resets on death.
+地图分（主持人裁定）	Map points (host decides)
+留空＝待定	Empty = TBD
+分值待配置	Point value not configured
+固定奖励值待配置	Fixed reward not configured
+合计（已知部分）：	Total (known part): 
+部分分数／待裁定：	Partial score / pending rulings: 
+上报给主持人	Report to the host
+复制分数上报	Copy score report
+主持人手动录入，不会自动同步	The host enters it by hand; nothing syncs
+例如：3	e.g. 3
+记录座次	Record seat
+记录座次：	Seat recorded: 
+例如：公共池还剩面包；今晚守夜是 A、B。	e.g. bread left in the pool; tonight's watch is A and B.
+公共信息记录	Public info notes
+公共库存、座次、日期由主持人维护权威记录；这里只手动记必要信息。	The host keeps the official records of the pool, seating and date; note only what you need here.
+当前第几天	Current day
+我的座次	My seat
+规则开关	Rule switches
+请输入 0.5 的倍数或留空	Enter a multiple of 0.5 or leave empty
+请输入整数或留空	Enter an integer or leave empty
+粘贴主持人发来的规则包 JSON	Paste the rules pack JSON from the host
+规则（本机副本）	Rules (local copy)
+以主持人通知为准	The host's word wins
+个人总库存上限（暂定10）	Personal inventory limit (tentative 10)
+搜刮自留额度（4）	Scavenge keep allowance (4)
+事件携带上限默认值	Event carry limit default
+守夜携带上限（待定）	Watch carry limit (TBD)
+水壶内每份水占位（待定）	Space per water in canteen (TBD)
+生命上限（待定）	Max HP (TBD)
+充盈阈值 ≥（待定）	Full threshold ≥ (TBD)
+饥饿阈值 ≤（待定）	Hungry threshold ≤ (TBD)
+导入主持人规则包	Import host rules pack
+只更新规则与自定义物品（以及包里附带的搜刮模板），不碰你的库存和状态。	Only updates rules and custom items (and any scavenge template in the pack); your inventory and status are untouched.
+不是有效的 JSON	Not valid JSON
+导入失败：规则未改动	Import failed: rules unchanged
+导入规则包	Import rules pack
+规则包已导入	Rules pack imported
+自动保存到本机	Auto-saved on this device
+本地保存不可用：仅内存	Local storage unavailable: memory only
+玩家存档与主持人存档使用不同的命名空间。导入前会校验并备份旧存档，导入失败不会覆盖当前存档。	Player and host saves use different namespaces. Imports are validated and the old save is backed up first; a failed import never overwrites your current save.
+导入文件	Import file
+恢复	Restore
+独立的存储位置：载入、修改、清空都不会碰到你的正式存档。	A separate storage slot: loading, editing or clearing it never touches your real save.
+存档（先自动备份）。	 save (backed up first).
+交接记录（	Handoff log (
+ 赠予、交公、治疗他人、搜刮交公	 Gifts, hand-ins, treating others, scavenge hand-ins
+暂无。	None yet.
+个人日志（	Personal log (
+搜刮：离开期间已超时的回合按默认项记录	Scavenge: rounds that timed out while you were away were recorded with defaults
+另一个标签页修改了同一份玩家存档。请只保留一个标签页，然后刷新本页。	Another tab changed the same player save. Keep only one tab open, then refresh this page.
+抽到两张守夜候选卡	Drew two watch cards
+选择守夜候选卡	Choose watch card
+守夜名单	Watch roster
+已选第 	Picked #
+ 张	 
+我的两张候选卡	My two cards
+每张卡写明谁守夜、倾向和可能遭遇。选一张，把代码发给主持人；主持人把它放进今天的候选池。只有你一个人计划时，你选的直接生效。	Each card says who keeps watch, the tendency and possible outcomes. Pick one and send the code to the host, who adds it to today's pool. If you're the only planner, your pick takes effect directly.
+还没有玩家名单：卡片只写人数，主持人收到代码后按存活名单抽人。导入主持人的规则包后会显示名字。 	No player list yet: cards only show a headcount, and the host draws names from the living players on receiving your code. Import the host's rules pack to see names. 
+去导入规则包	Import the rules pack
+【守夜提交·第	~
+：我选第 	: I pick card 
+ 张。\n	.\n
+复制给主持人	Copy for the host
+私发给主持人，主持人粘贴进「守夜」页	Send privately to the host, who pastes it on the Watch page
+今天的行动不是「计划守夜名单」：卡片保留，重新点亮后还是这两张。	Today's action isn't “Plan watch roster”: the cards are kept, and you get the same two if you light it up again.
+点亮上方「计划守夜名单」后，会在这里抽两张候选卡。	Light up “Plan watch roster” above to draw two cards here.
+粘贴主持人发来的名单码（SHELTER-POOL…）	Paste the list code from the host (SHELTER-POOL…)
+粘贴主持人发来的名单码	Paste the list code from the host
+这不是主持人发来的名单码	This isn't a list code from the host
+收到守夜名单码	Watch list code received
+收到第	~
+天的守夜名单码：	~
+末位拍板	Last-seat decision
+两人及以上计划时，由实际换位后座次最后的玩家从所有提交里选一份。只负责拍板不算计划者。主持人会把名单码发给你，粘贴进来就能看到所有提交：	When two or more players plan, the player in the last seat (after swaps) picks one of the submissions. Only deciding doesn't count as planning. The host sends you a list code — paste it here to see every submission:
+读取名单码	Read list code
+ 天 · 	~
+ 份提交：点一份作为最终名单。	 submissions: tap one as the final roster.
+ 提交 · 	 submitted · 
+守夜拍板：选择 	Watch decision: picked 
+ 提交的名单	's roster
+：我选 	: I pick 
+ 提交的名单。\n	's roster.\n
+复制拍板码给主持人	Copy pick code for the host
+私发给主持人	Send privately to the host
+守夜卡片显示可能遭遇	Show possible outcomes on watch cards
+玩家名单：	Player list: 
+ 天导入）	~
+还没有导入（规则包里带，守夜候选卡要用来显示名字）	Not imported yet (it comes with the rules pack; watch cards use it to show names)
+只更新规则、自定义物品、玩家名单与守夜名单模板（以及包里附带的搜刮模板），不碰你的库存和状态。	Only updates rules, custom items, the player list and watch roster templates (plus any scavenge template in the pack); your inventory and status are untouched.
+ · 收到主持人的名单码时用	 · use it when the host sends you a list code

@@ -4,6 +4,7 @@ shelter/src
 shelter/tests
 shelter/node_modules
 shelter/build.mjs
+shelter/tools
 shelter/package.json
 shelter/package-lock.json
 shelter/.gitignore

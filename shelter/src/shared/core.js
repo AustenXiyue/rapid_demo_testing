@@ -187,6 +187,9 @@
     }
     var lower = key.toLowerCase();
     for (var j = 0; j < defs.length; j++) if (defs[j].id.toLowerCase() === lower) return defs[j];
+    // 英文界面下也能用英文名录入（Bread×3）：词典由页面内联，单元测试环境里没有
+    var en = typeof window !== 'undefined' && window.SHELTER_I18N_EN;
+    if (en) for (var k = 0; k < defs.length; k++) if (en[defs[k].name] && String(en[defs[k].name]).toLowerCase() === lower) return defs[k];
     return null;
   }
 
@@ -275,7 +278,8 @@
       hungerInitial: null,
       eventChance: 80,
       eventPosition: null,
-      watchSize: 2,
+      watchSize: null,
+      watchShowEffects: true,
       swapRequestLimit: 3,
       rescueTarget: null,
       scoreSurvival: null,
@@ -290,7 +294,7 @@
       scavengeOptions: 3,
       scavengeSeconds: 7,
       scavengeComboTicks: 4,
-      rulesRev: 2
+      rulesRev: 3
     };
   }
 
@@ -313,7 +317,8 @@
     { key: 'eventChance', label: '每日事件触发概率（%）', type: 'int', min: 0, max: 100, status: 'confirmed', note: '80%有事件、20%无；只控制是否触发' },
     { key: 'eventPosition', label: '公共事件位置', type: 'select', nullable: true, status: 'pending',
       options: [['beforeSupply', '阶段2（资源补给）之前'], ['afterWatch', '阶段6（确认守夜）之后']], note: '未选时由主持人手动触发' },
-    { key: 'watchSize', label: '守夜人数（「指定N人」）', type: 'int', min: 1, status: 'confirmed', note: '6人局通常2人，特殊条件可改' },
+    { key: 'watchSize', label: '守夜人数（随机抽人时）', type: 'int', nullable: true, min: 1, status: 'confirmed', note: '留空＝存活人数的三分之一，向上取整（6人2人、7人3人）；特殊条件可改' },
+    { key: 'watchShowEffects', label: '守夜卡片提前显示可能遭遇', type: 'bool', status: 'tentative', note: '风险后果是否提前可见尚未确定：暂定显示；关闭后卡片上只写「主持人确认后公布」' },
     { key: 'swapRequestLimit', label: '每人换位请求上限', type: 'int', min: 0, status: 'confirmed', note: '最多3次；主持人可覆盖' },
     { key: 'rescueTarget', label: '营救阈值', type: 'int', nullable: true, status: 'pending', note: '阈值未知：不自动结束，主持人点击结算' },
     { key: 'scoreSurvival', label: '基础生存分', type: 'int', nullable: true, status: 'pending' },
@@ -345,6 +350,10 @@
     if (rules && rules.rulesRev == null) {
       if (out.scavengeSeconds === 5) out.scavengeSeconds = base.scavengeSeconds;
       if (out.scavengeComboTicks === 6) out.scavengeComboTicks = base.scavengeComboTicks;
+    }
+    // 第3版：守夜人数默认改成「存活人数的三分之一向上取整」；旧存档里仍是旧默认值 2 的跟着改
+    if (rules && (rules.rulesRev == null || rules.rulesRev < 3)) {
+      if (out.watchSize === 2) out.watchSize = null;
       out.rulesRev = base.rulesRev;
     }
     return out;
@@ -865,12 +874,12 @@
   // ---------------------------------------------------------------- 守夜
 
   var WATCH_KINDS = [
-    { id: 'designated', name: '指定N人', people: true },
-    { id: 'planners', name: '今天计划过名单的人', people: true },
-    { id: 'skillUsers', name: '今天使用过技能的人', people: true },
-    { id: 'everyone', name: '全员', people: true },
-    { id: 'rescue', name: '更可能获得营救信息', people: false },
-    { id: 'danger', name: '更可能遭遇不测', people: false }
+    { id: 'designated', name: '随机抽人', people: true, weight: 6 },
+    { id: 'planners', name: '按行动指定：今天使用行动计划守夜名单的人守夜', people: true, weight: 1 },
+    { id: 'skillUsers', name: '按行动指定：今天使用职业技能的人守夜', people: true, weight: 1 },
+    { id: 'everyone', name: '全体指定：所有人今晚守夜', people: true, weight: 0.5 },
+    { id: 'rescue', name: '收益倾向', people: false },
+    { id: 'danger', name: '风险倾向', people: false }
   ];
 
   var WATCH_COMBINE = [
@@ -880,56 +889,218 @@
   ];
 
   var TENDENCY_NAMES = { neutral: '中性', rescue: '更可能获得营救信息', danger: '更可能遭遇不测' };
+  /* 卡片上的倾向说明（说明书原话） */
+  var TENDENCY_TEXT = { rescue: '这份守夜名单似乎能获得更多获救信息', danger: '这份守夜名单或许在今晚会遭遇更多不测' };
+
+  /*
+   * 守夜可能产生的遭遇（说明书：口渴、额外饥饿、受伤、负面状态、无事发生，或获得营救信息／关键物资）。
+   * 每张卡随机 1～2 条；涉及个人的随机落在 1～2 名守夜者身上。权重与倾向修正都是实现假设，主持人可裁定。
+   */
+  var WATCH_EFFECTS = [
+    { id: 'thirst', name: '口渴', people: true, weight: 3 },
+    { id: 'hunger', name: '额外饥饿', people: true, weight: 3 },
+    { id: 'injury', name: '受伤', people: true, weight: 1.5 },
+    { id: 'status', name: '负面状态', people: true, weight: 1 },
+    { id: 'quiet', name: '无事发生', people: false, weight: 2 },
+    { id: 'rescue', name: '获得营救信息／关键物资', people: false, weight: 1.5 }
+  ];
+  var TENDENCY_BIAS = { rescue: { rescue: 3, quiet: 1.5 }, danger: { injury: 2.5, status: 2.5, rescue: 0.3 } };
+
+  function watchEffectName(id) {
+    for (var i = 0; i < WATCH_EFFECTS.length; i++) if (WATCH_EFFECTS[i].id === id) return WATCH_EFFECTS[i].name;
+    return id;
+  }
+
+  /** 随机抽人时的守夜人数：规则里填了就用规则，否则存活人数的三分之一向上取整（至少 1 人）。 */
+  function watchCount(aliveCount, rules) {
+    if (rules && isInt(rules.watchSize) && rules.watchSize > 0) return rules.watchSize;
+    return Math.max(1, Math.ceil((aliveCount || 0) / 3));
+  }
 
   function watchKindName(kind, count) {
-    if (kind === 'designated') return '指定' + (count || 2) + '人';
+    if (kind === 'designated') return '随机 ' + (count || 2) + ' 人守夜';
     for (var i = 0; i < WATCH_KINDS.length; i++) if (WATCH_KINDS[i].id === kind) return WATCH_KINDS[i].name;
     return kind;
   }
 
-  /** 默认名单模板：说明里列出的六种条目各一条，单条不混合。 */
+  /**
+   * 默认名单模板（第2版）：随机抽人为主，另有按行动指定、全体指定；收益／风险倾向不再单独成卡，而是随机加在卡片上。
+   * 名单条目如何组合、具体概率尚未确定：权重是实现假设，主持人可在「守夜」页修改。
+   */
   function defaultWatchTemplates() {
-    return WATCH_KINDS.map(function (k) {
+    return WATCH_KINDS.filter(function (k) { return k.people; }).map(function (k) {
       return {
         id: 'wt_' + k.id,
-        name: k.id === 'designated' ? '指定两人' : k.name,
-        entries: [{ kind: k.id, count: k.id === 'designated' ? 2 : null }],
+        name: k.name,
+        entries: [{ kind: k.id, count: null }],
         combine: 'single',
-        weight: 1,
+        weight: k.weight,
         enabled: true,
-        note: k.people ? '' : '只表达风险倾向，不含对象：确认时由主持人指定人员。'
+        note: '',
+        rev: 2
       };
     });
   }
 
   function newWatchTemplate() {
-    return { id: uid('wt'), name: '新名单模板', entries: [{ kind: 'designated', count: 2 }], combine: 'pending', weight: 1, enabled: true, note: '' };
+    return { id: uid('wt'), name: '新名单模板', entries: [{ kind: 'designated', count: null }], combine: 'pending', weight: 1, enabled: true, note: '' };
   }
 
-  /** 为一份名单模板生成候选：「指定N人」在生成时就抽定人员并保存，刷新不变。 */
-  function makeWatchOption(template, aliveIds, rng, watchSize) {
-    var opt = { id: uid('wo'), templateId: template.id, template: clone(template), designatedIds: null };
-    for (var i = 0; i < template.entries.length; i++) {
-      var e = template.entries[i];
-      if (e.kind === 'designated') {
-        var n = isInt(e.count) && e.count > 0 ? e.count : watchSize || 2;
-        opt.designatedIds = sample(aliveIds, n, rng);
-        break;
+  /** 第1版的默认模板（六条、权重都是1、没有 rev）原样未改时，换成第2版默认模板。 */
+  function isOldDefaultWatchTemplates(list) {
+    if (!Array.isArray(list) || list.length !== 6) return false;
+    var ids = ['wt_designated', 'wt_planners', 'wt_skillUsers', 'wt_everyone', 'wt_rescue', 'wt_danger'];
+    return list.every(function (t, i) { return t && t.id === ids[i] && !t.rev && t.weight === 1; });
+  }
+
+  function pickWeighted(list, weightOf, rng) {
+    var i = weightedIndex(list, weightOf, rng);
+    return i < 0 ? null : list[i];
+  }
+
+  /**
+   * 生成一张守夜候选卡。ctx: { alive: [{id, name}], rules }
+   * 卡片在生成时就定下：守夜的人（随机抽人时抽定）、倾向、1～2 条可能遭遇。存档后刷新不变。
+   * 不知道玩家名单时（玩家页还没导入规则包），只记人数，名字由主持人收到代码时按存活名单抽出。
+   */
+  function makeWatchCard(template, ctx, rng) {
+    rng = rng || Math.random;
+    var alive = (ctx && ctx.alive) || [];
+    var rules = (ctx && ctx.rules) || {};
+    var n = watchCount(alive.length || rules.playerCount || 0, rules);
+    var card = {
+      id: uid('wc'), templateId: template.id, template: clone(template),
+      count: null, designatedIds: null, designatedNames: null, tendency: null, effects: []
+    };
+    var watchers = null; // 生成时就知道是谁守夜（随机抽人、全体）；按行动指定的要等当天记录
+    var hasPeople = false;
+    (template.entries || []).forEach(function (e) {
+      if (e.kind === 'designated' && !card.count) {
+        hasPeople = true;
+        card.count = isInt(e.count) && e.count > 0 ? e.count : n;
+        if (alive.length) {
+          var picked = sample(alive, Math.min(card.count, alive.length), rng);
+          card.designatedIds = picked.map(function (p) { return p.id; });
+          card.designatedNames = picked.map(function (p) { return p.name; });
+          watchers = picked;
+        }
+      } else if (e.kind === 'everyone') {
+        hasPeople = true;
+        if (alive.length && !watchers) watchers = alive.slice();
+      } else if (e.kind === 'planners' || e.kind === 'skillUsers') {
+        hasPeople = true;
+      } else if ((e.kind === 'rescue' || e.kind === 'danger') && !card.tendency) {
+        card.tendency = e.kind;
+      }
+    });
+    // 只有倾向、没有人员的旧模板：补上随机抽人
+    if (!hasPeople) {
+      card.count = n;
+      if (alive.length) {
+        var p2 = sample(alive, Math.min(n, alive.length), rng);
+        card.designatedIds = p2.map(function (p) { return p.id; });
+        card.designatedNames = p2.map(function (p) { return p.name; });
+        watchers = p2;
       }
     }
-    return opt;
+    if (!card.tendency) {
+      var r = rng();
+      card.tendency = r < 0.25 ? 'rescue' : r < 0.5 ? 'danger' : null;
+    }
+    var bias = TENDENCY_BIAS[card.tendency] || {};
+    var pool = WATCH_EFFECTS.slice();
+    var howMany = rng() < 0.5 ? 1 : 2;
+    while (card.effects.length < howMany && pool.length) {
+      var fx = pickWeighted(pool, function (x) { return x.weight * (bias[x.id] || 1); }, rng);
+      if (!fx) break;
+      pool.splice(pool.indexOf(fx), 1);
+      if (fx.id === 'quiet' && card.effects.length) continue; // 「无事发生」不和其他遭遇同时出现
+      var entry = { type: fx.id, count: null, ids: null, names: null };
+      if (fx.people) {
+        entry.count = rng() < 0.5 ? 1 : 2;
+        if (watchers && watchers.length) {
+          var who = sample(watchers, Math.min(entry.count, watchers.length), rng);
+          entry.count = who.length;
+          entry.ids = who.map(function (p) { return p.id; });
+          entry.names = who.map(function (p) { return p.name; });
+        }
+      }
+      card.effects.push(entry);
+      if (fx.id === 'quiet') break;
+    }
+    return card;
   }
 
-  /** 计划者获得两份随机名单（模板无放回加权抽取）。 */
-  function drawWatchOptions(templates, aliveIds, rng, watchSize) {
+  /**
+   * 计划者的两张候选卡：每张从启用的模板里加权抽一条。随机抽人可以两张都是（人不同）；
+   * 按行动指定、全体指定这类条件同一对卡里只出现一次（两张一样的卡没有意义）。
+   */
+  function drawWatchCards(templates, ctx, rng) {
     var pool = (templates || []).filter(function (t) { return t.enabled; });
     var out = [];
-    while (out.length < 2 && pool.length) {
+    var guard = 0;
+    while (out.length < 2 && pool.length && guard++ < 10) {
       var idx = weightedIndex(pool, function (t) { return t.weight == null ? 1 : t.weight; }, rng);
       if (idx < 0) break;
-      out.push(makeWatchOption(pool.splice(idx, 1)[0], aliveIds, rng, watchSize));
+      var tpl = pool[idx];
+      var random = (tpl.entries || []).some(function (e) { return e.kind === 'designated'; });
+      if (!random) pool.splice(idx, 1);
+      var card = makeWatchCard(tpl, ctx, rng);
+      // 两张随机卡抽到同一组人时重抽（人数不够换人时就算了）
+      for (var tries = 0; tries < 4 && random && out.length && sameWatchers(out[0], card); tries++) card = makeWatchCard(tpl, ctx, rng);
+      out.push(card);
     }
     return out;
+  }
+
+  function sameWatchers(a, b) {
+    if (!a.designatedIds || !b.designatedIds) return false;
+    return a.designatedIds.slice().sort().join('|') === b.designatedIds.slice().sort().join('|');
+  }
+
+  /* 兼容旧调用：aliveIds 没有名字时用 id 当名字 */
+  function drawWatchOptions(templates, aliveIds, rng, watchSize) {
+    var alive = (aliveIds || []).map(function (id) { return { id: id, name: id }; });
+    return drawWatchCards(templates, { alive: alive, rules: { watchSize: watchSize } }, rng);
+  }
+
+  /**
+   * 卡片的可读内容：谁守夜、倾向、可能遭遇。nameOf 把 id 换成名字（主持人端）；玩家端卡片自带名字。
+   * showEffects=false 时遭遇只写「主持人确认后公布」。
+   */
+  function watchCardText(card, nameOf, showEffects) {
+    var nm = function (ids, names) {
+      if (names && names.length) return names.join('、');
+      if (ids && ids.length && nameOf) return ids.map(nameOf).join('、');
+      return '';
+    };
+    var who;
+    var kind = ((card.template && card.template.entries) || [])[0];
+    // 旧版存档里的候选没有 count，但有 designatedIds：照样列出名字
+    if ((card.designatedIds && card.designatedIds.length) || (card.designatedNames && card.designatedNames.length) || (card.count && (!kind || kind.kind === 'designated' || kind.kind === 'rescue' || kind.kind === 'danger'))) {
+      var list = nm(card.designatedIds, card.designatedNames);
+      who = list ? list + ' 守夜' : '随机 ' + (card.count || 2) + ' 人守夜（主持人收到代码后按存活名单抽出）';
+    } else if (kind && kind.kind === 'planners') {
+      who = '今天使用行动计划守夜名单的人守夜';
+    } else if (kind && kind.kind === 'skillUsers') {
+      who = '今天使用职业技能的人守夜';
+    } else if (kind && kind.kind === 'everyone') {
+      who = '所有人今晚守夜';
+    } else {
+      who = card.template ? card.template.name : '';
+    }
+    var effects = (card.effects || []).map(function (e) {
+      var people = nm(e.ids, e.names);
+      if (e.type === 'quiet' || e.type === 'rescue') return watchEffectName(e.type);
+      return watchEffectName(e.type) + '：' + (people || (e.count || 1) + ' 名守夜者');
+    });
+    return {
+      title: card.template ? card.template.name : '',
+      who: who,
+      tendency: card.tendency ? TENDENCY_TEXT[card.tendency] : '',
+      tendencyKind: card.tendency || null,
+      effects: showEffects === false ? ['可能遭遇：主持人确认后公布'] : effects
+    };
   }
 
   /**
@@ -945,6 +1116,7 @@
     (opt.template.entries || []).forEach(function (e) {
       var ids = null;
       if (e.kind === 'designated') ids = opt.designatedIds || [];
+      else if ((e.kind === 'rescue' || e.kind === 'danger') && opt.designatedIds) { ids = opt.designatedIds; if (tendencies.indexOf(e.kind) < 0) tendencies.push(e.kind); }
       else if (e.kind === 'planners') ids = ctx.plannerIds || [];
       else if (e.kind === 'skillUsers') ids = ctx.skillUserIds || [];
       else if (e.kind === 'everyone') ids = ctx.aliveIds || [];
@@ -956,6 +1128,7 @@
         });
       }
     });
+    if (opt.tendency && tendencies.indexOf(opt.tendency) < 0) tendencies.push(opt.tendency);
     var needsHost = false;
     if (peopleEntries === 0) {
       needsHost = true;
@@ -981,27 +1154,69 @@
     return (today.watchCandidates || []).filter(function (c) { return isInt(c.chosenIndex); });
   }
 
-  /** 名单的人类可读描述（私信文本用）。nameOf: id → 姓名 */
-  function describeWatchOption(opt, nameOf) {
-    var entries = opt.template.entries || [];
-    var parts = entries.map(function (e) {
-      var detail = '';
-      if (e.kind === 'designated') {
-        var names = (opt.designatedIds || []).map(nameOf).join('、');
-        detail = names ? '：' + names : '';
-      } else if (e.kind === 'planners' || e.kind === 'skillUsers') {
-        detail = '（按当日记录结算）';
-      }
-      return { label: watchKindName(e.kind, e.count), detail: detail };
-    });
-    var name = opt.template.name;
-    // 单条名单且名称就是条目本身（如「指定两人」「全员」）时不重复书写
-    if (parts.length === 1 && (parts[0].label === name || entries[0].kind === 'designated')) return '「' + name + '」' + parts[0].detail;
-    var combine = '';
-    if (entries.length > 1) {
-      for (var i = 0; i < WATCH_COMBINE.length; i++) if (WATCH_COMBINE[i].id === opt.template.combine) combine = '｜' + WATCH_COMBINE[i].name;
+  /** 名单的一行描述（日志、私信用）。nameOf: id → 姓名 */
+  function describeWatchOption(opt, nameOf, showEffects) {
+    var t = watchCardText(opt, nameOf, showEffects);
+    return '「' + t.title + '」' + t.who + (t.tendency ? '；' + t.tendency : '') + (t.effects.length ? '；' + t.effects.join('，') : '');
+  }
+
+  // ---------------------------------------------------------------- 分享代码（玩家⇄主持人，复制粘贴即可）
+
+  /** SHELTER-<类型>:<base64(JSON)>。前后可以夹带说明文字，粘贴整条消息也能读出来。 */
+  function encodeShareCode(kind, data) {
+    var json = JSON.stringify(data);
+    var b64 = typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(json))) : Buffer.from(json, 'utf8').toString('base64');
+    return 'SHELTER-' + kind + ':' + b64;
+  }
+
+  function decodeShareCode(text) {
+    var m = String(text || '').match(/SHELTER-([A-Z]+):([A-Za-z0-9+/=]+)/);
+    if (!m) return { ok: false, reason: '没有找到代码：请粘贴以 SHELTER- 开头的整段内容' };
+    try {
+      var json = typeof atob === 'function' ? decodeURIComponent(escape(atob(m[2]))) : Buffer.from(m[2], 'base64').toString('utf8');
+      return { ok: true, kind: m[1], data: JSON.parse(json) };
+    } catch (e) {
+      return { ok: false, reason: '代码不完整或已损坏：请重新复制整段' };
     }
-    return '「' + name + '」' + parts.map(function (p) { return p.label + p.detail; }).join(' + ') + combine;
+  }
+
+  /** 字符串 → 随机种子：同一个玩家同一天抽到的候选卡固定，撤销或重新点亮都不会重抽。 */
+  function hashSeed(str) {
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+    return h || 1;
+  }
+
+  /** 玩家导入的名单：名字当 id 用（玩家端不知道主持人端的 id）。 */
+  function rosterAlive(roster) {
+    return ((roster && roster.players) || []).filter(function (p) { return p && p.name && p.alive !== false; })
+      .map(function (p) { return { id: p.name, name: p.name }; });
+  }
+
+  /**
+   * 主持人收到玩家的卡片后，把名字换成本地玩家 id；没有名字（玩家没导入名单）的随机抽人在这里按存活名单补抽。
+   * players: [{id, name, alive}]。返回 { card, unknown: [不认识的名字] }。
+   */
+  function adoptWatchCard(card, players, rng) {
+    var c = clone(card);
+    var unknown = [];
+    var alive = players.filter(function (p) { return p.alive !== false; });
+    function idsOf(names) {
+      var out = [];
+      (names || []).forEach(function (nm) {
+        var p = players.filter(function (x) { return x.name === nm; })[0];
+        if (p) out.push(p.id); else unknown.push(nm);
+      });
+      return out;
+    }
+    if (c.designatedNames) c.designatedIds = idsOf(c.designatedNames);
+    else if (c.count && !c.designatedIds) {
+      var picked = sample(alive, Math.min(c.count, alive.length), rng || Math.random);
+      c.designatedIds = picked.map(function (p) { return p.id; });
+      c.designatedNames = picked.map(function (p) { return p.name; });
+    }
+    (c.effects || []).forEach(function (e) { if (e.names) e.ids = idsOf(e.names); });
+    return { card: c, unknown: unknown };
   }
 
   /** 夜间遭遇按权重抽取：只有候选结果全部填了权重才允许自动抽签。 */
@@ -1292,6 +1507,9 @@
       out.push({ level: 'warning', text: '搜刮进行中：第 ' + s.scavenge.rounds.length + '／' + s.scavenge.cfg.rounds + ' 轮，超时会自动选默认项', tab: 'scavenge' });
     } else if (s.scavenge && s.scavenge.status === 'organize') {
       out.push({ level: 'warning', text: '搜刮三轮已完成：待整理并一次性提交', tab: 'scavenge' });
+    }
+    if (s.action && s.action.day === day && s.action.used && s.action.type === 'plan' && s.watchPlan && s.watchPlan.day === day && s.watchPlan.chosen == null) {
+      out.push({ level: 'warning', text: '守夜候选卡还没选：选一张后把代码发给主持人', tab: 'action' });
     }
     if (s.alive !== false && !(s.action && s.action.day === day && s.action.used)) {
       out.push({ level: 'info', text: '第 ' + day + ' 天的个人行动未标记为已使用', tab: 'action' });
@@ -1620,6 +1838,10 @@
       hp: rules.hpInitial,
       hunger: rules.hungerInitial,
       hungerManual: '普通',
+      roster: null,
+      watchTemplates: null,
+      watchPlan: null,
+      watchPick: null,
       thirst: '不渴',
       consciousness: '清醒',
       statuses: [],
@@ -1699,6 +1921,7 @@
       out.stage = Object.assign({ event: null, showPoolCount: false }, obj.stage || {});
       out.timer = Object.assign({ durationMs: 180000, remainingMs: 180000, endsAt: null, running: false }, obj.timer || {});
       out.opening = Object.assign({ items: [], note: '', done: [false, false] }, obj.opening || {});
+      if (isOldDefaultWatchTemplates(out.watchTemplates)) out.watchTemplates = defaultWatchTemplates();
     } else {
       out.publicInfo = Object.assign({ day: 1, seat: '', notes: '' }, obj.publicInfo || {});
       out.manualScores = Object.assign({ loveHate: null, survival: null, task: null, adjust: null, note: '' }, obj.manualScores || {});
@@ -1718,7 +1941,10 @@
       exportedAt: Date.now(),
       rules: clone(state.rules),
       customItems: clone(state.customItems || []),
-      scavengeTemplate: scavengeTemplate ? clone(scavengeTemplate) : null
+      scavengeTemplate: scavengeTemplate ? clone(scavengeTemplate) : null,
+      // 玩家页生成守夜卡片要用：存活玩家名单与名单模板（都不是秘密）
+      roster: state.players ? { day: state.day, players: state.players.map(function (p) { return { name: p.name, alive: p.alive !== false }; }) } : null,
+      watchTemplates: state.watchTemplates ? clone(state.watchTemplates) : null
     };
   }
 
@@ -1806,8 +2032,19 @@
     watchKindName: watchKindName,
     defaultWatchTemplates: defaultWatchTemplates,
     newWatchTemplate: newWatchTemplate,
-    makeWatchOption: makeWatchOption,
     drawWatchOptions: drawWatchOptions,
+    drawWatchCards: drawWatchCards,
+    makeWatchCard: makeWatchCard,
+    watchCardText: watchCardText,
+    watchCount: watchCount,
+    WATCH_EFFECTS: WATCH_EFFECTS,
+    TENDENCY_TEXT: TENDENCY_TEXT,
+    encodeShareCode: encodeShareCode,
+    decodeShareCode: decodeShareCode,
+    rosterAlive: rosterAlive,
+    hashSeed: hashSeed,
+    adoptWatchCard: adoptWatchCard,
+    isOldDefaultWatchTemplates: isOldDefaultWatchTemplates,
     resolveWatchOption: resolveWatchOption,
     watchMode: watchMode,
     submittedCandidates: submittedCandidates,
