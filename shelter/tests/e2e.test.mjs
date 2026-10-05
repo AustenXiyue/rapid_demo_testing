@@ -131,7 +131,7 @@ test('两端存档独立；刷新恢复；导入失败不覆盖旧档', async ()
   assert.equal((await read(host, HOST_KEY)).players[0].name, '正式玩家甲');
 
   const { page: player } = await open(context, PLAYER);
-  await tab(player, 'identity');
+  await tab(player, 'action');
   const nameInput = player.locator('.field', { hasText: '姓名' }).locator('input');
   await nameInput.fill('小周');
   await nameInput.press('Enter');
@@ -647,27 +647,103 @@ test('玩家：治疗他人、赠予与交公都生成人工交接文本', async
   await context.close();
 });
 
-test('玩家：携带只引用库存实例，返回时不重复添加', async () => {
-  const { context } = await newContext({ viewport: { width: 390, height: 844 } });
-  const { page } = await open(context, PLAYER);
+test('玩家：携带模式在库存页——默认上限2单位、确认后其他物品锁定、携带物品可删除、结束携带不重复添加', async () => {
+  const { context } = await newContext();
+  const { page, errors } = await open(context, PLAYER);
   await playerDemo(page);
   const before = await read(page, PLAYER_DEMO);
   const countBefore = before.inventory.reduce((n, e) => n + e.qty, 0);
-  await tab(page, 'loadout');
-  await btn(page, '为守夜准备携带').click();
-  await page.getByText('守夜上限待配置').waitFor();
-  const rifle = before.inventory.find((e) => e.defId === 'rifle');
-  await page.locator('li', { hasText: '军用步枪' }).getByRole('button', { name: '+', exact: true }).click();
-  await page.getByText('无弹，仅可恐吓').waitFor();
-  await btn(page, '返回：清空携带标记').click();
-  const after = await read(page, PLAYER_DEMO);
-  assert.equal(after.loadout, null);
-  assert.equal(after.inventory.reduce((n, e) => n + e.qty, 0), countBefore, '库存件数不变');
-  assert.ok(after.inventory.some((e) => e.id === rifle.id));
+  const find = (id) => before.inventory.find((e) => e.defId === id);
+  const [rifle, map, vest] = [find('rifle'), find('map'), find('vest')];
+  const card = (e) => page.locator(`[data-entry="${e.id}"]`);
+  await tab(page, 'inventory');
+  await btn(page, '携带模式').click();
+  await modal(page).getByRole('button', { name: '守夜', exact: true }).click();
+  await modalBtn(page, '开始挑选');
+  let s = await read(page, PLAYER_DEMO);
+  assert.equal(s.loadout.limitTicks, 4, '守夜上限未配置时默认 2 单位');
+  assert.equal(s.loadout.confirmed, false);
+  await card(rifle).getByRole('button', { name: '多带一件军用步枪' }).click();
+  await card(map).getByRole('button', { name: '带上' }).click();
+  assert.ok(await card(vest).getByRole('button', { name: '带上' }).isDisabled(), '超过 2 单位的选不上');
+  await page.getByRole('button', { name: /^确认携带/ }).click();
+  s = await read(page, PLAYER_DEMO);
+  assert.equal(s.loadout.confirmed, true);
+  assert.equal(await card(vest).getAttribute('inert'), '', '其他物品锁定');
+  assert.equal(await card(vest).getByRole('button').count(), 0, '锁定的卡片没有可点的按钮');
+  await page.locator('.carry-panel').getByText('无弹，仅可恐吓').waitFor();
+  // 主持人宣布结果：带去的步枪丢了，直接在高亮卡片上删除
+  await card(rifle).getByRole('button', { name: '删除' }).click();
+  await modal(page).getByRole('button', { name: '删除', exact: true }).click();
+  s = await read(page, PLAYER_DEMO);
+  assert.ok(!s.inventory.some((e) => e.id === rifle.id), '步枪已删除');
+  assert.deepEqual(s.loadout.items.map((r) => r.entryId), [map.id], '携带只剩地图');
+  await btn(page, '结束携带（返回）').click();
+  await modalBtn(page, '结束携带');
+  s = await read(page, PLAYER_DEMO);
+  assert.equal(s.loadout, null);
+  assert.equal(s.inventory.reduce((n, e) => n + e.qty, 0), countBefore - 1, '只少了删除的那件，没有重复添加');
+  assert.ok(s.inventory.some((e) => e.id === map.id));
+  assert.equal(await card(vest).getAttribute('inert'), null, '结束后解锁');
+  // 删除可以撤销
+  await btn(page, '撤销').click();
+  await btn(page, '撤销').click();
+  assert.ok((await read(page, PLAYER_DEMO)).inventory.some((e) => e.id === rifle.id), '撤销恢复删除的物品');
+  assert.deepEqual(errors, []);
   await context.close();
 });
 
-test('玩家：搜刮5秒截止、3轮完成、超时默认选择、刷新与后台切回不多领', async () => {
+test('玩家：库存按类别分区或默认顺序；删除可选数量；旧版「携带」「身份」页地址自动转到新页', async () => {
+  const { context } = await newContext({ init: () => localStorage.setItem('shelter-playtest:player:tab', 'loadout') });
+  const { page, errors } = await open(context, PLAYER);
+  assert.equal(await page.locator('#tabs .tab.on').getAttribute('data-tab'), 'inventory', '旧的携带页转到库存与携带');
+  await playerDemo(page);
+  await tab(page, 'inventory');
+  const groups = await page.locator('.inv-group-name').allInnerTexts();
+  assert.deepEqual(groups, ['补给', '财富', '装备', '特殊'], '按类别分区，顺序固定');
+  await page.getByRole('button', { name: '默认顺序', exact: true }).click();
+  assert.equal(await page.locator('.inv-group').count(), 0);
+  const s0 = await read(page, PLAYER_DEMO);
+  const order = await page.locator('.inv-card').evaluateAll((els) => els.map((e) => e.dataset.entry));
+  assert.deepEqual(order, s0.inventory.map((e) => e.id), '默认顺序＝库存里的先后');
+  await page.reload();
+  await page.locator('.inv-card').first().waitFor();
+  assert.equal(await page.locator('.inv-group').count(), 0, '排列方式在这台设备上记住');
+  const cash = s0.inventory.find((e) => e.defId === 'cash');
+  await page.locator(`[data-entry="${cash.id}"]`).getByRole('button', { name: '删除' }).click();
+  await modal(page).locator('input[type=number]').fill('2');
+  await modal(page).getByRole('button', { name: '删除', exact: true }).click();
+  assert.equal((await read(page, PLAYER_DEMO)).inventory.find((e) => e.id === cash.id).qty, cash.qty - 2);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('玩家：行动与身份同页——点亮一个行动按钮记为今日行动，再点取消，改选会替换', async () => {
+  const { context } = await newContext({ viewport: { width: 390, height: 844 } });
+  const { page, errors } = await open(context, PLAYER);
+  await playerDemo(page);
+  await tab(page, 'action');
+  assert.ok(await page.locator('.field', { hasText: '爱的人' }).isVisible(), '身份在同一页');
+  const plan = page.locator('[data-action="plan"]');
+  const swap = page.locator('[data-action="swap"]');
+  await plan.click();
+  let s = await read(page, PLAYER_DEMO);
+  assert.equal(s.action.used, true);
+  assert.equal(s.action.type, 'plan');
+  assert.equal(await plan.getAttribute('aria-pressed'), 'true');
+  await swap.click();
+  s = await read(page, PLAYER_DEMO);
+  assert.equal(s.action.type, 'swap', '改选替换，不会同时点亮两个');
+  assert.equal(await page.locator('.action-btn[aria-pressed="true"]').count(), 1);
+  await swap.click();
+  s = await read(page, PLAYER_DEMO);
+  assert.equal(s.action.used, false, '再点一次取消');
+  assert.ok(await page.locator('[data-action="skill"]').isDisabled(), '职业草案未启用时职业技能不可选');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('玩家：搜刮7秒截止、3轮完成、超时默认选择、刷新与后台切回不多领', async () => {
   const { context } = await newContext({ viewport: { width: 390, height: 844 } });
   let { page } = await open(context, PLAYER);
   await tab(page, 'scavenge');
@@ -676,7 +752,11 @@ test('玩家：搜刮5秒截止、3轮完成、超时默认选择、刷新与后
   let s = await read(page, PLAYER_KEY);
   assert.equal(s.scavenge.rounds.length, 1);
   assert.equal(s.scavenge.rounds[0].options.length, 3);
-  assert.equal(s.scavenge.rounds[0].deadline - s.scavenge.rounds[0].startedAt, 5000);
+  assert.equal(s.scavenge.rounds[0].deadline - s.scavenge.rounds[0].startedAt, 7000);
+  for (const combo of s.scavenge.rounds[0].options) {
+    const nonSupplyRepeats = combo.filter((it) => !['water', 'bread', 'energy_drink', 'cream_soup', 'energy_bar'].includes(it.defId) && it.qty > 1);
+    assert.deepEqual(nonSupplyRepeats, [], '补给之外的物品每组最多一件');
+  }
   await page.locator('.scav-option[data-option="1"]').click();
   s = await read(page, PLAYER_KEY);
   assert.equal(s.scavenge.rounds[0].choice, 1);
@@ -689,14 +769,14 @@ test('玩家：搜刮5秒截止、3轮完成、超时默认选择、刷新与后
   await page.getByText('第 2 / 3 轮').waitFor();
 
   // 第2轮超时：自动选默认项
-  await page.waitForFunction((k) => JSON.parse(localStorage.getItem(k)).scavenge.rounds.length === 3, PLAYER_KEY, { timeout: 8000 });
+  await page.waitForFunction((k) => JSON.parse(localStorage.getItem(k)).scavenge.rounds.length === 3, PLAYER_KEY, { timeout: 10000 });
   s = await read(page, PLAYER_KEY);
   assert.equal(s.scavenge.rounds[1].choice, 0);
   assert.equal(s.scavenge.rounds[1].auto, true);
 
   // 关掉页面错过第3轮，重新打开：按截止时间补结算，不会多出一轮
   await page.close();
-  await new Promise((r) => setTimeout(r, 5600));
+  await new Promise((r) => setTimeout(r, 7600));
   ({ page } = await open(context, PLAYER));
   s = await read(page, PLAYER_KEY);
   assert.equal(s.scavenge.status, 'organize');
@@ -757,7 +837,7 @@ test('玩家页在 375px 宽度下没有横向溢出', async () => {
   const { context } = await newContext({ viewport: { width: 375, height: 812 } });
   const { page } = await open(context, PLAYER);
   await playerDemo(page);
-  for (const id of ['dashboard', 'status', 'inventory', 'loadout', 'scavenge', 'action', 'identity', 'score', 'save']) {
+  for (const id of ['dashboard', 'status', 'inventory', 'scavenge', 'action', 'score', 'save']) {
     await tab(page, id);
     const width = await page.evaluate(() => document.documentElement.scrollWidth);
     assert.ok(width <= 375, `${id} 宽度 ${width}`);
@@ -821,9 +901,12 @@ test('玩家总览：汇总生命、状态、库存、财富与提醒，并能�
   const alerts = page.locator('.c-alerts');
   await alerts.getByText('流血伤口第 3 天到期').waitFor();
   assert.ok((await alerts.innerText()).includes('注意'));
-  // 快捷操作标记今日行动后，「未标记」提醒消失
-  await btn(page, '标记今日已行动').click();
+  // 在行动页点亮今天的行动后，「未标记」提醒消失
+  await btn(page, '选择今日行动').click();
+  await page.locator('[data-action="plan"]').click();
+  await tab(page, 'dashboard');
   assert.ok(!(await alerts.innerText()).includes('个人行动未标记'));
+  assert.match(await page.locator('[data-tile="today"]').innerText(), /计划守夜名单/);
   // 「查看」跳到对应页
   await alerts.locator('.alert-row', { hasText: '流血' }).getByRole('button', { name: '查看' }).click();
   assert.equal(await page.locator('[data-tab="status"]').getAttribute('aria-current'), 'page');
@@ -850,17 +933,17 @@ test('响应式布局：手机底栏＋更多、平板顶栏、电脑侧栏与�
   await page.setViewportSize({ width: 390, height: 844 });
   let nav = await box('#tabs');
   assert.ok(Math.abs(nav.y + nav.height - 844) <= 1, '手机：导航贴底');
-  assert.equal(await page.locator('[data-tab="identity"]').isVisible(), false, '不常用页收进「更多」');
+  assert.equal(await page.locator('[data-tab="score"]').isVisible(), false, '不常用页收进「更多」');
   await page.click('.more-btn');
-  assert.equal(await page.locator('[data-tab="identity"]').isVisible(), true);
+  assert.equal(await page.locator('[data-tab="score"]').isVisible(), true);
   await page.mouse.click(200, 300);
-  assert.equal(await page.locator('[data-tab="identity"]').isVisible(), false, '点外面收起');
+  assert.equal(await page.locator('[data-tab="score"]').isVisible(), false, '点外面收起');
 
   await page.setViewportSize({ width: 820, height: 1180 });
   nav = await box('#tabs');
   const main = await box('#main');
   assert.ok(nav.y < main.y, '平板：标签在内容上方');
-  assert.equal(await page.locator('#tabs .tab:visible').count(), 9);
+  assert.equal(await page.locator('#tabs .tab:visible').count(), 7, '携带并入库存、身份并入行动后共 7 页');
 
   await page.setViewportSize({ width: 1440, height: 900 });
   nav = await box('#tabs');

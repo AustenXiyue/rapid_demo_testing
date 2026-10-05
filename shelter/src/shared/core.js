@@ -271,6 +271,7 @@
       hungerMax: null,
       hungerFullAt: null,
       hungerHungryAt: null,
+      hungerFamineAt: null,
       hungerInitial: null,
       eventChance: 80,
       eventPosition: null,
@@ -287,8 +288,9 @@
       itemUses: { energy_bar: 3, ammo: null, checkers: null, flare: null },
       scavengeRounds: 3,
       scavengeOptions: 3,
-      scavengeSeconds: 5,
-      scavengeComboTicks: 6
+      scavengeSeconds: 7,
+      scavengeComboTicks: 4,
+      rulesRev: 2
     };
   }
 
@@ -306,6 +308,7 @@
     { key: 'hungerMax', label: '饥饿值上限', type: 'int', nullable: true, min: 1, status: 'pending' },
     { key: 'hungerFullAt', label: '充盈阈值（≥）', type: 'int', nullable: true, status: 'pending', note: '与饥饿阈值都填写后才启用自动判定' },
     { key: 'hungerHungryAt', label: '饥饿阈值（≤）', type: 'int', nullable: true, status: 'pending' },
+    { key: 'hungerFamineAt', label: '饥荒阈值（≤）', type: 'int', nullable: true, status: 'pending', note: '填写后低于等于此值自动判为饥荒；未填时饥荒只能手动选择' },
     { key: 'hungerInitial', label: '初始饥饿值', type: 'int', nullable: true, status: 'pending' },
     { key: 'eventChance', label: '每日事件触发概率（%）', type: 'int', min: 0, max: 100, status: 'confirmed', note: '80%有事件、20%无；只控制是否触发' },
     { key: 'eventPosition', label: '公共事件位置', type: 'select', nullable: true, status: 'pending',
@@ -319,8 +322,8 @@
     { key: 'scoreTaskReward', label: '秘密任务固定奖励', type: 'int', nullable: true, status: 'pending' },
     { key: 'scavengeRounds', label: '搜刮轮数', type: 'int', min: 1, status: 'confirmed', note: '3轮' },
     { key: 'scavengeOptions', label: '每轮选项数', type: 'int', min: 1, status: 'confirmed', note: '3个' },
-    { key: 'scavengeSeconds', label: '每轮秒数', type: 'int', min: 1, status: 'confirmed', note: '5秒，超时选默认项' },
-    { key: 'scavengeComboTicks', label: '每组合约', type: 'units', status: 'confirmed', note: '约3单位' },
+    { key: 'scavengeSeconds', label: '每轮秒数', type: 'int', min: 1, status: 'confirmed', note: '7秒，超时选默认项' },
+    { key: 'scavengeComboTicks', label: '每组合上限', type: 'units', status: 'confirmed', note: '2单位；每组在「上限−0.5」到上限之间，不会超出' },
     { key: 'professionsEnabled', label: '启用职业草案', type: 'bool', status: 'draft', note: '默认停用，主持人明确启用后使用' },
     { key: 'tasksEnabled', label: '启用秘密任务草案', type: 'bool', status: 'draft', note: '与职业独立开关' },
     { key: 'draftStatusesEnabled', label: '启用候选负面状态', type: 'bool', status: 'draft', note: '感染、腹泻、虚弱、拉伤、眩晕：效果未确认' }
@@ -338,6 +341,12 @@
     var base = defaultRules();
     var out = Object.assign({}, base, rules || {});
     out.itemUses = Object.assign({}, base.itemUses, (rules && rules.itemUses) || {});
+    // 第2版调整了搜刮节奏（5秒→7秒，约3单位→2单位）：旧存档里仍是旧默认值的才跟着改，手动改过的保留
+    if (rules && rules.rulesRev == null) {
+      if (out.scavengeSeconds === 5) out.scavengeSeconds = base.scavengeSeconds;
+      if (out.scavengeComboTicks === 6) out.scavengeComboTicks = base.scavengeComboTicks;
+      out.rulesRev = base.rulesRev;
+    }
     return out;
   }
 
@@ -357,6 +366,7 @@
   function hungerZone(value, rules) {
     if (!isNum(value) || !isNum(rules.hungerFullAt) || !isNum(rules.hungerHungryAt)) return null;
     if (value >= rules.hungerFullAt) return '充盈';
+    if (isNum(rules.hungerFamineAt) && value <= rules.hungerFamineAt) return '饥荒';
     if (value <= rules.hungerHungryAt) return '饥饿';
     return '普通';
   }
@@ -1256,7 +1266,9 @@
     if (s.thirst === '脱水') out.push({ level: 'critical', text: '脱水：直接昏迷', tab: 'status' });
     else if (s.thirst === '口渴') out.push({ level: 'warning', text: '口渴：补水幅度待定，饮水后手动调整', tab: 'status' });
     if (s.consciousness === '昏迷' && s.thirst !== '脱水') out.push({ level: 'critical', text: '昏迷中：如何解除尚未确定', tab: 'status' });
-    if ((hungerZone(s.hunger, r) || s.hungerManual) === '饥饿') out.push({ level: 'warning', text: '饥饿：相关成功率降低', tab: 'status' });
+    var hz = hungerZone(s.hunger, r) || s.hungerManual;
+    if (hz === '饥荒') out.push({ level: 'critical', text: '饥荒：比饥饿更严重，后果待主持人裁定', tab: 'status' });
+    else if (hz === '饥饿') out.push({ level: 'warning', text: '饥饿：相关成功率降低', tab: 'status' });
     (s.statuses || []).forEach(function (st) {
       if (st.statusId === 'bleeding' && isInt(st.nextDay) && isInt(day) && day >= st.nextDay) {
         out.push({ level: 'warning', text: '流血伤口第 ' + st.nextDay + ' 天到期：先与主持人确认是否扣1生命', tab: 'status' });
@@ -1270,9 +1282,11 @@
       var carried = loadoutTicks(s);
       var label = s.loadout.context === 'event' ? '事件' : '守夜';
       if (isInt(s.loadout.limitTicks) && carried > s.loadout.limitTicks) {
-        out.push({ level: 'warning', text: label + '携带超出上限 ' + fmtUnits(carried - s.loadout.limitTicks) + ' 单位', tab: 'loadout' });
+        out.push({ level: 'warning', text: label + '携带超出上限 ' + fmtUnits(carried - s.loadout.limitTicks) + ' 单位', tab: 'inventory' });
       }
-      out.push({ level: 'info', text: label + '携带中：' + fmtUnits(carried) + ' 单位，返回后记得清空标记', tab: 'loadout' });
+      out.push(s.loadout.confirmed
+        ? { level: 'info', text: label + '携带中：' + fmtUnits(carried) + ' 单位；结果出来后处理高亮物品，再点「结束携带」', tab: 'inventory' }
+        : { level: 'info', text: '正在挑选' + label + '携带：已选 ' + fmtUnits(carried) + ' 单位，确认后才生效', tab: 'inventory' });
     }
     if (s.scavenge && s.scavenge.status === 'running') {
       out.push({ level: 'warning', text: '搜刮进行中：第 ' + s.scavenge.rounds.length + '／' + s.scavenge.cfg.rounds + ' 轮，超时会自动选默认项', tab: 'scavenge' });
@@ -1378,37 +1392,63 @@
 
   // ---------------------------------------------------------------- 搜刮
 
+  /*
+   * 示例模板的权重：普通水、面包最常见；能量棒、奶油汤、装备（尤其步枪、消防斧、背心）明显更少。
+   * 主持人与玩家都可以在模板里改。
+   */
+  var SCAVENGE_WEIGHTS = {
+    water: 3, bread: 3, energy_drink: 2, cream_soup: 1, energy_bar: 1,
+    bandage: 2, medkit: 0.8,
+    cash: 2, jewel: 1, painting: 0.4,
+    knife: 0.8, axe: 0.4, rifle: 0.25, ammo: 0.5, vest: 0.4,
+    checkers: 1.5, map: 0.8, canteen: 0.8, liquor: 1.2, flare: 0.4
+  };
+  /* 同一组里已经有同类（补给除外）时，再抽到这一类的权重乘以这个系数：避免「武器＋武器」这类组合。 */
+  var SAME_CATEGORY_FACTOR = 0.2;
+
   function defaultScavengeTemplate() {
     return {
       id: 'st_example',
       name: '示例搜刮模板',
       isExample: true,
-      note: '实现假设：候选只从本模板生成，不扣公共池。物品与权重都可编辑，也可导入主持人给的模板。',
-      items: ITEMS.map(function (d) { return { defId: d.id, weight: 1 }; })
+      rev: 2,
+      note: '实现假设：候选只从本模板生成，不扣公共池。补给之外的物品每组最多一件，同类物品不容易同时出现。物品与权重都可编辑，也可导入主持人给的模板。',
+      items: ITEMS.map(function (d) { return { defId: d.id, weight: SCAVENGE_WEIGHTS[d.id] != null ? SCAVENGE_WEIGHTS[d.id] : 1 }; })
     };
   }
 
-  /** 生成一个约 comboTicks 的物资组合（±0.5 单位）。 */
+  /**
+   * 生成一组物资：总占位在 [comboTicks − 1 tick, comboTicks] 之间（默认 1.5～2 单位），不会超出上限。
+   * 补给可以重复；其他物品每组最多一件；同一组里已有同类（补给除外）时，同类物品的权重大幅降低。
+   */
   function generateCombo(template, customItems, comboTicks, rng) {
-    var target = isInt(comboTicks) && comboTicks > 0 ? comboTicks : 6;
-    var lo = target - 1;
-    var hi = target + 1;
+    var hi = isInt(comboTicks) && comboTicks > 0 ? comboTicks : 4;
+    var lo = Math.max(1, hi - 1);
     var cands = (template.items || []).filter(function (it) {
       var def = getDef(it.defId, customItems);
       return isNum(it.weight) && it.weight > 0 && !def.unknown && def.capacityTicks > 0 && def.capacityTicks <= hi;
     });
     var picked = {};
+    var cats = {};
     var order = [];
     var total = 0;
     var guard = 0;
     while (total < lo && guard++ < 40) {
-      var fit = cands.filter(function (it) { return total + getDef(it.defId, customItems).capacityTicks <= hi; });
+      var fit = cands.filter(function (it) {
+        var def = getDef(it.defId, customItems);
+        if (total + def.capacityTicks > hi) return false;
+        return def.category === 'supply' || !picked[def.id];
+      });
       if (!fit.length) break;
-      var idx = weightedIndex(fit, function (it) { return it.weight; }, rng);
+      var idx = weightedIndex(fit, function (it) {
+        var cat = getDef(it.defId, customItems).category;
+        return it.weight * (cat !== 'supply' && cats[cat] ? SAME_CATEGORY_FACTOR : 1);
+      }, rng);
       if (idx < 0) break;
       var def = getDef(fit[idx].defId, customItems);
       if (!picked[def.id]) order.push(def.id);
       picked[def.id] = (picked[def.id] || 0) + 1;
+      cats[def.category] = true;
       total += def.capacityTicks;
     }
     return order.map(function (id) { return { defId: id, qty: picked[id] }; });
@@ -1433,8 +1473,8 @@
       cfg: {
         rounds: rules.scavengeRounds || 3,
         options: rules.scavengeOptions || 3,
-        seconds: rules.scavengeSeconds || 5,
-        comboTicks: rules.scavengeComboTicks || 6
+        seconds: rules.scavengeSeconds || 7,
+        comboTicks: rules.scavengeComboTicks || 4
       },
       template: clone(template),
       rounds: [],
@@ -1579,7 +1619,7 @@
       taskProgress: { count: 0, events: [], done: false, note: '' },
       hp: rules.hpInitial,
       hunger: rules.hungerInitial,
-      hungerManual: null,
+      hungerManual: '普通',
       thirst: '不渴',
       consciousness: '清醒',
       statuses: [],
@@ -1664,6 +1704,8 @@
       out.manualScores = Object.assign({ loveHate: null, survival: null, task: null, adjust: null, note: '' }, obj.manualScores || {});
       out.taskProgress = Object.assign({ count: 0, events: [], done: false, note: '' }, obj.taskProgress || {});
       out.action = Object.assign({ day: null, used: false, note: '' }, obj.action || {});
+      // 没改过的示例搜刮模板换成新版权重；自定义模板原样保留
+      if (out.scavengeTemplate && out.scavengeTemplate.isExample && out.scavengeTemplate.rev !== 2) out.scavengeTemplate = defaultScavengeTemplate();
     }
     return out;
   }

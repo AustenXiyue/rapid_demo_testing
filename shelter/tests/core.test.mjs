@@ -350,7 +350,7 @@ test('战斗力：基础=当前生命；步枪无弹不给+6；多武器不擅�
   assert.equal(withAmmo.multiple, true);
 });
 
-test('搜刮：3轮、每轮3选项、5秒截止；超时选默认第一项；刷新不多领一轮', () => {
+test('搜刮：3轮、每轮3选项、7秒截止；超时选默认第一项；刷新不多领一轮', () => {
   const rules = C.defaultRules();
   const tpl = C.defaultScavengeTemplate();
   const rng = C.seededRng(11);
@@ -358,15 +358,15 @@ test('搜刮：3轮、每轮3选项、5秒截止；超时选默认第一项；�
   const s = C.startScavenge(tpl, rules, [], t0, rng);
   assert.equal(s.rounds.length, 1);
   assert.equal(s.rounds[0].options.length, 3);
-  assert.equal(s.rounds[0].deadline, t0 + 5000);
+  assert.equal(s.rounds[0].deadline, t0 + 7000);
   for (const combo of s.rounds[0].options) {
     const ticks = C.comboTicks(combo, []);
-    assert.ok(ticks >= 5 && ticks <= 7, '每组合约3单位：' + ticks);
+    assert.ok(ticks >= 3 && ticks <= 4, '每组 1.5～2 单位：' + ticks);
   }
   // 第1轮在 2 秒时选第3项
   assert.ok(C.chooseScavenge(s, 0, 2, t0 + 2000, [], rng).ok);
   assert.equal(s.rounds.length, 2);
-  assert.equal(s.rounds[1].deadline, t0 + 7000, '下一轮从选择时刻起算');
+  assert.equal(s.rounds[1].deadline, t0 + 9000, '下一轮从选择时刻起算');
   // 页面关掉很久后再打开：剩余回合全部按截止时间超时、选默认项
   const optionsSnapshot = JSON.stringify(s.rounds[1].options);
   C.settleScavenge(s, t0 + 60_000, [], rng);
@@ -384,11 +384,60 @@ test('搜刮：3轮、每轮3选项、5秒截止；超时选默认第一项；�
   assert.ok(gains.length > 0);
 });
 
+test('搜刮组合：补给外不重复、同类少见、装备与能量棒奶油汤更少、不超出上限', () => {
+  const tpl = C.defaultScavengeTemplate();
+  const rng = C.seededRng(2024);
+  const N = 3000;
+  const seen = {};
+  let sameCatPairs = 0;
+  let weaponPairs = 0;
+  for (let i = 0; i < N; i++) {
+    const combo = C.generateCombo(tpl, [], 4, rng);
+    const ticks = C.comboTicks(combo, []);
+    assert.ok(ticks >= 3 && ticks <= 4, '每组 1.5～2 单位，不超出：' + ticks);
+    const cats = {};
+    for (const it of combo) {
+      const def = C.getDef(it.defId, []);
+      if (def.category !== 'supply') assert.equal(it.qty, 1, '补给之外的物品最多一件：' + def.name + '×' + it.qty);
+      seen[it.defId] = (seen[it.defId] || 0) + 1;
+      if (def.category !== 'supply') {
+        if (cats[def.category]) sameCatPairs++;
+        cats[def.category] = true;
+      }
+    }
+    const weapons = combo.filter((it) => (C.getDef(it.defId, []).tags || []).includes('武器')).length;
+    if (weapons >= 2) weaponPairs++;
+  }
+  assert.ok(sameCatPairs / N < 0.08, '同类（补给外）同组的比例很低：' + sameCatPairs / N);
+  assert.ok(weaponPairs / N < 0.02, '武器＋武器很少见：' + weaponPairs / N);
+  assert.ok(seen.energy_bar < seen.bread / 2 && seen.cream_soup < seen.bread / 2, '能量棒、奶油汤明显比面包少');
+  const gear = ['knife', 'axe', 'rifle', 'ammo', 'vest'].reduce((n, id) => n + (seen[id] || 0), 0);
+  assert.ok(gear < (seen.bread + seen.water) / 2, '装备整体少于基础补给');
+  assert.ok((seen.axe || 0) < (seen.knife || 0), '消防斧比折刀少');
+});
+
+test('规则第2版：旧存档里的搜刮默认值随之更新，手动改过的保留；没改过的示例模板换成新权重', () => {
+  const old = Object.assign(C.defaultRules(), { scavengeSeconds: 5, scavengeComboTicks: 6 });
+  delete old.rulesRev;
+  const r = C.normalizeRules(old);
+  assert.equal(r.scavengeSeconds, 7);
+  assert.equal(r.scavengeComboTicks, 4);
+  const custom = Object.assign(C.defaultRules(), { scavengeSeconds: 10, scavengeComboTicks: 6 });
+  delete custom.rulesRev;
+  assert.equal(C.normalizeRules(custom).scavengeSeconds, 10, '手动改过的秒数保留');
+  assert.equal(C.normalizeRules(Object.assign(C.defaultRules(), { scavengeComboTicks: 6 })).scavengeComboTicks, 6, '新版存档里改成6的也保留');
+  const p = C.newPlayerState();
+  p.scavengeTemplate = { id: 'st_example', name: '示例搜刮模板', isExample: true, items: [{ defId: 'axe', weight: 1 }] };
+  assert.equal(C.normalizeSave(JSON.parse(JSON.stringify(p)), 'shelter-player').scavengeTemplate.rev, 2);
+  p.scavengeTemplate = { id: 'x', name: '自定义', isExample: false, items: [{ defId: 'axe', weight: 9 }] };
+  assert.equal(C.normalizeSave(JSON.parse(JSON.stringify(p)), 'shelter-player').scavengeTemplate.items[0].weight, 9);
+});
+
 test('搜刮：截止前一刻点击有效，截止时刻点击视为超时', () => {
   const rules = C.defaultRules();
   const rng = C.seededRng(3);
   const s = C.startScavenge(C.defaultScavengeTemplate(), rules, [], 0, rng);
-  assert.ok(C.chooseScavenge(s, 0, 1, 4999, [], rng).ok);
+  assert.ok(C.chooseScavenge(s, 0, 1, 6999, [], rng).ok);
   const r1 = s.rounds[1];
   assert.equal(C.chooseScavenge(s, 1, 1, r1.deadline, [], rng).ok, false);
   assert.equal(s.rounds[1].choice, 0);
@@ -457,15 +506,33 @@ test('玩家总览提醒：按严重程度排序，只汇总已记录的事实',
   assert.ok(C.playerAlerts(s).some((a) => a.level === 'info' && a.tab === 'action'), '新的一天行动未用');
 });
 
+test('饥荒：手动可选；填了饥荒阈值才自动判定；提醒为严重', () => {
+  const rules = Object.assign(C.defaultRules(), { hungerFullAt: 8, hungerHungryAt: 3 });
+  assert.equal(C.hungerZone(1, rules), '饥饿', '没填饥荒阈值时最多判到饥饿');
+  rules.hungerFamineAt = 1;
+  assert.equal(C.hungerZone(1, rules), '饥荒');
+  assert.equal(C.hungerZone(2, rules), '饥饿');
+  assert.ok(C.pendingConfigItems(C.defaultRules()).some((p) => p.key === 'hungerFamineAt'), '饥荒阈值是待配置项');
+  const s = C.newPlayerState();
+  assert.equal(s.hungerManual, '普通', '新玩家默认普通，不再显示「未记录」');
+  s.hungerManual = '饥荒';
+  s.action = { day: 1, used: true, note: '' };
+  const a = C.playerAlerts(s);
+  assert.equal(a[0].level, 'critical');
+  assert.ok(a[0].text.startsWith('饥荒'));
+});
+
 test('总览提醒：搜刮与携带；占位按分类汇总', () => {
   const s = C.newPlayerState();
   s.action = { day: 1, used: true, note: '' };
   const [axe] = C.addItem(s.inventory, 'axe', 1);
   C.addItem(s.inventory, 'bread', 3);
-  s.loadout = { context: 'event', label: '', day: 1, limitTicks: 1, items: [{ entryId: axe.id, qty: 1 }] };
+  s.loadout = { context: 'event', label: '', day: 1, limitTicks: 1, items: [{ entryId: axe.id, qty: 1 }], confirmed: true };
   assert.equal(C.loadoutTicks(s), 2);
   const levels = C.playerAlerts(s).map((a) => a.tab + ':' + a.level);
-  assert.deepEqual(levels, ['loadout:warning', 'loadout:info'], '携带超限只警告，携带中有提示');
+  assert.deepEqual(levels, ['inventory:warning', 'inventory:info'], '携带超限只警告，携带中有提示（携带已并入库存页）');
+  s.loadout.confirmed = false;
+  assert.ok(C.playerAlerts(s).some((a) => a.text.includes('确认后才生效')), '挑选中的携带有单独提示');
   s.scavenge = { status: 'organize', rounds: [], cfg: { rounds: 3 } };
   assert.ok(C.playerAlerts(s).some((a) => a.tab === 'scavenge'));
   const comp = C.capacityByCategory(s.inventory, [], s.rules);

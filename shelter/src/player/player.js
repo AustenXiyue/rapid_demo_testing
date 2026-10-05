@@ -16,22 +16,24 @@
   var KEY_DEMO = 'shelter-playtest:player-demo:v1';
   var KEY_SLOT = 'shelter-playtest:player:slot';
   var KEY_TAB = 'shelter-playtest:player:tab';
+  var KEY_SORT = 'shelter-playtest:player:inv-sort';
+  var DEFAULT_CARRY_TICKS = 4; // 携带模式默认上限 2 单位（规则里填了就用规则）
 
   /* primary：手机底栏常驻；其余收进「更多」。电脑端全部显示在侧栏。 */
   var TABS = [
     { id: 'dashboard', name: '总览', primary: true },
     { id: 'status', name: '状态', primary: true },
-    { id: 'inventory', name: '库存', primary: true },
-    { id: 'loadout', name: '携带', primary: true },
+    { id: 'inventory', name: '库存', full: '库存与携带', primary: true },
     { id: 'scavenge', name: '搜刮', primary: true },
-    { id: 'action', name: '行动' },
-    { id: 'identity', name: '身份' },
+    { id: 'action', name: '行动', full: '行动与身份', primary: true },
     { id: 'score', name: '分数' },
     { id: 'save', name: '存档' }
   ];
+  /* 旧版的独立页已经合并：携带 → 库存与携带，身份 → 行动与身份 */
+  var TAB_ALIASES = { loadout: 'inventory', identity: 'action' };
 
   var THIRST = ['不渴', '口渴', '脱水'];
-  var HUNGER_ZONES = ['充盈', '普通', '饥饿'];
+  var HUNGER_ZONES = ['充盈', '普通', '饥饿', '饥荒'];
 
   var slot = U.readKey(KEY_SLOT) === 'demo' ? 'demo' : 'main';
   var store = null;
@@ -39,7 +41,7 @@
   var notices = [];
   var undo = new U.UndoStack(40);
   var KEY_HIDE_ID = 'shelter-playtest:player:hide-identity';
-  var ui = { tab: 'dashboard', filter: 'all', drafts: {}, keep: {}, transfer: {}, moreOpen: false, hideIdentity: U.readKey(KEY_HIDE_ID) === '1' };
+  var ui = { tab: 'dashboard', filter: 'all', sort: U.readKey(KEY_SORT) === 'default' ? 'default' : 'category', drafts: {}, keep: {}, transfer: {}, moreOpen: false, hideIdentity: U.readKey(KEY_HIDE_ID) === '1' };
 
   // ================================================================ 演示
 
@@ -186,6 +188,7 @@
   }
 
   function setTab(id) {
+    id = TAB_ALIASES[id] || id;
     ui.tab = id;
     ui.moreOpen = false;
     U.writeKey(KEY_TAB, id);
@@ -222,18 +225,21 @@
     }
   }
 
-  function hungerText() {
-    var zone = C.hungerZone(state.hunger, state.rules);
-    if (zone) return zone + ' ' + state.hunger;
-    var manual = state.hungerManual || '未记录';
-    return manual + (C.isNum(state.hunger) ? ' ' + state.hunger : '');
-  }
-
+  /** 简要面板：除总览页外常驻顶部。每格「名称＋数值＋小进度」，颜色之外都有文字，点一下去对应页。 */
   function renderTop() {
     var top = U.clear(document.getElementById('topbar'));
+    var r = state.rules;
     var used = invTicks();
-    var cap = state.rules.inventoryCapacityTicks;
+    var cap = r.inventoryCapacityTicks;
     var over = C.isInt(cap) && used > cap;
+    var hw = hungerWord();
+    var thirstIdx = THIRST.indexOf(state.thirst);
+    function cell(key, label, value, level, viz, tab) {
+      return h('button', { type: 'button', class: 'vcell lv-' + level, 'data-vital': key, onclick: function () { setTab(tab); } },
+        h('span', { class: 'vcell-label' }, label),
+        h('span', { class: 'vcell-value' }, value),
+        viz || h('span', { class: 'vcell-viz-empty' }));
+    }
     top.appendChild(h('div', { class: 'p-top' + (ui.tab === 'dashboard' ? ' on-dashboard' : '') },
       h('div', { class: 'p-top-row' },
         h('div', { class: 'p-name' }, h('b', null, state.name || '未命名玩家'), state.alive ? null : chip('已死亡', 'danger')),
@@ -242,20 +248,29 @@
           h('span', null, '第 ', h('b', null, String(today())), ' 天'),
           h('button', { type: 'button', class: 'btn small icon-btn', 'aria-label': '后一天', onclick: function () { setDay(today() + 1); } }, '›')),
         h('button', { type: 'button', class: 'btn small', onclick: undoLast, disabled: !undo.peek(), title: undo.peek() ? '撤销：' + undo.peek().label : '' }, U.icon('undo'), '撤销')),
-      h('div', { class: 'p-chips' },
-        h('span', { class: 'pchip ' + (state.hp <= 0 ? 'danger' : state.hp <= 2 ? 'risk' : 'ok') }, '生命 ', h('b', null, String(state.hp))),
-        h('span', { class: 'pchip ' + (hungerRisk() ? 'risk' : '') }, '饥饿 ', h('b', null, hungerText())),
-        h('span', { class: 'pchip ' + (state.thirst === '脱水' ? 'danger' : state.thirst === '口渴' ? 'risk' : '') }, '口渴 ', h('b', null, state.thirst)),
-        h('span', { class: 'pchip ' + (state.consciousness === '昏迷' ? 'danger' : '') }, h('b', null, state.consciousness)),
-        h('span', { class: 'pchip ' + (over ? 'risk' : '') }, '库存 ', h('b', null, C.fmtUnits(used) + '/' + C.fmtUnits(cap))),
-        state.statuses.length ? h('span', { class: 'pchip risk' }, '状态 ', h('b', null, String(state.statuses.length))) : null)));
-    // 标签栏吸附在状态栏下方：按状态栏实际高度定位（芯片换行时高度会变）
+      h('div', { class: 'p-vitals', role: 'group', 'aria-label': '简要状态' },
+        cell('hp', '生命', h('b', null, String(state.hp), C.isInt(r.hpMax) ? h('small', null, '／' + r.hpMax) : null),
+          state.hp <= 0 ? 'crit' : state.hp <= 2 ? 'warn' : 'ok',
+          C.isInt(r.hpMax) ? meter(state.hp, r.hpMax, state.hp <= 0 ? 'critical' : 'ok', '生命') : pips(state.hp), 'status'),
+        cell('hunger', '饥饿', h('b', null, hw, C.isNum(state.hunger) ? h('small', null, ' ' + state.hunger) : null),
+          hw === '饥荒' ? 'crit' : hw === '饥饿' ? 'warn' : hw === '未记录' ? 'info' : 'ok',
+          stepsBar(HUNGER_ZONES, HUNGER_ZONES.indexOf(hw), hw === '饥荒' ? 'critical' : hw === '饥饿' ? 'warning' : 'ok'), 'status'),
+        cell('thirst', '口渴', h('b', null, state.thirst),
+          thirstIdx >= 2 ? 'crit' : thirstIdx === 1 ? 'warn' : 'ok',
+          stepsBar(THIRST, thirstIdx, thirstIdx >= 2 ? 'critical' : thirstIdx === 1 ? 'warning' : 'ok'), 'status'),
+        cell('mind', '意识', h('b', null, state.consciousness), state.consciousness === '昏迷' ? 'crit' : 'ok', null, 'status'),
+        cell('inventory', '库存', h('b', null, C.fmtUnits(used), h('small', null, '／' + C.fmtUnits(cap))),
+          over ? 'warn' : 'ok', meter(used, cap || used || 1, over ? 'warning' : 'ok', '库存占位'), 'inventory'),
+        cell('statuses', state.loadout && state.loadout.confirmed ? '携带中' : '负面状态',
+          state.loadout && state.loadout.confirmed ? h('b', null, C.fmtUnits(C.loadoutTicks(state)), h('small', null, ' 单位')) : h('b', null, state.statuses.length ? state.statuses.length + ' 个' : '无'),
+          state.loadout && state.loadout.confirmed ? 'info' : state.statuses.length ? 'warn' : 'ok', null,
+          state.loadout && state.loadout.confirmed ? 'inventory' : 'status'))));
+    // 标签栏吸附在状态栏下方：按状态栏实际高度定位
     document.documentElement.style.setProperty('--top-h', top.offsetHeight + 'px');
   }
 
-  function hungerRisk() {
-    var zone = C.hungerZone(state.hunger, state.rules) || state.hungerManual;
-    return zone === '饥饿';
+  function hungerWord() {
+    return C.hungerZone(state.hunger, state.rules) || state.hungerManual || '未记录';
   }
 
   function setDay(d) {
@@ -267,7 +282,9 @@
   }
 
   function tabButton(t) {
-    return h('button', { type: 'button', class: 'tab ' + (ui.tab === t.id ? 'on' : ''), 'data-tab': t.id, 'aria-current': ui.tab === t.id ? 'page' : null, onclick: function () { setTab(t.id); } }, t.name);
+    // 手机底栏用短名，平板和电脑用全名
+    return h('button', { type: 'button', class: 'tab ' + (ui.tab === t.id ? 'on' : ''), 'data-tab': t.id, 'aria-current': ui.tab === t.id ? 'page' : null, onclick: function () { setTab(t.id); } },
+      t.full ? [h('span', { class: 'tab-short' }, t.name), h('span', { class: 'tab-full' }, t.full)] : t.name);
   }
 
   /** 手机：底栏 5 个常用页 +「更多」；平板：顶部一行；电脑：左侧栏。三种布局共用同一组按钮，由 CSS 排布。 */
@@ -287,7 +304,7 @@
 
   function renderMain() {
     var main = U.clear(document.getElementById('main'));
-    var views = { dashboard: renderDashboard, status: renderStatus, inventory: renderInventory, loadout: renderLoadout, scavenge: renderScavenge, action: renderAction, identity: renderIdentity, score: renderScore, save: renderSave };
+    var views = { dashboard: renderDashboard, status: renderStatus, inventory: renderInventory, scavenge: renderScavenge, action: renderAction, score: renderScore, save: renderSave };
     main.className = 'main p-main tab-' + ui.tab;
     main.appendChild((views[ui.tab] || renderDashboard)());
   }
@@ -300,7 +317,7 @@
   /** 分级条：三档状态（如口渴）按档位填充，2px 间隔分开。 */
   function stepsBar(names, index, level) {
     var cls = { ok: 'ok', info: 'info', warning: 'warn', critical: 'crit' }[level] || 'ok';
-    return h('span', { class: 'steps m-' + cls, 'aria-hidden': 'true' },
+    return h('span', { class: 'steps m-' + cls, 'aria-hidden': 'true', style: 'grid-template-columns:repeat(' + names.length + ',minmax(0,1fr))' },
       names.map(function (n, i) { return h('span', { class: 'step' + (i <= index ? ' on' : '') }); }));
   }
 
@@ -332,7 +349,7 @@
     var zone = C.hungerZone(state.hunger, r);
     var manual = state.hungerManual;
     var hungerWord = zone || manual || '未记录';
-    var hungerLevel = hungerWord === '饥饿' ? 'warning' : hungerWord === '未记录' ? 'info' : 'ok';
+    var hungerLevel = hungerWord === '饥荒' ? 'critical' : hungerWord === '饥饿' ? 'warning' : hungerWord === '未记录' ? 'info' : 'ok';
     var thirstIdx = THIRST.indexOf(state.thirst);
     var thirstLevel = thirstIdx >= 2 ? 'critical' : thirstIdx === 1 ? 'warning' : 'ok';
     var used = invTicks();
@@ -377,7 +394,7 @@
         sub: '钞票 ' + counts.cash + ' · 名画 ' + counts.painting + ' · 珠宝 ' + counts.jewel + ' · 地图笔记 ' + C.mapNotesTotal(state.inventory)
       }),
       tile({
-        key: 'today', tab: 'action', label: '今天', badge: actedToday ? sevBadge('ok', '已行动') : sevBadge('info', '未行动'),
+        key: 'today', tab: 'action', label: '今天', badge: actedToday ? sevBadge('ok', actionName(state.action.type)) : sevBadge('info', '未行动'),
         value: '第 ' + today() + ' 天', sub: state.publicInfo.seat ? '座次 ' + state.publicInfo.seat : '座次未记录'
       }));
   }
@@ -389,12 +406,8 @@
     return h('div', { class: 'quick', role: 'group', 'aria-label': '快捷操作' },
       h('button', { type: 'button', class: 'btn primary', onclick: addItemDialog }, U.icon('plus'), '添加物品'),
       h('button', { type: 'button', class: 'btn' + (scavLive ? ' risk' : ''), onclick: function () { setTab('scavenge'); } }, scavLive ? '继续搜刮' : '搜刮'),
-      h('button', {
-        type: 'button', class: 'btn', onclick: function () {
-          commit('行动标记', function (s) { s.action = { day: today(), used: !actedToday, note: s.action.note || '' }; log(s, actedToday ? '取消今日行动已使用' : '标记今日行动已使用'); });
-        }
-      }, actedToday ? '取消行动标记' : '标记今日已行动'),
-      h('button', { type: 'button', class: 'btn', onclick: function () { setTab('score'); } }, '分数上报'));
+      h('button', { type: 'button', class: 'btn' + (state.loadout ? ' risk' : ''), onclick: function () { setTab('inventory'); if (!state.loadout) carrySetupDialog(); } }, state.loadout ? '携带中' : '携带模式'),
+      h('button', { type: 'button', class: 'btn', onclick: function () { setTab('action'); } }, actedToday ? '今日：' + actionName(state.action.type) : '选择今日行动'));
   }
 
   function dashCard(title, body, opts) {
@@ -471,7 +484,7 @@
     state.temporaryEffects.forEach(function (fx) { items.push(h('li', null, h('b', null, '临时效果'), h('span', null, fx.text))); });
     if (state.publicInfo.notes) items.push(h('li', null, h('b', null, '公共笔记'), h('span', { class: 'clamp' }, state.publicInfo.notes)));
     var body = items.length ? h('ul', { class: 'facts' }, items) : h('p', { class: 'empty' }, '没有携带中的物品、进行中的搜刮或临时效果。');
-    return dashCard('进行中', body, { cls: 'c-today', action: linkBtn('携带', 'loadout') });
+    return dashCard('进行中', body, { cls: 'c-today', action: linkBtn('库存与携带', 'inventory') });
   }
 
   function conditionsCard() {
@@ -596,7 +609,7 @@
       setValue(n);
     });
     return h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, '饥饿'), h('span', { class: 'muted small' }, '充盈／普通／饥饿三区间')),
+      h('div', { class: 'card-head' }, h('h2', null, '饥饿'), h('span', { class: 'muted small' }, '充盈／普通／饥饿／饥荒')),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', onclick: function () { setValue((state.hunger || 0) - 1); } }, '−1'),
         input,
@@ -604,10 +617,15 @@
         h('span', null, '区间：', h('b', null, zone || (state.hungerManual || '未记录')), auto ? h('span', { class: 'muted small' }, '（按阈值自动判定）') : h('span', { class: 'muted small' }, '（手动）'))),
       auto ? null : h('div', { class: 'stack' },
         h('p', { class: 'small' }, U.pendingTag('阈值待配置'), ' 未填阈值时禁用自动判定，保留手动状态：'),
-        U.segmented(HUNGER_ZONES.map(function (z) { return [z, z]; }).concat([['', '未记录']]), state.hungerManual || '', function (v) {
-          commit('手动饥饿状态', function (s) { s.hungerManual = v || null; log(s, '饥饿状态（手动）：' + (v || '未记录')); });
+        U.segmented(HUNGER_ZONES.map(function (z) { return [z, z]; }), state.hungerManual || '', function (v) {
+          commit('手动饥饿状态', function (s) {
+            if (s.hungerManual === v) return false;
+            s.hungerManual = v;
+            log(s, '饥饿状态（手动）：' + v);
+          });
         })),
-      h('p', { class: 'muted small' }, '充盈改善力气和相关成功率，饥饿降低相关成功率（具体修正未定）。按行动消耗前的状态判定，再扣事件消耗；事件开启后不能靠临时进食提升本次状态（提示，不强制）。'));
+      auto && !C.isNum(r.hungerFamineAt) ? h('p', { class: 'small' }, U.pendingTag('饥荒阈值待配置'), ' 自动判定只到「饥饿」；饥荒阈值填写后才会自动判为饥荒。') : null,
+      h('p', { class: 'muted small' }, '充盈改善力气和相关成功率，饥饿降低相关成功率，饥荒比饥饿更严重（具体修正与后果未定）。按行动消耗前的状态判定，再扣事件消耗；事件开启后不能靠临时进食提升本次状态（提示，不强制）。'));
   }
 
   function thirstCard() {
@@ -759,47 +777,278 @@
 
   // ================================================================ 库存
 
+  // ================================================================ 库存与携带
+  //
+  // 同一页里有三种模式：
+  //   平时：每张物品卡有「使用／赠予／修改／删除」；
+  //   挑选携带：卡片上换成「带上」，按上限（默认2单位）挑选，超出的选不上；
+  //   携带中：只有带上的卡片高亮可操作（事件结束后直接删除或修改），其余卡片暂时锁定。
+
+  function carryMode() {
+    var lo = state.loadout;
+    return !lo ? 'normal' : lo.confirmed ? 'carrying' : 'selecting';
+  }
+
+  function categoryName(id) {
+    return (C.CATEGORIES.find(function (c) { return c.id === id; }) || {}).name || '其他';
+  }
+
   function renderInventory() {
     var used = invTicks();
     var cap = state.rules.inventoryCapacityTicks;
     var over = C.isInt(cap) && used > cap;
+    var mode = carryMode();
     var list = state.inventory.filter(function (e) { return ui.filter === 'all' || defOf(e).category === ui.filter; });
-    return h('div', { class: 'stack' },
-      h('section', { class: 'card wide' },
-        h('div', { class: 'row between' }, h('h2', null, '库存'), h('span', { class: 'cap ' + (over ? 'risk-text' : 'ok-text') }, '总占位 ', h('b', null, C.fmtUnits(used) + ' / ' + C.fmtUnits(cap)), ' 单位')),
-        h('div', { class: 'meter' + (over ? ' over' : ''), role: 'img', 'aria-label': '库存占位 ' + C.fmtUnits(used) + ' / ' + C.fmtUnits(cap) }, h('span', { style: 'width:' + Math.min(100, cap ? (used / cap) * 100 : 0) + '%' })),
+    var body;
+    if (!list.length) {
+      body = h('p', { class: 'empty card' }, state.inventory.length ? '这个分类下没有物品。' : '库存是空的。主持人发放物资后，请在这里手动添加。');
+    } else if (ui.sort === 'default') {
+      body = h('div', { class: 'inv-grid' }, list.map(itemCard));
+    } else {
+      body = h('div', { class: 'inv-groups' }, C.CATEGORIES.map(function (cat) {
+        var rows = list.filter(function (e) { return defOf(e).category === cat.id; });
+        if (!rows.length) return null;
+        var ticks = rows.reduce(function (n, e) { return n + C.entryTicks(e, state.customItems, state.rules); }, 0);
+        return h('section', { class: 'inv-group cat-' + cat.id, 'aria-label': cat.name },
+          h('h3', { class: 'inv-group-head' }, h('span', { class: 'cat-dot' }), h('span', { class: 'inv-group-name' }, cat.name), h('span', { class: 'muted small' }, C.countPieces(rows) + ' 件 · ' + C.fmtUnits(ticks) + ' 单位')),
+          h('div', { class: 'inv-grid' }, rows.map(itemCard)));
+      }));
+    }
+    return h('div', { class: 'inv-page mode-' + mode },
+      h('section', { class: 'card inv-head' },
+        h('div', { class: 'row between' }, h('h2', null, '库存与携带'), h('span', { class: 'cap ' + (over ? 'risk-text' : 'ok-text') }, '总占位 ', h('b', null, C.fmtUnits(used) + ' / ' + C.fmtUnits(cap)), ' 单位')),
+        U.meter(used, cap || used || 1, over ? 'warning' : 'ok', '库存占位'),
         over ? h('div', { class: 'callout risk' }, '超出总库存上限 ' + C.fmtUnits(used - cap) + ' 单位：只警告，不阻断主持人裁定。') : null,
         C.canteenCapacityPending(state.inventory, state.rules) ? h('p', { class: 'small' }, U.pendingTag('水壶内的水是否额外占容量：待配置'), ' 目前只计算水壶本身。') : null,
-        h('div', { class: 'filters' }, [['all', '全部']].concat(C.CATEGORIES.map(function (c) { return [c.id, c.name]; })).map(function (f) {
-          var n = f[0] === 'all' ? state.inventory.length : state.inventory.filter(function (e) { return defOf(e).category === f[0]; }).length;
-          return h('button', { type: 'button', class: 'filter ' + (ui.filter === f[0] ? 'on' : ''), onclick: function () { ui.filter = f[0]; render(); } }, f[1] + (n ? ' ' + n : ''));
-        })),
+        h('div', { class: 'inv-tools' },
+          h('div', { class: 'inv-sort' }, h('span', { class: 'muted small' }, '排列'),
+            U.segmented([['category', '按类别'], ['default', '默认顺序']], ui.sort, function (v) { ui.sort = v; U.writeKey(KEY_SORT, v); render(); })),
+          h('div', { class: 'filters' }, [['all', '全部']].concat(C.CATEGORIES.map(function (c) { return [c.id, c.name]; })).map(function (f) {
+            var n = f[0] === 'all' ? state.inventory.length : state.inventory.filter(function (e) { return defOf(e).category === f[0]; }).length;
+            if (f[0] !== 'all' && !n) return null;
+            return h('button', { type: 'button', class: 'filter ' + (ui.filter === f[0] ? 'on' : ''), 'aria-pressed': ui.filter === f[0] ? 'true' : 'false', onclick: function () { ui.filter = f[0]; render(); } }, f[1] + (n ? ' ' + n : ''));
+          }))),
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn primary', onclick: addItemDialog }, '+ 添加物品'),
-          h('button', { type: 'button', class: 'btn', onclick: customItemDialog }, '添加自定义物品'))),
-      list.length ? list.map(itemCard) : h('p', { class: 'empty card' }, state.inventory.length ? '这个分类下没有物品。' : '库存是空的。主持人发放物资后，请在这里手动添加。'));
+          h('button', { type: 'button', class: 'btn', onclick: customItemDialog }, '添加自定义物品'),
+          mode === 'normal' ? h('button', { type: 'button', class: 'btn carry-btn', onclick: carrySetupDialog }, '携带模式') : null)),
+      mode !== 'normal' ? carryPanel(mode) : null,
+      body);
   }
 
+  /** 物品卡：长方形卡片，按类别着色的顶边；按钮随模式切换。 */
   function itemCard(e) {
     var def = defOf(e);
+    var mode = carryMode();
     var carried = carriedQty(e.id);
+    var locked = mode === 'carrying' && !carried;
     var task = state.rules.tasksEnabled && state.taskId === 'hoarder';
-    var hoardable = task && C.isStackable(def) && e.qty >= 3 && e.defId !== 'bread' && e.defId !== 'water';
-    return h('section', { class: 'card item-card', 'data-entry': e.id, 'data-def': e.defId },
-      h('div', { class: 'row between' },
-        h('div', { class: 'grow' },
-          h('div', { class: 'item-name' }, def.name, C.isStackable(def) ? h('span', { class: 'qty' }, '×' + e.qty) : null, ' ',
-            carried ? chip('携带中 ' + carried, 'ok') : null, def.unknown ? chip('未知物品', 'danger') : null),
-          h('div', { class: 'muted small' }, (C.CATEGORIES.find(function (c) { return c.id === def.category; }) || {}).name + ' · 每件占 ' + C.fmtUnits(def.capacityTicks) + ' 单位 · 合计 ' + C.fmtUnits(C.entryTicks(e, state.customItems, state.rules)))),
-        h('div', { class: 'row tight' },
-          def.use ? h('button', { type: 'button', class: 'btn small primary', onclick: function () { useItem(e.id); } }, '使用') : null,
-          h('button', { type: 'button', class: 'btn small', onclick: function () { transferDialog(e.id); } }, '赠予／交公'),
-          h('button', { type: 'button', class: 'btn small', onclick: function () { editItemDialog(e.id); } }, '修改'))),
+    var hoardable = mode === 'normal' && task && C.isStackable(def) && e.qty >= 3 && e.defId !== 'bread' && e.defId !== 'water';
+    var actions;
+    if (mode === 'selecting') {
+      actions = carryPicker(e, def, carried);
+    } else if (locked) {
+      actions = h('p', { class: 'locked-note' }, U.icon('lock'), '携带中：暂不可操作');
+    } else {
+      actions = h('div', { class: 'card-actions' },
+        def.use ? h('button', { type: 'button', class: 'btn small primary', onclick: function () { useItem(e.id); } }, '使用') : null,
+        mode === 'normal' ? h('button', { type: 'button', class: 'btn small', 'aria-label': '赠予／交公', title: '赠予他人或交给公共池', onclick: function () { transferDialog(e.id); } }, '赠予') : null,
+        h('button', { type: 'button', class: 'btn small', onclick: function () { editItemDialog(e.id); } }, '修改'),
+        h('button', { type: 'button', class: 'btn small danger', onclick: function () { deleteDialog(e.id); } }, '删除'));
+    }
+    return h('article', {
+      class: 'inv-card cat-' + def.category + (carried ? ' is-carried' : '') + (locked ? ' is-locked' : ''),
+      'data-entry': e.id, 'data-def': e.defId, inert: locked ? '' : null, 'aria-disabled': locked ? 'true' : null
+    },
+      h('div', { class: 'inv-card-head' },
+        h('span', { class: 'item-name' }, def.name),
+        C.isStackable(def) ? h('span', { class: 'qty' }, '×' + e.qty) : null),
+      h('div', { class: 'inv-card-meta' }, categoryName(def.category) + ' · 每件 ' + C.fmtUnits(def.capacityTicks) + ' · 合计 ' + C.fmtUnits(C.entryTicks(e, state.customItems, state.rules)) + ' 单位'),
+      carried ? h('div', null, chip('携带中 ' + (C.isStackable(def) ? carried + ' 件' : ''), 'ok')) : null,
+      def.unknown ? chip('未知物品', 'danger') : null,
       instanceLine(e, def),
       h('p', { class: 'small item-effect' }, def.effectText),
-      (def.pending || []).length ? h('div', { class: 'row tight' }, def.pending.map(function (p) { return U.pendingTag(p); })) : null,
+      (def.pending || []).length ? h('div', { class: 'pending-row' }, def.pending.map(function (p) { return U.pendingTag(p); })) : null,
       e.remark ? h('p', { class: 'small' }, '备注：' + e.remark) : null,
-      hoardable ? h('button', { type: 'button', class: 'btn small', onclick: function () { hoard(e.id); } }, '囤积者：秘密消耗1件记进度') : null);
+      hoardable ? h('button', { type: 'button', class: 'btn small', onclick: function () { hoard(e.id); } }, '囤积者：秘密消耗1件记进度') : null,
+      actions);
+  }
+
+  /** 挑选携带时卡片底部：可叠加的用 −／＋，其余用「带上／已带上」。超出上限的按钮不可点。 */
+  function carryPicker(e, def, q) {
+    var lo = state.loadout;
+    var room = C.isInt(lo.limitTicks) ? lo.limitTicks - C.loadoutTicks(state) : Infinity;
+    var fits = (def.capacityTicks || 0) <= room;
+    if (C.isStackable(def)) {
+      return h('div', { class: 'card-actions carry-pick' },
+        h('button', { type: 'button', class: 'btn small', 'aria-label': '少带一件' + def.name, disabled: q <= 0, onclick: function () { setCarry(e.id, q - 1); } }, '−'),
+        h('span', { class: 'qty' }, '带 ' + q),
+        h('button', { type: 'button', class: 'btn small' + (q ? '' : ' primary'), 'aria-label': '多带一件' + def.name, disabled: q >= e.qty || !fits, onclick: function () { setCarry(e.id, q + 1); } }, '＋'),
+        !fits && q < e.qty ? h('span', { class: 'muted small' }, '超出上限') : null);
+    }
+    return h('div', { class: 'card-actions carry-pick' },
+      q ? h('button', { type: 'button', class: 'btn small primary', 'aria-pressed': 'true', onclick: function () { setCarry(e.id, 0); } }, '✓ 已带上')
+        : h('button', { type: 'button', class: 'btn small', 'aria-pressed': 'false', disabled: !fits, onclick: function () { setCarry(e.id, 1); } }, '带上'),
+      !q && !fits ? h('span', { class: 'muted small' }, '超出上限') : null);
+  }
+
+  function carriedEntries() {
+    var out = [];
+    (state.loadout ? state.loadout.items : []).forEach(function (r) {
+      var e = C.findEntry(state.inventory, r.entryId);
+      if (e) for (var i = 0; i < r.qty; i++) out.push(e);
+    });
+    return out;
+  }
+
+  /** 携带面板：挑选时显示上限与确认；携带中显示战斗力与「结束携带」。 */
+  function carryPanel(mode) {
+    var lo = state.loadout;
+    var usedTicks = C.loadoutTicks(state);
+    var limit = lo.limitTicks;
+    var over = C.isInt(limit) && usedTicks > limit;
+    var what = (lo.context === 'event' ? '事件' : '守夜') + (lo.label ? '「' + lo.label + '」' : '');
+    var cs = C.combatSummary(state.hp, carriedEntries(), state.customItems, tempAttack());
+    var names = lo.items.map(function (r) { var e = C.findEntry(state.inventory, r.entryId); return e ? defOf(e).name + (r.qty > 1 ? '×' + r.qty : '') : ''; }).filter(Boolean);
+    var head = h('div', { class: 'carry-head' },
+      h('div', null,
+        h('div', { class: 'carry-title' }, mode === 'selecting' ? '挑选携带 · ' + what : '携带中 · ' + what),
+        h('div', { class: 'carry-amount' }, h('b', null, C.fmtUnits(usedTicks)), ' / ', limit == null ? U.pendingTag('不限（上限未设）') : h('b', null, C.fmtUnits(limit)), ' 单位')),
+      limit != null ? U.meter(usedTicks, limit || 1, over ? 'warning' : 'ok', '携带占位') : null);
+    if (mode === 'selecting') {
+      return h('section', { class: 'card carry-panel selecting' },
+        head,
+        h('p', { class: 'small carry-help' }, '在下面的物品卡上点「带上」。最多 ', h('b', null, limit == null ? '不限' : C.fmtUnits(limit) + ' 单位'), '，超出的物品选不上；上限可在「设置上限」里改（以主持人或事件规定为准）。'),
+        over ? h('div', { class: 'callout risk' }, '已选超出上限：请减少后再确认。') : null,
+        h('div', { class: 'row' },
+          h('button', { type: 'button', class: 'btn primary', disabled: !lo.items.length || over, onclick: confirmCarry }, '确认携带' + (names.length ? '（' + names.length + ' 种）' : '')),
+          h('button', { type: 'button', class: 'btn', onclick: carryLimitDialog }, '设置上限'),
+          h('button', { type: 'button', class: 'btn ghost', onclick: function () {
+            commit('取消携带', function (s) { s.loadout = null; log(s, '取消携带模式'); }, { undo: false });
+          } }, '取消')));
+    }
+    return h('section', { class: 'card carry-panel carrying' },
+      head,
+      h('p', { class: 'small' }, '带着：', h('b', null, names.join('、') || '（没有物品）'), h('span', { class: 'carry-help' }, '。主持人宣布结果后，直接在高亮的物品卡上「删除」或「修改」；其他物品暂时锁定。')),
+      h('p', { class: 'small carry-help' }, '战斗力：基础 ', h('b', null, String(cs.base)),
+        cs.weapons.length ? '；' + cs.weapons.map(function (w) { return w.name + (w.bonus ? ' +' + w.bonus : '（' + w.note + '）'); }).join('、') : '；未带武器',
+        cs.temp ? '；临时 +' + cs.temp : '',
+        cs.multiple ? h('span', null, '；合计 ', h('b', null, cs.bestOnly + '～' + cs.stacked), '（多武器是否叠加待定）') : h('span', null, '；合计 ', h('b', null, String(cs.stacked)))),
+      over ? h('div', { class: 'callout risk' }, '携带超出上限 ' + C.fmtUnits(usedTicks - limit) + ' 单位：只警告，由主持人裁定。') : null,
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn primary', onclick: endCarry }, '结束携带（返回）'),
+        h('button', { type: 'button', class: 'btn', onclick: function () {
+          commit('重新挑选携带', function (s) { s.loadout.confirmed = false; log(s, '重新挑选携带物品'); });
+        } }, '重新挑选')));
+  }
+
+  function carrySetupDialog() {
+    var context = 'event';
+    var label = h('input', { type: 'text', placeholder: '可选：事件名或第几夜' });
+    var limit = h('input', { type: 'number', class: 'num', min: 0, step: 0.5 });
+    var segHost = h('div');
+    function ruleLimit(ctx) {
+      var v = ctx === 'event' ? state.rules.eventCarryTicks : state.rules.watchCarryTicks;
+      return C.isInt(v) ? v : DEFAULT_CARRY_TICKS;
+    }
+    function draw() {
+      U.clear(segHost).appendChild(U.segmented([['event', '事件'], ['watch', '守夜']], context, function (v) { context = v; limit.value = ruleLimit(v) / 2; draw(); }));
+    }
+    draw();
+    limit.value = ruleLimit(context) / 2;
+    U.modal({
+      title: '进入携带模式',
+      body: h('div', { class: 'stack' },
+        U.field('带去哪里', segHost),
+        U.field('说明', label),
+        U.field('携带上限（单位）', limit, '默认 2 单位；以主持人或具体事件的规定为准'),
+        h('p', { class: 'muted small' }, '携带只是给库存里的物品做标记，不复制物品。确认后其他物品暂时锁定，结束携带时解锁。')),
+      actions: [{ label: '取消', value: false }, { label: '开始挑选', kind: 'primary', value: true }]
+    }).then(function (ok) {
+      if (!ok) return;
+      var n = U.parseNumber(limit.value, true);
+      if (Number.isNaN(n) || (n != null && (n < 0 || Math.round(n * 2) !== n * 2))) { U.toast('上限需为 0.5 的倍数或留空', 'warn'); return; }
+      commit('准备携带', function (s) {
+        s.loadout = { context: context, label: label.value.trim(), day: today(), limitTicks: n == null ? null : Math.round(n * 2), items: [], confirmed: false };
+        log(s, '开始挑选' + (context === 'event' ? '事件' : '守夜') + '携带（上限 ' + (n == null ? '不限' : n + ' 单位') + '）');
+      }, { undo: false });
+      ui.filter = 'all';
+    });
+  }
+
+  function carryLimitDialog() {
+    var lo = state.loadout;
+    var input = h('input', { type: 'number', class: 'num', min: 0, step: 0.5, value: lo.limitTicks == null ? '' : lo.limitTicks / 2, autofocus: true });
+    U.modal({
+      title: '携带上限',
+      body: U.field('上限（单位，留空＝不限）', input, '以主持人或具体事件的规定为准'),
+      actions: [{ label: '取消', value: false }, { label: '设定', kind: 'primary', value: true }]
+    }).then(function (ok) {
+      if (!ok) return;
+      var n = U.parseNumber(input.value, true);
+      if (Number.isNaN(n) || (n != null && (n < 0 || Math.round(n * 2) !== n * 2))) { U.toast('上限需为 0.5 的倍数或留空', 'warn'); return; }
+      commit('修改携带上限', function (s) { s.loadout.limitTicks = n == null ? null : Math.round(n * 2); log(s, '携带上限：' + (n == null ? '不限' : n + ' 单位')); });
+    });
+  }
+
+  function confirmCarry() {
+    commit('确认携带', function (s) {
+      var lo = s.loadout;
+      var names = lo.items.map(function (r) { var e = C.findEntry(s.inventory, r.entryId); return e ? C.getDef(e.defId, s.customItems).name + '×' + r.qty : ''; }).filter(Boolean);
+      lo.confirmed = true;
+      log(s, '确认携带（' + (lo.context === 'event' ? '事件' : '守夜') + '）：' + names.join('、'));
+    });
+    U.toast('已确认携带：其他物品暂时锁定', 'ok');
+  }
+
+  function endCarry() {
+    U.confirmBox('结束携带？', '只清除携带标记、解锁其他物品。事件中用掉或丢失的物品，请先在高亮的卡片上删除或修改。', '结束携带').then(function (ok) {
+      if (!ok) return;
+      commit('结束携带', function (s) { log(s, '结束携带（' + (s.loadout.context === 'event' ? '事件' : '守夜') + '），物品不重复添加'); s.loadout = null; });
+    });
+  }
+
+  function setCarry(entryId, q) {
+    commit('调整携带', function (s) {
+      var e = C.findEntry(s.inventory, entryId);
+      if (!e) return false;
+      var n = Math.max(0, Math.min(q, e.qty));
+      var before = s.loadout.items.filter(function (r) { return r.entryId === entryId; })[0];
+      var delta = (n - (before ? before.qty : 0)) * (C.getDef(e.defId, s.customItems).capacityTicks || 0);
+      if (delta > 0 && C.isInt(s.loadout.limitTicks) && C.loadoutTicks(s) + delta > s.loadout.limitTicks) throw new Error('超出携带上限 ' + C.fmtUnits(s.loadout.limitTicks) + ' 单位');
+      s.loadout.items = s.loadout.items.filter(function (r) { return r.entryId !== entryId; });
+      if (n > 0) s.loadout.items.push({ entryId: entryId, qty: n });
+    }, { undo: false });
+  }
+
+  /** 删除：从库存移除，不生成交接文本。携带中删除的就是带出去的那几件。 */
+  function deleteDialog(entryId) {
+    var e = C.findEntry(state.inventory, entryId);
+    if (!e) return;
+    var def = defOf(e);
+    var stack = C.isStackable(def) && e.qty > 1;
+    var carried = carriedQty(entryId);
+    var qty = h('input', { type: 'number', class: 'num', min: 1, max: e.qty, value: stack && carried ? Math.min(carried, e.qty) : 1 });
+    U.modal({
+      title: '删除' + def.name,
+      body: h('div', { class: 'stack' },
+        stack ? U.field('删除数量（现有 ' + e.qty + ' 件）', h('div', { class: 'row tight' }, qty,
+          h('button', { type: 'button', class: 'btn small', onclick: function () { qty.value = e.qty; } }, '全部'))) : null,
+        h('p', null, '从你的库存移除，可以用顶部的「撤销」恢复。'),
+        h('p', { class: 'muted small' }, '交给别人或交公请用「赠予／交公」，那样会生成给对方的交接文本。')),
+      actions: [{ label: '取消', value: false }, { label: '删除', kind: 'danger', value: true }]
+    }).then(function (ok) {
+      if (!ok) return;
+      var n = stack ? parseInt(qty.value, 10) : e.qty;
+      if (!C.isInt(n) || n < 1 || n > e.qty) { U.toast('数量需在 1～' + e.qty + ' 之间', 'warn'); return; }
+      commit('删除物品', function (s) {
+        C.removeQty(s.inventory, entryId, n);
+        var row = s.loadout ? s.loadout.items.filter(function (r) { return r.entryId === entryId; })[0] : null;
+        if (row) row.qty = Math.max(0, row.qty - n);
+        syncLoadout(s);
+        log(s, '删除：' + def.name + '×' + n + (row ? '（携带中）' : ''));
+      });
+    });
   }
 
   function instanceLine(e, def) {
@@ -1358,117 +1607,6 @@
 
   // ================================================================ 携带
 
-  function renderLoadout() {
-    var lo = state.loadout;
-    if (!lo) {
-      return h('div', { class: 'stack' },
-        h('section', { class: 'card' },
-          h('h2', null, '携带准备'),
-          h('p', null, '从已有库存中选择本次事件或守夜要带的物品。携带列表只引用库存里的实例，不复制物品；事件中消耗会减少该实例；返回时只清空携带标记，不会重复添加物品。'),
-          h('div', { class: 'row' },
-            h('button', { type: 'button', class: 'btn primary', onclick: function () { startLoadout('event'); } }, '为事件准备携带'),
-            h('button', { type: 'button', class: 'btn', onclick: function () { startLoadout('watch'); } }, '为守夜准备携带')),
-          h('p', { class: 'muted small' }, '事件携带上限由具体事件规定（一般1～2单位）；守夜携带上限待定，不会默认沿用事件上限。')));
-    }
-    var usedTicks = lo.items.reduce(function (sum, r) {
-      var e = C.findEntry(state.inventory, r.entryId);
-      return sum + (e ? r.qty * (defOf(e).capacityTicks || 0) : 0);
-    }, 0);
-    var over = C.isInt(lo.limitTicks) && usedTicks > lo.limitTicks;
-    var carried = [];
-    lo.items.forEach(function (r) {
-      var e = C.findEntry(state.inventory, r.entryId);
-      if (e) for (var i = 0; i < r.qty; i++) carried.push(e);
-    });
-    var cs = C.combatSummary(state.hp, carried, state.customItems, tempAttack());
-    var limitInput = h('input', { type: 'number', class: 'num', min: 0, step: 0.5, value: lo.limitTicks == null ? '' : lo.limitTicks / 2, placeholder: lo.context === 'watch' ? '待配置' : '按事件' });
-    limitInput.addEventListener('change', function () {
-      var n = U.parseNumber(limitInput.value, true);
-      if (Number.isNaN(n) || (n != null && (n < 0 || Math.round(n * 2) !== n * 2))) { U.toast('上限需为 0.5 的倍数或留空', 'warn'); return; }
-      commit('修改携带上限', function (s) { s.loadout.limitTicks = n == null ? null : Math.round(n * 2); log(s, '携带上限：' + (n == null ? '未设置' : n + '单位')); });
-    });
-    var labelInput = h('input', { type: 'text', value: lo.label || '', placeholder: lo.context === 'event' ? '事件名称' : '第几夜' });
-    labelInput.addEventListener('change', function () { commit('携带备注', function (s) { s.loadout.label = labelInput.value; }, { undo: false }); });
-    return h('div', { class: 'stack' },
-      h('section', { class: 'card' },
-        h('div', { class: 'card-head' }, h('h2', null, lo.context === 'event' ? '事件携带' : '守夜携带'), chip('第' + lo.day + '天', '')),
-        h('div', { class: 'grid2' }, U.field('说明', labelInput), U.field(lo.context === 'event' ? '事件携带上限（单位）' : '守夜携带上限（单位，待定）', limitInput)),
-        h('p', { class: over ? 'risk-text' : '' }, '已选占位：', h('b', null, C.fmtUnits(usedTicks)), ' / ', lo.limitTicks == null ? U.pendingTag(lo.context === 'watch' ? '守夜上限待配置' : '按事件规定') : C.fmtUnits(lo.limitTicks) + ' 单位'),
-        over ? h('div', { class: 'callout risk' }, '超出携带上限：只警告，由主持人裁定。') : null),
-      h('section', { class: 'card' },
-        h('h3', null, '战斗力与临时效果'),
-        h('p', null, '基础战斗力＝当前生命：', h('b', null, String(cs.base))),
-        cs.weapons.length ? h('ul', null, cs.weapons.map(function (w) { return h('li', null, w.name + '：' + (w.bonus ? '攻击+' + w.bonus : w.note)); })) : h('p', { class: 'muted' }, '未携带武器。'),
-        cs.temp ? h('p', null, '临时攻击：+' + cs.temp) : null,
-        cs.multiple ? h('div', { class: 'callout info' }, '多武器是否叠加尚未确定：叠加＝', h('b', null, String(cs.stacked)), '；只取最高＝', h('b', null, String(cs.bestOnly)), '。请主持人裁定。') :
-          h('p', null, '合计：', h('b', null, String(cs.stacked))),
-        state.temporaryEffects.length ? h('ul', { class: 'small' }, state.temporaryEffects.map(function (fx) { return h('li', null, fx.text); })) : null,
-        h('p', { class: 'muted small' }, '步枪存在不代表有弹：这里只在你的设备上显示，不会公开给主持人。')),
-      h('section', { class: 'card' },
-        h('h3', null, '选择携带的物品'),
-        state.inventory.length ? h('ul', { class: 'list-plain' }, state.inventory.map(function (e) {
-          var q = carriedQty(e.id);
-          var def = defOf(e);
-          return h('li', { class: 'row between' },
-            h('span', { class: 'grow' }, describe(e), h('span', { class: 'muted small' }, ' · 每件' + C.fmtUnits(def.capacityTicks))),
-            h('div', { class: 'row tight' },
-              C.isStackable(def) ? [
-                h('button', { type: 'button', class: 'btn small', disabled: q <= 0, onclick: function () { setCarry(e.id, q - 1); } }, '−'),
-                h('span', { class: 'qty' }, String(q)),
-                h('button', { type: 'button', class: 'btn small', disabled: q >= e.qty, onclick: function () { setCarry(e.id, q + 1); } }, '+')
-              ] : h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: q > 0, onchange: function (ev) { setCarry(e.id, ev.target.checked ? 1 : 0); } }), '携带'),
-              q > 0 && (def.use || C.isStackable(def)) ? h('button', { type: 'button', class: 'btn small risk', onclick: function () { consumeCarried(e.id); } }, '事件中消耗1') : null));
-        })) : h('p', { class: 'empty' }, '库存是空的。')),
-      h('div', { class: 'row' },
-        h('button', {
-          type: 'button', class: 'btn primary', onclick: function () {
-            commit('返回清空携带', function (s) { log(s, '返回：清空携带标记（' + (s.loadout.context === 'event' ? '事件' : '守夜') + '），物品不重复添加'); s.loadout = null; });
-          }
-        }, '返回：清空携带标记'),
-        h('span', { class: 'muted small' }, '只清除标记；没消耗的物品本来就在库存里。')));
-  }
-
-  function startLoadout(context) {
-    commit('准备携带', function (s) {
-      s.loadout = { context: context, label: '', day: today(), limitTicks: context === 'event' ? s.rules.eventCarryTicks : s.rules.watchCarryTicks, items: [] };
-      log(s, '开始准备' + (context === 'event' ? '事件' : '守夜') + '携带');
-    }, { undo: false });
-  }
-
-  function setCarry(entryId, q) {
-    commit('调整携带', function (s) {
-      var e = C.findEntry(s.inventory, entryId);
-      if (!e) return false;
-      var n = Math.max(0, Math.min(q, e.qty));
-      s.loadout.items = s.loadout.items.filter(function (r) { return r.entryId !== entryId; });
-      if (n > 0) s.loadout.items.push({ entryId: entryId, qty: n });
-    }, { undo: false });
-  }
-
-  function consumeCarried(entryId) {
-    var e = C.findEntry(state.inventory, entryId);
-    if (!e) return;
-    var def = defOf(e);
-    var multi = def.instance === 'uses';
-    U.confirmBox('事件中消耗', multi ? def.name + '：用掉1次（剩 ' + (e.uses - 1) + ' 次' + (e.uses - 1 <= 0 ? '，用完消失' : '') + '）' : '消耗 1 件' + def.name + '（从库存扣除）', '消耗', 'risk').then(function (ok) {
-      if (!ok) return;
-      commit('事件中消耗', function (s) {
-        var x = C.findEntry(s.inventory, entryId);
-        var row = s.loadout ? s.loadout.items.find(function (r) { return r.entryId === entryId; }) : null;
-        if (multi) {
-          x.uses -= 1;
-          if (x.uses <= 0) s.inventory = s.inventory.filter(function (y) { return y.id !== entryId; });
-        } else {
-          C.removeQty(s.inventory, entryId, 1);
-          // 消耗的是携带中的那一件：携带数量随之减1，其余携带保持不变
-          if (row) row.qty -= 1;
-        }
-        syncLoadout(s);
-        log(s, '事件中消耗：' + def.name + (multi ? '（1次）' : '×1'));
-      });
-    });
-  }
-
   // ================================================================ 搜刮
 
   var scavTimer = null;
@@ -1478,7 +1616,7 @@
     var r = state.rules;
     var head = h('section', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', null, '阶段性搜刮'), chip(r.scavengeRounds + '轮 × ' + r.scavengeOptions + '选项 × ' + r.scavengeSeconds + '秒', '')),
-      h('p', { class: 'small' }, '每轮几组物资组合（每组约 ' + C.fmtUnits(r.scavengeComboTicks) + ' 单位），超时自动选默认项（第一项，已标明）。计时按截止时间计算，候选与选择立即存档：刷新或切到后台都不会多领一轮。'),
+      h('p', { class: 'small' }, '每轮几组物资组合（每组 ' + C.fmtUnits(Math.max(1, r.scavengeComboTicks - 1)) + '～' + C.fmtUnits(r.scavengeComboTicks) + ' 单位；补给之外的物品每组最多一件），超时自动选默认项（第一项，已标明）。计时按截止时间计算，候选与选择立即存档：刷新或切到后台都不会多领一轮。'),
       h('p', { class: 'small' }, '新所得进入待整理区：自留不超过 ' + C.fmtUnits(r.scavengeKeepTicks) + ' 单位，同时检查总库存 ' + C.fmtUnits(r.inventoryCapacityTicks) + ' 单位，其余形成交公清单。'));
     if (!sc || sc.status === 'submitted') {
       return h('div', { class: 'stack' }, head,
@@ -1682,38 +1820,82 @@
 
   // ================================================================ 行动
 
+  // ================================================================ 行动与身份
+
+  /* 每天一次、会消耗当日行动的选择。点亮一个即记为今天的行动；再点一次取消。 */
+  var ACTIONS = [
+    { id: 'plan', name: '计划守夜名单', desc: '为今晚抽两份守夜候选，交给主持人' },
+    { id: 'swap', name: '尝试换位', desc: '请求与别人交换实际座位，双方同意才生效' },
+    { id: 'skill', name: '使用职业技能', desc: '' },
+    { id: 'other', name: '其他行动', desc: '主持人允许的其他行动' },
+    { id: 'pass', name: '放弃行动', desc: '今天不行动' }
+  ];
+
+  function actionName(type) {
+    var a = ACTIONS.find(function (x) { return x.id === type; });
+    return a ? a.name : '已使用（未注明）';
+  }
+
+  function chooseAction(type) {
+    var cur = state.action.day === today() && state.action.used ? state.action.type || null : null;
+    var prof = state.rules.professionsEnabled ? C.getProfession(state.professionId) : null;
+    commit('今日行动', function (s) {
+      var old = s.action.day === today() ? s.action : null;
+      if (old && old.skillLogId) s.skillLog = s.skillLog.filter(function (k) { return k.id !== old.skillLogId; });
+      if (cur === type) {
+        s.action = { day: today(), used: false, type: null, note: '' };
+        log(s, '取消今日行动：' + actionName(type));
+        return;
+      }
+      s.action = { day: today(), used: true, type: type, note: old && old.used ? old.note || '' : '' };
+      if (type === 'skill' && prof) {
+        var id = C.uid('sk');
+        s.skillLog.unshift({ id: id, day: today(), text: prof.name + '技能' });
+        s.action.skillLogId = id;
+      }
+      log(s, '今日行动：' + actionName(type) + (cur ? '（改选，原为' + actionName(cur) + '）' : ''));
+    });
+  }
+
   function renderAction() {
     var usedToday = state.action.day === today() && state.action.used;
+    var current = usedToday ? state.action.type || null : null;
     var prof = state.rules.professionsEnabled ? C.getProfession(state.professionId) : null;
+    var note = h('input', { type: 'text', value: usedToday ? state.action.note || '' : '', placeholder: '可选：对谁、做了什么' });
+    note.addEventListener('change', function () { commit('行动备注', function (s) { s.action.note = note.value.trim(); }, { undo: false }); });
     var craftName = h('input', { type: 'text', placeholder: '例如：制造子弹' });
     var craftReq = h('input', { type: 'number', class: 'num', min: 1, placeholder: '回合' });
     return h('div', { class: 'stack' },
-      h('section', { class: 'card' },
-        h('div', { class: 'card-head' }, h('h2', null, '第 ' + today() + ' 天的个人行动')),
-        h('label', { class: 'check big-check' }, h('input', {
-          type: 'checkbox', checked: usedToday, onchange: function (e) {
-            var used = e.target.checked;
-            commit('行动标记', function (s) { s.action = { day: today(), used: used, note: s.action.note || '' }; log(s, used ? '标记今日行动已使用' : '取消今日行动已使用'); });
-          }
-        }), usedToday ? '今日行动已使用' : '今日行动未使用'),
-        h('p', { class: 'muted small' }, '每天一次行动（技能、换位或计划守夜名单）。这里的标记可人工修改，不与主持人自动同步。')),
+      h('section', { class: 'card wide action-card' },
+        h('div', { class: 'card-head' }, h('h2', null, '第 ' + today() + ' 天的行动'),
+          usedToday ? sevBadge('ok', '已选：' + actionName(current)) : sevBadge('info', '还没选')),
+        h('p', { class: 'muted small' }, '每天一次行动。点一个按钮点亮它，就记为今天的行动；再点一次取消，点别的就改选。只记在你自己的页面上，不会自动通知主持人。'),
+        h('div', { class: 'action-grid', role: 'group', 'aria-label': '今日行动' }, ACTIONS.map(function (a) {
+          var on = current === a.id;
+          var disabled = a.id === 'skill' && !prof;
+          var desc = a.id === 'skill'
+            ? (prof ? prof.name + '：' + prof.text : state.rules.professionsEnabled ? '先在下方选择职业' : '职业草案未启用')
+            : a.desc;
+          return h('button', {
+            type: 'button', class: 'action-btn act-' + a.id + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : 'false', 'data-action': a.id,
+            disabled: disabled, onclick: function () { chooseAction(a.id); }
+          },
+            h('span', { class: 'action-name' }, on ? U.icon('check') : null, a.name),
+            h('span', { class: 'action-desc' }, desc));
+        })),
+        usedToday && !current ? h('p', { class: 'small' }, '今天已标记使用行动（旧记录，未注明类型）。点一个按钮可补上类型。') : null,
+        usedToday ? U.field('备注', note) : null),
       h('section', { class: 'card' },
         h('div', { class: 'card-head' }, h('h2', null, '职业技能'), U.ruleBadge('draft')),
-        !state.rules.professionsEnabled ? h('p', { class: 'muted' }, '职业草案未启用（主持人明确启用后，在「存档 → 规则」打开）。') :
-          prof ? h('div', null, h('p', null, h('b', null, prof.name + '：'), prof.text), h('p', null, U.pendingTag(prof.pending)),
-            h('button', {
-              type: 'button', class: 'btn primary', onclick: function () {
-                var note = h('input', { type: 'text', placeholder: '用在谁身上、做了什么', autofocus: true });
-                U.modal({ title: '记录使用技能', body: U.field('说明', note), actions: [{ label: '取消', value: false }, { label: '记录', kind: 'primary', value: true }] }).then(function (ok) {
-                  if (!ok) return;
-                  commit('使用技能', function (s) {
-                    s.skillLog.unshift({ id: C.uid('sk'), day: today(), text: note.value || prof.name + '技能' });
-                    log(s, '使用技能（' + prof.name + '）：' + (note.value || ''));
-                  });
-                });
-              }
-            }, '记录使用技能')) : h('p', { class: 'muted' }, '还没有选择职业（在「身份」页选择）。'),
-        state.skillLog.length ? h('ul', { class: 'list-plain' }, state.skillLog.map(function (k) { return h('li', null, '第' + k.day + '天：' + k.text); })) : null),
+        state.rules.professionsEnabled ? h('div', { class: 'stack' },
+          U.field('职业', U.select([['', '未选择']].concat(C.PROFESSIONS.map(function (p) { return [p.id, p.name]; })), state.professionId || '', function (v) {
+            commit('选择职业', function (s) { s.professionId = v || null; log(s, '职业：' + (v ? C.getProfession(v).name : '未选择')); });
+          })),
+          prof ? h('div', { class: 'skill-box' }, h('b', null, prof.name + '的技能'), h('p', null, prof.text), U.pendingTag(prof.pending)) : h('p', { class: 'muted' }, '还没有选择职业。'),
+          h('p', { class: 'muted small' }, '使用职业技能会占用当天的行动：在上方点亮「使用职业技能」。职业没有专属分数，除非之后确认。'),
+          state.skillLog.length ? h('div', null, h('h3', null, '使用记录'), h('ul', { class: 'list-plain' }, state.skillLog.map(function (k) { return h('li', null, '第' + k.day + '天：' + k.text); }))) : null)
+          : h('p', { class: 'muted' }, '职业草案未启用（主持人明确启用后，在「存档 → 规则」打开）。')),
+      identityCards(),
       h('section', { class: 'card' },
         h('div', { class: 'card-head' }, h('h2', null, '制作进度')),
         state.crafting.length ? h('ul', { class: 'list-plain' }, state.crafting.map(function (c) {
@@ -1745,30 +1927,21 @@
     });
   }
 
-  // ================================================================ 身份
+  // ---------------------------------------------------------------- 身份（与行动同页）
 
-  function renderIdentity() {
+  function identityCards() {
     function textField(label, key, hint, selfBtn) {
       var input = h('input', { type: 'text', value: state[key] || '' });
       input.addEventListener('change', function () { commit('修改' + label, function (s) { s[key] = input.value.trim(); log(s, label + '：' + (input.value.trim() || '（空）')); }); });
       return U.field(label, h('div', { class: 'row' }, input, selfBtn ? h('button', { type: 'button', class: 'btn small', onclick: function () { commit('指向自己', function (s) { s[key] = s.name || '自己'; log(s, label + '：自己'); }); } }, '自己') : null), hint);
     }
-    var prof = C.getProfession(state.professionId);
     var task = C.getTask(state.taskId);
-    return h('div', { class: 'stack' },
+    return [
       h('section', { class: 'card' },
         h('h2', null, '身份与秘密'),
         textField('姓名', 'name'),
         textField('爱的人', 'loveName', '由主持人私信分配，手动填写；可以是自己', true),
         textField('恨的人', 'hateName', '可以是自己；爱与恨能否是同一人尚未确定', true)),
-      h('section', { class: 'card' },
-        h('div', { class: 'card-head' }, h('h2', null, '职业'), U.ruleBadge('draft')),
-        state.rules.professionsEnabled ? h('div', { class: 'stack' },
-          U.select([['', '未选择']].concat(C.PROFESSIONS.map(function (p) { return [p.id, p.name]; })), state.professionId || '', function (v) {
-            commit('选择职业', function (s) { s.professionId = v || null; log(s, '职业：' + (v ? C.getProfession(v).name : '未选择')); });
-          }),
-          prof ? h('div', { class: 'callout info' }, h('b', null, prof.name + '：'), prof.text, h('div', null, U.pendingTag(prof.pending))) : null,
-          h('p', { class: 'muted small' }, '职业没有专属分数，除非之后确认。')) : h('p', { class: 'muted' }, '职业草案未启用。')),
       h('section', { class: 'card' },
         h('div', { class: 'card-head' }, h('h2', null, '秘密任务'), U.ruleBadge('draft')),
         state.rules.tasksEnabled ? h('div', { class: 'stack' },
@@ -1777,7 +1950,8 @@
           }),
           task ? taskBox(task) : null,
           h('p', { class: 'muted small' }, '任务完成后统一固定奖励（奖励值：' + (state.rules.scoreTaskReward == null ? '待配置' : state.rules.scoreTaskReward) + '）。完成即锁定还是结算时判断，按任务与配置处理。停用草案：' + C.RETIRED_DRAFTS.map(function (d) { return d.name; }).join('、') + '（不可选择）。')) :
-          h('p', { class: 'muted' }, '秘密任务草案未启用。')));
+          h('p', { class: 'muted' }, '秘密任务草案未启用。'))
+    ];
   }
 
   function taskBox(task) {
@@ -2061,6 +2235,7 @@
 
   function boot() {
     var tab = U.readKey(KEY_TAB);
+    tab = TAB_ALIASES[tab] || tab;
     if (tab && TABS.some(function (t) { return t.id === tab; })) ui.tab = tab;
     state = loadState();
     // 点击「更多」面板以外的地方时收起
