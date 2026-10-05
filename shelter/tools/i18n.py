@@ -5,8 +5,8 @@
 # 译文写「~」表示交给 src/shared/i18n.js 的固定句式处理（如「第 N 天」、量词）。
 import json, sys, os, subprocess
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = ['src/shared/core.js', 'src/shared/ui.js', 'src/host/host.js', 'src/player/player.js']
-TSV = {'src/shared/core.js': 'core.tsv', 'src/shared/ui.js': 'ui.tsv', 'src/host/host.js': 'host.tsv', 'src/player/player.js': 'player.tsv'}
+SRC = ['src/shared/core.js', 'src/shared/ui.js', 'src/host/host.js', 'src/player/player.js', 'src/fx/fx.js']
+TSV = {'src/shared/core.js': 'core.tsv', 'src/shared/ui.js': 'ui.tsv', 'src/host/host.js': 'host.tsv', 'src/player/player.js': 'player.tsv', 'src/fx/fx.js': 'fx.tsv'}
 DIR = os.path.join(HERE, 'src/shared/i18n')
 
 def esc(s): return s.replace('\\', '\\\\').replace('\n', '\\n').replace('\t', '\\t')

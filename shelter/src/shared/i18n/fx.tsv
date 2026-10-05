@@ -1,0 +1,14 @@
+# 动画与音效（src/fx/fx.js）的界面文字
+发牌	Deal
+翻牌	Flip
+选中	Pick
+滴答	Tick
+揭晓	Reveal
+动画与音效	Animation & sound
+动画	Motion
+跟随系统	System
+音效	Sound
+音量	Volume
+试听	Preview
+只在公开时刻出声（阶段、计时、事件、营救、公开结果），秘密页里的操作不出声；屏幕共享带声音时大家都能听到。	Sounds play only at public moments (phases, timer, events, rescue, public results); actions on secret pages stay silent. If you share your screen with audio, everyone hears them.
+浏览器要求先点一下页面才会出声。设置只记在这台设备上。	Your browser only allows sound after you tap the page once. Settings are saved on this device only.

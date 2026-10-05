@@ -1,0 +1,56 @@
+/*
+ * 避难所 Playtest · 动画与音效的样式（src/fx/fx.js 用）
+ */
+
+/* ---------- 发牌时盖在卡面上的牌背，翻到一半时拿掉 ---------- */
+.fx-cardback {
+  position: absolute; inset: -2px; z-index: 2; border-radius: 14px; pointer-events: none;
+  display: grid; place-items: center;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16) 0 22%, transparent 23%),
+    repeating-linear-gradient(45deg, #0f6e66 0 9px, #0b5a53 9px 18px);
+  border: 2px solid #0b5a53; color: #dcefe9;
+}
+.fx-cardback::after { content: '?'; font-size: 30px; font-weight: 800; line-height: 1; }
+
+/* 选好一张后，另一张退到后面 */
+.wcards:has(.wcard.on) .wcard:not(.on) { opacity: 0.62; transition: opacity 0.25s; }
+
+/* 最后几秒：倒计时变橙 */
+#timer-display.fx-hot, #scav-clock.fx-hot { color: var(--orange, #b4540e); }
+
+/* ---------- 左下角的「动画与音效」开关 ---------- */
+.fx-dock { position: fixed; left: 12px; bottom: 16px; z-index: 40; font-size: 14px; }
+body.presenting .fx-dock { display: none; }
+@media (max-width: 719px) {
+  body.player .fx-dock { bottom: calc(64px + env(safe-area-inset-bottom)); left: 8px; }
+}
+.fx-pill {
+  position: relative; display: inline-grid; place-items: center; width: 42px; height: 42px; padding: 0;
+  border-radius: 50%; border: 1px solid var(--line-strong, #cfc4b1); background: var(--surface, #fffdf8); color: var(--teal-strong, #0b5a53);
+  box-shadow: 0 4px 14px rgba(60, 40, 10, 0.14); cursor: pointer;
+}
+.fx-pill:hover { border-color: var(--teal, #0f6e66); }
+.fx-pill:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 2px; }
+.fx-pill svg { width: 20px; height: 20px; }
+.fx-pill.muted { color: var(--muted, #847b70); }
+.fx-panel {
+  position: absolute; left: 0; bottom: calc(100% + 10px); width: min(330px, calc(100vw - 20px));
+  display: flex; flex-direction: column; gap: 10px; padding: 14px;
+  background: var(--surface, #fffdf8); color: var(--ink, #2a2620); border: 1px solid var(--line, #e3dacb); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(60, 40, 10, 0.2);
+}
+.fx-panel[hidden] { display: none; }
+.fx-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fx-head b { font-size: 16px; }
+.fx-note { margin: 0; color: var(--muted, #847b70); font-size: 12.5px; line-height: 1.5; }
+.fx-row { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 8px; }
+.fx-row > span:first-child { color: var(--ink-2, #57504a); font-weight: 650; }
+.fx-seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.fx-seg button, .fx-try button {
+  font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line-strong, #cfc4b1); background: var(--surface, #fffdf8); color: var(--ink, #2a2620);
+}
+.fx-seg button[aria-pressed="true"] { background: var(--teal, #0f6e66); border-color: var(--teal, #0f6e66); color: #fff; }
+.fx-try { display: flex; flex-wrap: wrap; gap: 4px; }
+.fx-row input[type=range] { width: 100%; accent-color: var(--teal, #0f6e66); }

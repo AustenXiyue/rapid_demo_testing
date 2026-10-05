@@ -1285,3 +1285,124 @@ test('一键重置：玩家页、主持人页只删自己的本机数据并重�
   assert.deepEqual([...errors, ...hostErrors], []);
   await context.close();
 });
+
+// ---------------------------------------------------------------- 动画与音效（src/fx/）
+
+const fxHas = (page, name, timeout = 5000) => page.waitForFunction((n) => window.ShelterFX.log.includes(n), name, { timeout });
+
+async function fxPlayer(page, name, others) {
+  await tab(page, 'action');
+  const nameInput = page.locator('.field', { hasText: '姓名' }).locator('input');
+  await nameInput.fill(name);
+  await nameInput.press('Enter');
+  await nameInput.blur();
+  await page.waitForFunction(([k, n]) => (JSON.parse(localStorage.getItem(k)) || {}).name === n, [PLAYER_KEY, name]);
+  await tab(page, 'save');
+  await page.locator('.roster-card').getByRole('textbox', { name: '其他玩家的名字' }).fill(others.join('，'));
+  await page.locator('.roster-card').getByRole('button', { name: '添加', exact: true }).click();
+  await tab(page, 'action');
+}
+
+test('动画与音效·玩家：点亮行动、发牌翻牌、选中都有动画与音效；设置可关并记住；系统减少动态效果时不翻牌', async () => {
+  const { context } = await newContext({ viewport: { width: 390, height: 844 } });
+  const { page, errors } = await open(context, PLAYER);
+  await fxPlayer(page, 'B·阿珍', ['A·老陈', 'C·胖虎', 'D·修女', 'E·二狗', 'F·教授']);
+  await page.locator('[data-action="plan"]').click();
+  await fxHas(page, 'light');
+  await btn(page, '确认抽取守夜名单').click();
+  await fxHas(page, 'deal');
+  assert.equal(await page.locator('.watch-section .fx-cardback').count(), 2, '两张牌背朝上发出来');
+  await page.waitForFunction(() => !document.querySelector('.fx-cardback'), null, { timeout: 4000 });
+  await page.waitForFunction(() => ['deal', 'flip'].every((n) => window.ShelterFX.played.includes(n)), null, { timeout: 4000 });
+  await page.locator('.watch-section .wcard').nth(1).click();
+  await fxHas(page, 'select');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, '390px 宽没有横向溢出');
+
+  // 设置：关掉音效与动画；点面板里的按钮不会把面板关掉；刷新后还记得
+  await page.locator('.fx-pill').click();
+  const panel = page.locator('.fx-panel');
+  await panel.locator('.fx-row', { hasText: '音效' }).getByRole('button', { name: '关', exact: true }).click();
+  await panel.locator('.fx-row', { hasText: '动画' }).getByRole('button', { name: '关', exact: true }).click();
+  assert.ok(await panel.isVisible());
+  await page.keyboard.press('Escape');
+  assert.ok(!(await panel.isVisible()), 'Esc 收起面板');
+  await page.reload();
+  assert.deepEqual(await page.evaluate(() => window.ShelterFX.settings()), { motion: 'off', sound: false, volume: 0.6 });
+  assert.equal(await page.locator('.fx-pill.muted').count(), 1, '静音时图标变灰');
+  assert.equal(await page.evaluate(() => localStorage.getItem('shelter-playtest:fx')), JSON.stringify({ motion: 'off', sound: false, volume: 0.6 }));
+  assert.deepEqual(errors, []);
+  await context.close();
+
+  // 系统开了「减少动态效果」：照样记效果，但不发牌翻面
+  const rc = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+  const { page: rp, errors: rerr } = await open(rc, PLAYER);
+  await fxPlayer(rp, '甲', ['乙', '丙']);
+  await rp.locator('[data-action="plan"]').click();
+  await btn(rp, '确认抽取守夜名单').click();
+  await fxHas(rp, 'deal');
+  assert.equal(await rp.locator('.fx-cardback').count(), 0, '减少动态效果时没有牌背翻面');
+  assert.equal(await rp.evaluate(() => window.ShelterFX.motion()), 'reduce');
+  assert.deepEqual(rerr, []);
+  await rc.close();
+});
+
+test('动画与音效·主持人：新的一天、换阶段、轮换座次、计时最后几秒与时间到都有效果；打开守夜链接只翻牌不出声', async () => {
+  const { context } = await newContext();
+  const { page: host, errors } = await open(context, HOST);
+  await hostDemo(host);
+  await tab(host, 'flow');
+  await startDay1(host);
+  await fxHas(host, 'dawn');
+  await nextPhase(host); // 2
+  await fxHas(host, 'phase');
+  await nextPhase(host); // 3
+  await nextPhase(host); // 4
+  await btn(host, '执行每日轮换').click();
+  await fxHas(host, 'shuffle');
+
+  // 计时：设 3 秒，最后几秒滴答，到点响铃
+  await tab(host, 'stage');
+  const timer = host.locator('.timer').first();
+  await timer.getByRole('button', { name: '自定义' }).click();
+  await modal(host).locator('input').fill('3');
+  await modalBtn(host, '设定');
+  await timer.getByRole('button', { name: '开始' }).click();
+  await fxHas(host, 'urgent');
+  await fxHas(host, 'alarm', 6000);
+  await host.waitForFunction(() => window.ShelterFX.played.includes('alarm'));
+
+  // 守夜链接：卡片在弹窗里翻出来，但秘密页不出声
+  const link = await host.evaluate(() => {
+    const C = window.ShelterCore;
+    const card = C.makeWatchCardV2(['A·老陈', 'B·阿珍', 'C·胖虎'], () => 0.5, C.defaultRules());
+    return location.href.replace(/[#?].*$/, '') + C.watchLinkHash({ v: 2, day: 1, from: 'B·阿珍', card });
+  });
+  await host.goto(link);
+  await host.check('#confirm-share-paused');
+  const playedBefore = await host.evaluate(() => window.ShelterFX.played.length);
+  const dealsBefore = await host.evaluate(() => window.ShelterFX.log.filter((n) => n === 'deal').length);
+  await modalBtn(host, '查看卡片');
+  await host.waitForFunction((n) => window.ShelterFX.log.filter((x) => x === 'deal').length > n, dealsBefore);
+  await host.waitForTimeout(900);
+  const newSounds = await host.evaluate((n) => window.ShelterFX.played.slice(n), playedBefore);
+  assert.ok(!newSounds.includes('deal') && !newSounds.includes('flip'), '秘密弹窗里翻牌不出声：' + newSounds.join(','));
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('动画与音效：设置面板中英文都没有残留；全屏展示时按钮隐藏', async () => {
+  const { context } = await newContext({ init: () => localStorage.setItem('shelter-playtest:lang', 'en') });
+  const { page, errors } = await open(context, PLAYER);
+  await page.locator('.fx-pill').click();
+  await page.locator('.fx-panel').waitFor();
+  assert.deepEqual(await leftoverChinese(page), [], 'player panel');
+  const { page: host } = await open(context, HOST);
+  await host.locator('.fx-pill').click();
+  assert.deepEqual(await leftoverChinese(host), [], 'host panel');
+  await host.keyboard.press('Escape');
+  await tab(host, 'stage');
+  await host.locator('.present-btn').click();
+  assert.ok(!(await host.locator('.fx-pill').isVisible()), '全屏展示时不显示动画音效按钮');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
