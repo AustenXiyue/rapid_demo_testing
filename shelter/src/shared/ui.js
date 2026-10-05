@@ -48,6 +48,12 @@
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
     undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
     warn: '<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/>',
+    stop: '<path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3z"/><path d="M12 7.5v5.5M12 16.5v.5"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    exitFull: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
     timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     minus: '<path d="M5 12h14"/>',
@@ -396,7 +402,43 @@
       h('button', { type: 'button', class: 'btn icon-btn', 'aria-label': '增加', onclick: function () { onchange((value || 0) + (opts.delta || 1)); } }, icon('plus')));
   }
 
+  // ---------------------------------------------------------------- 仪表盘部件（主持人与玩家共用）
+
+  /* 状态一律「图标形状＋文字＋颜色」三重编码：橙与红在色觉差异下难以区分，颜色从不单独表达含义。 */
+  var SEV = {
+    ok: { cls: 'ok', icon: 'check', word: '正常' },
+    info: { cls: 'info', icon: 'info', word: '提示' },
+    warning: { cls: 'warn', icon: 'warn', word: '注意' },
+    critical: { cls: 'crit', icon: 'stop', word: '危险' }
+  };
+
+  function sevBadge(level, word) {
+    var sv = SEV[level] || SEV.info;
+    return h('span', { class: 'sev sev-' + sv.cls }, icon(sv.icon), word || sv.word);
+  }
+
+  /** 进度条：填充色表示严重度，轨道是同一色相的浅色阶。 */
+  function meter(value, max, level, label) {
+    var pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+    return h('span', {
+      class: 'meter2 m-' + (SEV[level] || SEV.ok).cls, role: 'meter', 'aria-label': label,
+      'aria-valuemin': '0', 'aria-valuemax': String(max), 'aria-valuenow': String(value)
+    }, h('span', { class: 'meter2-fill', style: 'width:' + pct + '%' }));
+  }
+
+  /** 指标卡：标签 · 状态徽章 · 数值（＋单位）· 可视化 · 说明。整张卡可点击跳转。 */
+  function statTile(o) {
+    return h(o.onclick ? 'button' : 'div', { type: o.onclick ? 'button' : null, class: 'tile ' + (o.cls || ''), 'data-tile': o.key, onclick: o.onclick || null },
+      h('span', { class: 'tile-head' }, h('span', { class: 'tile-label' }, o.label), o.badge || null),
+      h('span', { class: 'tile-value' }, o.value, o.unit ? h('span', { class: 'tile-unit' }, o.unit) : null),
+      o.viz || null,
+      o.sub ? h('span', { class: 'tile-sub' }, o.sub) : null);
+  }
+
   root.ShelterUI = {
+    sevBadge: sevBadge,
+    meter: meter,
+    statTile: statTile,
     h: h,
     clear: clear,
     icon: icon,

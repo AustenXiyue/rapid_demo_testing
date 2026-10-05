@@ -439,6 +439,107 @@ test('库存扣减不会变成负数', () => {
   assert.equal(inv.length, 0);
 });
 
+test('玩家总览提醒：按严重程度排序，只汇总已记录的事实', () => {
+  const s = C.newPlayerState();
+  s.publicInfo.day = 3;
+  s.action = { day: 3, used: true, note: '' };
+  assert.deepEqual(C.playerAlerts(s), [], '健康、已行动：没有提醒');
+  s.hp = 0;
+  s.thirst = '口渴';
+  s.statuses.push({ id: 'b', statusId: 'bleeding', name: '流血伤口', startDay: 1, nextDay: 3 });
+  C.addItem(s.inventory, 'painting', 6); // 12 单位，超出 10
+  const alerts = C.playerAlerts(s);
+  assert.deepEqual(alerts.map((a) => a.level), ['critical', 'warning', 'warning', 'warning']);
+  assert.ok(alerts[0].text.includes('生命为 0'));
+  assert.ok(alerts.some((a) => a.tab === 'inventory' && a.text.includes('2 单位')));
+  assert.ok(alerts.some((a) => a.text.includes('流血伤口第 3 天到期')));
+  s.publicInfo.day = 4;
+  assert.ok(C.playerAlerts(s).some((a) => a.level === 'info' && a.tab === 'action'), '新的一天行动未用');
+});
+
+test('总览提醒：搜刮与携带；占位按分类汇总', () => {
+  const s = C.newPlayerState();
+  s.action = { day: 1, used: true, note: '' };
+  const [axe] = C.addItem(s.inventory, 'axe', 1);
+  C.addItem(s.inventory, 'bread', 3);
+  s.loadout = { context: 'event', label: '', day: 1, limitTicks: 1, items: [{ entryId: axe.id, qty: 1 }] };
+  assert.equal(C.loadoutTicks(s), 2);
+  const levels = C.playerAlerts(s).map((a) => a.tab + ':' + a.level);
+  assert.deepEqual(levels, ['loadout:warning', 'loadout:info'], '携带超限只警告，携带中有提示');
+  s.scavenge = { status: 'organize', rounds: [], cfg: { rounds: 3 } };
+  assert.ok(C.playerAlerts(s).some((a) => a.tab === 'scavenge'));
+  const comp = C.capacityByCategory(s.inventory, [], s.rules);
+  assert.deepEqual(comp.map((c) => [c.id, c.ticks, c.pieces]), [['supply', 3, 3], ['equipment', 2, 1]]);
+});
+
+test('主持台待办：按阶段提示下一步，只用公开信息', () => {
+  const fresh = C.newHostState();
+  const notConfig = (a) => !a.text.includes('配置未完成');
+  assert.deepEqual(C.hostAlerts(fresh).filter(notConfig).map((a) => a.tab + ':' + a.level), ['settings:critical'], '没登记玩家');
+  assert.ok(C.hostAlerts(fresh).some((a) => a.tab === 'settings' && a.text.includes('配置未完成')), '规则未配完给提示');
+
+  const s = hostWithPlayers(['A', 'B', 'C']);
+  const own = () => C.hostAlerts(s).filter(notConfig);
+  assert.deepEqual(own(), [], '首日阶段1没有待公布结果：没有待办');
+
+  s.phase = 'rotation';
+  assert.deepEqual(own().map((a) => a.tab + ':' + a.level), ['flow:warning'], '未轮换');
+  C.applyRotation(s);
+  assert.deepEqual(own(), []);
+
+  s.phase = 'actions';
+  C.beginActions(s);
+  assert.ok(own()[0].text.includes('轮到 C 行动（还剩 3 人）'), '轮换后末位先行动');
+  s.today.actedIds = ['C', 'A', 'B'];
+  assert.deepEqual(own(), []);
+
+  s.batches.push({ id: 'b1', label: '第1天补给', status: 'open', pickOrder: ['A', 'B'], picks: [{ playerId: 'A' }], items: [] });
+  assert.ok(own().some((a) => a.tab === 'supply' && a.level === 'warning' && a.text.includes('还有 1 人')));
+  s.batches[0].status = 'closed';
+
+  s.phase = 'watch';
+  assert.deepEqual(own().map((a) => a.tab + ':' + a.level), ['watch:warning'], '名单未确认');
+  s.today.finalWatch = { id: 'fw', members: ['A'], published: false };
+  assert.deepEqual(own().map((a) => a.tab + ':' + a.level), ['watch:info', 'watch:info'], '未公开、未存草稿');
+  s.today.finalWatch.published = true;
+  s.pendingNightResult = { id: 'n1', day: 1, text: '平安', publishedDay: null };
+  assert.deepEqual(own(), [], '当天保存的草稿不算待公布');
+  C.advanceDay(s);
+  assert.equal(s.phase, 'night');
+  assert.deepEqual(own().map((a) => a.tab + ':' + a.level), ['flow:warning'], '次日阶段1提醒公布');
+
+  s.players[1].alive = false;
+  assert.ok(own().some((a) => a.level === 'info' && a.text.includes('已死亡仍在座次：B')));
+  s.rules.rescueTarget = 2;
+  s.rescueProgress = 2;
+  assert.ok(own().some((a) => a.tab === 'records'), '到达阈值提醒结算，但不自动结束');
+
+  const levels = own().map((a) => a.level);
+  assert.deepEqual(levels, levels.slice().sort((x, y) => ['critical', 'warning', 'info'].indexOf(x) - ['critical', 'warning', 'info'].indexOf(y)), '按严重度排序');
+});
+
+test('主持台待办：公共事件从判定到公开逐步提示', () => {
+  const s = hostWithPlayers(['A', 'B']);
+  s.rules.eventPosition = 'afterWatch';
+  s.phase = 'event';
+  const evAlert = () => C.hostAlerts(s).filter((a) => a.tab === 'events').map((a) => a.text);
+  assert.deepEqual(evAlert(), ['今日事件尚未判定']);
+  s.today.eventCheck = { roll: 10, chance: 80, triggered: false };
+  assert.deepEqual(evAlert(), [], '无事件：没有待办');
+  s.today.eventCheck.triggered = true;
+  assert.deepEqual(evAlert(), ['今日触发了公共事件，尚未选择事件']);
+  s.today.eventFlow = { id: 'f', event: { name: '秘密事件名' }, published: false, resolutionId: null };
+  assert.deepEqual(evAlert(), ['事件已选定，尚未公布到公开页']);
+  s.today.eventFlow.published = true;
+  assert.deepEqual(evAlert(), ['事件已公布，等待录入投票并结算']);
+  s.resolutions.push({ id: 'r1', public: false });
+  s.today.eventFlow.resolutionId = 'r1';
+  assert.deepEqual(evAlert(), ['事件已结算，结果尚未公开']);
+  s.resolutions[0].public = true;
+  assert.deepEqual(evAlert(), []);
+  assert.ok(!JSON.stringify(C.hostAlerts(s)).includes('秘密事件名'), '待办不带事件内容');
+});
+
 test('事件导入规范化：缺字段补齐，id 冲突换新', () => {
   const ev = C.normalizeEvent({ id: 'dup', name: '断电', options: [{ label: '参与', outcomes: [{ text: '无事', probability: 100 }] }] }, ['dup']);
   assert.notEqual(ev.id, 'dup');

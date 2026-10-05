@@ -45,7 +45,12 @@ async function open(context, url) {
   return { page, errors };
 }
 
-const tab = (page, id) => page.click(`[data-tab="${id}"]`);
+// 手机宽度下不常用的页收在底栏「更多」里
+async function tab(page, id) {
+  const target = page.locator(`[data-tab="${id}"]`);
+  if (!(await target.isVisible())) await page.click('.more-btn');
+  await target.click();
+}
 const modal = (page) => page.locator('.modal');
 const modalBtn = (page, name) => modal(page).getByRole('button', { name, exact: true }).click();
 const btn = (page, name) => page.getByRole('button', { name, exact: true });
@@ -227,6 +232,42 @@ test('主持人隐藏池与候选时，公开页面、通知与日志摘要不�
 });
 
 // ---------------------------------------------------------------- 主持人：完整一回合
+
+test('主持台：默认打开；待办随进度变化并能跳转；公开展示可全屏展示、Esc 退出', async () => {
+  const { context } = await newContext();
+  const { page, errors } = await open(context, HOST);
+  assert.equal(await page.locator('#tabs .tab.on').getAttribute('data-tab'), 'flow', '默认是主持台');
+  const todo = page.locator('section.todo');
+  assert.match(await todo.innerText(), /还没有登记玩家/);
+  await todo.locator('li', { hasText: '还没有登记玩家' }).getByRole('button').click();
+  assert.equal(await page.locator('#tabs .tab.on').getAttribute('data-tab'), 'settings', '待办链接跳到对应页');
+
+  await btn(page, '打开演示存档').click();
+  await page.waitForFunction((k) => !!localStorage.getItem(k), HOST_DEMO);
+  await tab(page, 'flow');
+  await startDay1(page);
+  await nextPhase(page); // 阶段2
+  await nextPhase(page); // 阶段3
+  await nextPhase(page); // 阶段4
+  assert.match(await todo.innerText(), /今日尚未轮换/);
+  assert.equal(await page.locator('.rail-step.on .rail-name').innerText(), '每日轮换', '阶段轨标出当前阶段');
+  await btn(page, '执行每日轮换').click();
+  assert.ok(!(await todo.innerText()).includes('今日尚未轮换'), '处理完就从待办里消失');
+  await page.getByRole('button', { name: '进入「个人行动」' }).click();
+  assert.equal((await read(page, HOST_DEMO)).phase, 'actions', '卡片底部的下一步与顶栏是同一个动作');
+  assert.match(await todo.innerText(), /轮到 F·教授 行动（还剩 6 人）/);
+
+  await tab(page, 'stage');
+  assert.equal(await page.locator('.focus-name').innerText(), 'F·教授', '公开展示突出「轮到谁」');
+  await btn(page, '全屏展示').click();
+  assert.ok(await page.evaluate(() => document.body.classList.contains('presenting')));
+  assert.ok(!(await page.locator('#topbar').isVisible()) && !(await page.locator('#tabs').isVisible()), '全屏展示隐藏主持人工具栏');
+  await page.keyboard.press('Escape');
+  await page.locator('#topbar').waitFor();
+  assert.ok(!(await page.evaluate(() => document.body.classList.contains('presenting'))));
+  assert.deepEqual(errors, []);
+  await context.close();
+});
 
 test('主持人：用演示存档完整走一回合（发放、轮换、换位、守夜、事件、次日公布）', async () => {
   const { context } = await newContext();
@@ -716,7 +757,7 @@ test('玩家页在 375px 宽度下没有横向溢出', async () => {
   const { context } = await newContext({ viewport: { width: 375, height: 812 } });
   const { page } = await open(context, PLAYER);
   await playerDemo(page);
-  for (const id of ['status', 'inventory', 'loadout', 'scavenge', 'action', 'identity', 'score', 'save']) {
+  for (const id of ['dashboard', 'status', 'inventory', 'loadout', 'scavenge', 'action', 'identity', 'score', 'save']) {
     await tab(page, id);
     const width = await page.evaluate(() => document.documentElement.scrollWidth);
     assert.ok(width <= 375, `${id} 宽度 ${width}`);
@@ -760,4 +801,109 @@ test('入口页：经主站反代的 /game/shelter（无结尾斜杠）与直连
     await context.close();
     server.close();
   }
+});
+
+test('玩家总览：汇总生命、状态、库存、财富与提醒，并能跳到对应页', async () => {
+  const { context } = await newContext({ viewport: { width: 390, height: 844 } });
+  const { page, errors } = await open(context, PLAYER);
+  await playerDemo(page);
+  await tab(page, 'dashboard');
+  const tileText = async (key) => page.locator(`[data-tile="${key}"]`).innerText();
+  assert.match(await tileText('hp'), /生命[\s\S]*5[\s\S]*基础战斗力 5/);
+  assert.match(await tileText('inventory'), /10[\s\S]*10 单位/);
+  assert.match(await tileText('wealth'), /7[\s\S]*分/, '钞票3＋珠宝2件(4)＝7');
+  assert.match(await tileText('thirst'), /不渴/);
+  // 状态徽章同时有图标与文字，不只靠颜色
+  const badges = await page.locator('.vitals .sev').evaluateAll((els) => els.map((e) => ({ text: e.textContent.trim(), icon: !!e.querySelector('svg') })));
+  assert.ok(badges.length >= 6 && badges.every((b) => b.text && b.icon));
+  // 第3天：流血到期提醒出现在「需要留意」
+  await page.getByRole('button', { name: '后一天' }).click();
+  const alerts = page.locator('.c-alerts');
+  await alerts.getByText('流血伤口第 3 天到期').waitFor();
+  assert.ok((await alerts.innerText()).includes('注意'));
+  // 快捷操作标记今日行动后，「未标记」提醒消失
+  await btn(page, '标记今日已行动').click();
+  assert.ok(!(await alerts.innerText()).includes('个人行动未标记'));
+  // 「查看」跳到对应页
+  await alerts.locator('.alert-row', { hasText: '流血' }).getByRole('button', { name: '查看' }).click();
+  assert.equal(await page.locator('[data-tab="status"]').getAttribute('aria-current'), 'page');
+  // 身份可以在这台设备上遮住，刷新后保持
+  await tab(page, 'dashboard');
+  assert.ok((await page.locator('.c-id').innerText()).includes('A·老陈'));
+  await page.locator('.c-id').getByRole('button', { name: '遮住' }).click();
+  await page.reload();
+  assert.ok(!(await page.locator('.c-id').innerText()).includes('A·老陈'));
+  // 占位构成：按分类的条形，数值标在条末端
+  const bars = await page.locator('.bar-row').evaluateAll((rows) => rows.map((r) => r.innerText.replace(/\s+/g, ' ')));
+  assert.ok(bars.some((t) => t.includes('财富') && t.includes('3.5')), bars.join(' | '));
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('响应式布局：手机底栏＋更多、平板顶栏、电脑侧栏与多列总览', async () => {
+  const { context } = await newContext();
+  const { page } = await open(context, PLAYER);
+  await playerDemo(page);
+  await tab(page, 'dashboard');
+  const box = (sel) => page.locator(sel).boundingBox();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  let nav = await box('#tabs');
+  assert.ok(Math.abs(nav.y + nav.height - 844) <= 1, '手机：导航贴底');
+  assert.equal(await page.locator('[data-tab="identity"]').isVisible(), false, '不常用页收进「更多」');
+  await page.click('.more-btn');
+  assert.equal(await page.locator('[data-tab="identity"]').isVisible(), true);
+  await page.mouse.click(200, 300);
+  assert.equal(await page.locator('[data-tab="identity"]').isVisible(), false, '点外面收起');
+
+  await page.setViewportSize({ width: 820, height: 1180 });
+  nav = await box('#tabs');
+  const main = await box('#main');
+  assert.ok(nav.y < main.y, '平板：标签在内容上方');
+  assert.equal(await page.locator('#tabs .tab:visible').count(), 9);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  nav = await box('#tabs');
+  const main2 = await box('#main');
+  assert.ok(nav.x + nav.width <= main2.x, '电脑：侧栏在内容左边');
+  const hero = await box('[data-tile="hp"]');
+  const hunger = await box('[data-tile="hunger"]');
+  assert.ok(Math.abs(hero.y - hunger.y) < 2 && hunger.x > hero.x, '电脑：英雄数字与指标卡同一行');
+  for (const w of [390, 820, 1440]) {
+    await page.setViewportSize({ width: w, height: 900 });
+    assert.ok((await page.evaluate(() => document.documentElement.scrollWidth)) <= w, w + 'px 无横向溢出');
+  }
+  await context.close();
+});
+
+test('玩家：添加自定义物品会进库存；再次添加同名物品按原定义叠加，不报重复', async () => {
+  const { context } = await newContext({ viewport: { width: 390, height: 844 } });
+  const { page, errors } = await open(context, PLAYER);
+  await tab(page, 'inventory');
+  const addCustom = async (name, qty) => {
+    await btn(page, '添加自定义物品').click();
+    await modal(page).locator('input[placeholder="物品名称"]').fill(name);
+    await modal(page).locator('.field', { hasText: '数量（件）' }).locator('input').fill(String(qty));
+    await modalBtn(page, '加入库存');
+  };
+  await addCustom('收音机', 2);
+  let s = await read(page, PLAYER_KEY);
+  assert.equal(s.customItems.length, 1);
+  const radio = s.customItems[0];
+  assert.equal(s.inventory.find((e) => e.defId === radio.id).qty, 2, '创建后直接进库存');
+  await page.locator(`[data-def="${radio.id}"]`).waitFor();
+  await addCustom('收音机', 1);
+  s = await read(page, PLAYER_KEY);
+  assert.equal(s.customItems.length, 1, '同名不重复登记');
+  assert.equal(s.inventory.find((e) => e.defId === radio.id).qty, 3, '按原定义叠加');
+  // 和内置物品同名：直接加入内置物品
+  await btn(page, '添加自定义物品').click();
+  await modal(page).locator('input[placeholder="物品名称"]').fill('面包');
+  await modal(page).getByText('已有同名物品「面包」').waitFor();
+  await modalBtn(page, '加入库存');
+  s = await read(page, PLAYER_KEY);
+  assert.equal(s.inventory.find((e) => e.defId === 'bread').qty, 1);
+  assert.equal(s.customItems.length, 1);
+  assert.deepEqual(errors, []);
+  await context.close();
 });

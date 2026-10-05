@@ -232,28 +232,198 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
   .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
   .card { padding: 13px; }
 }
+
+/* ---------- 仪表盘部件：指标卡、状态徽章（图标＋文字＋颜色）、同色相进度条 ---------- */
+.tile {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow);
+  font: inherit; color: inherit;
+}
+.tile:hover { border-color: var(--line-strong); }
+.tile:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+.tile-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+.tile-label { font-size: 13.5px; color: var(--ink-2); }
+.tile-value { font-size: 24px; font-weight: 650; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+.tile-unit { font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+.tile-sub { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+/* 状态徽章：图标形状 + 文字 + 颜色 */
+.sev { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; line-height: 1; padding: 4px 8px 4px 6px; border-radius: 999px; white-space: nowrap; }
+.sev .icon svg { width: 14px; height: 14px; }
+.sev-ok { background: var(--teal-soft); color: var(--teal-strong); }
+.sev-info { background: var(--surface-2); color: var(--ink-2); }
+.sev-warn { background: var(--orange-soft); color: #8a3f08; }
+.sev-crit { background: var(--red-soft); color: var(--red); }
+
+/* 进度条：同一色相，轨道取浅色阶 */
+.meter2 { display: block; height: 8px; border-radius: 4px; overflow: hidden; }
+.meter2-fill { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.m-ok { background: var(--teal-soft); } .m-ok .meter2-fill { background: var(--teal); }
+.m-warn { background: var(--orange-soft); } .m-warn .meter2-fill { background: var(--orange); }
+.m-crit { background: var(--red-soft); } .m-crit .meter2-fill { background: var(--red); }
+.m-info { background: var(--surface-3); } .m-info .meter2-fill { background: var(--muted); }
 </style>
 <style>
 /* src/player/player.css */
-/* 玩家端：手机优先 */
+/* 玩家端
+ * 手机（< 720px）：顶部紧凑状态栏 + 底部导航（5 个常用页 +「更多」），单列。
+ * 平板（720–1023px）：顶部一行标签，内容两列。
+ * 电脑（≥ 1024px）：左侧导航栏，内容多列网格；总览为英雄数字 + 指标卡 + 两栏卡片。 */
 
 body.player { min-width: 300px; }
 
+/* ---------- 顶部状态栏 ---------- */
 .topbar { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
-.p-top { padding: 8px 12px 8px; display: flex; flex-direction: column; gap: 6px; max-width: 760px; margin: 0 auto; }
+.p-top { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; max-width: 1280px; margin: 0 auto; }
 .p-top-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .p-name { font-size: 16px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .p-day { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; white-space: nowrap; }
 .p-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+/* 总览页本身就在展示这些数值，顶栏不重复 */
+.p-top.on-dashboard .p-chips { display: none; }
 .pchip { font-size: 13px; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); white-space: nowrap; }
 .pchip.ok { background: var(--teal-soft); border-color: #b4dbd2; color: var(--teal-strong); }
-.pchip.risk { background: var(--orange-soft); border-color: #eccaa6; color: var(--orange); }
+.pchip.risk { background: var(--orange-soft); border-color: #eccaa6; color: #8a3f08; }
 .pchip.danger { background: var(--red-soft); border-color: #f0b4ab; color: var(--red); }
 
-.tabs { position: sticky; top: var(--top-h, 0px); z-index: 15; }
+/* ---------- 导航（三种布局共用同一组按钮） ---------- */
+.tabs-primary, .tabs-secondary { display: contents; }
+.more-btn { display: none; }
+.p-main { max-width: 1280px; margin: 0 auto; padding: 16px 12px 40px; }
 
-.p-main { max-width: 760px; margin: 0 auto; padding: 14px 12px 90px; }
+/* 手机：底部导航栏 */
+@media (max-width: 719px) {
+  .tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: block; padding: 0 0 env(safe-area-inset-bottom); border-top: 1px solid var(--line); border-bottom: 0;
+    background: var(--surface); box-shadow: 0 -2px 12px rgba(60, 40, 10, 0.06); overflow: visible;
+  }
+  .tabs-primary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .tabs-primary .tab {
+    justify-content: center; padding: 10px 2px 12px; border-bottom: 0; border-top: 3px solid transparent;
+    font-size: 15px; min-height: 52px;
+  }
+  .tabs-primary .tab.on { border-top-color: var(--teal); }
+  .more-btn { display: inline-flex; }
+  .tabs-secondary {
+    display: none; position: absolute; right: 8px; bottom: calc(100% + 8px); min-width: 168px;
+    flex-direction: column; padding: 6px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; box-shadow: var(--shadow);
+  }
+  .tabs-secondary.open { display: flex; }
+  .tabs-secondary .tab { border-bottom: 0; border-radius: 8px; padding: 12px 14px; justify-content: flex-start; }
+  .tabs-secondary .tab.on { background: var(--teal-soft); }
+  .p-main { padding: 12px 12px calc(96px + env(safe-area-inset-bottom)); }
+  #toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
 
+/* 平板：顶部一行标签 */
+@media (min-width: 720px) and (max-width: 1023px) {
+  .tabs { position: sticky; top: var(--top-h, 0px); z-index: 15; justify-content: center; }
+  .p-main > .stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; }
+}
+
+/* 电脑：左侧导航栏 + 多列内容 */
+@media (min-width: 1024px) {
+  .p-top { flex-direction: row; align-items: center; justify-content: space-between; padding: 10px 20px; }
+  .p-top-row { gap: 16px; }
+  .p-shell { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: 0 24px; max-width: 1280px; margin: 0 auto; padding: 0 20px; }
+  .tabs {
+    position: sticky; top: calc(var(--top-h, 0px) + 16px); align-self: start; margin-top: 16px;
+    flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; overflow: visible;
+  }
+  .tabs .tab { justify-content: flex-start; border-bottom: 0; border-left: 3px solid transparent; border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 15.5px; }
+  .tabs .tab.on { border-left-color: var(--teal); background: var(--teal-soft); }
+  .tabs .tab:hover { background: var(--surface-2); }
+  .p-main { max-width: none; margin: 0; padding: 16px 0 48px; }
+  .p-main > .stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
+  .tab-inventory > .stack { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+}
+
+/* 网格布局下：卡片两列，其余（提醒条、按钮行、嵌套列表）与标记为 wide 的卡片占满整行 */
+@media (min-width: 720px) {
+  .p-main > .stack > :not(.card), .p-main > .stack > .wide { grid-column: 1 / -1; }
+  .p-main > .stack > .card { margin-top: 0; }
+}
+
+/* ---------- 总览 ---------- */
+.dash { display: flex; flex-direction: column; gap: 14px; }
+
+.vitals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tile.hero { grid-column: 1 / -1; padding: 16px 18px; }
+.tile.hero .tile-value { font-size: 56px; line-height: 1; }
+.tile.hero .tile-label { font-size: 15px; }
+
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; height: 8px; }
+.steps .step { border-radius: 2px; }
+.steps.m-ok, .steps.m-warn, .steps.m-crit, .steps.m-info { background: none; }
+.steps.m-ok .step { background: var(--teal-soft); } .steps.m-ok .step.on { background: var(--teal); }
+.steps.m-warn .step { background: var(--orange-soft); } .steps.m-warn .step.on { background: var(--orange); }
+.steps.m-crit .step { background: var(--red-soft); } .steps.m-crit .step.on { background: var(--red); }
+
+.pips { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+.pip { width: 14px; height: 8px; border-radius: 2px; background: var(--teal); }
+.pip-more { font-size: 12px; color: var(--muted); margin-left: 4px; }
+
+.quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.dash-cols { display: flex; flex-direction: column; gap: 14px; }
+.dash-col { display: contents; }
+/* 手机单列时按重要程度排序 */
+.c-alerts { order: 1; } .c-today { order: 2; } .c-cond { order: 3; } .c-comp { order: 4; } .c-id { order: 5; } .c-recent { order: 6; }
+.dash-card { margin-top: 0 !important; }
+.dash-card .card-head { margin-bottom: 8px; }
+.dash-card h2 { font-size: 17px; }
+.go { gap: 4px; color: var(--teal-strong); }
+.go .icon svg { width: 14px; height: 14px; }
+
+.alerts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.alert-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.alert-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.alert-text { font-size: 14.5px; line-height: 1.45; }
+.all-clear { margin: 0; color: var(--ink-2); }
+
+.facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.facts li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.facts li:last-child { border-bottom: 0; padding-bottom: 0; }
+.facts b { flex: 0 0 auto; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* 单色条形图：一个系列一种颜色，数值写在条末端 */
+.bars-wrap { position: relative; }
+.bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.bar-row { display: grid; grid-template-columns: 3.2em minmax(0, 1fr); align-items: center; gap: 8px; border-radius: 6px; }
+.bar-row:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); }
+.bar-row:hover .bar, .bar-row:focus .bar { background: var(--teal-strong); }
+.bar-label { text-align: right; font-size: 13.5px; color: var(--ink-2); }
+/* 每行左侧一条细基线；条形从基线长出，末端 4px 圆角 */
+.bar-track { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 26px; border-left: 1px solid var(--line-strong); }
+.bar { display: block; height: 16px; min-width: 2px; background: var(--teal); border-radius: 0 4px 4px 0; }
+.bar-value { font-size: 13.5px; white-space: nowrap; color: var(--ink); }
+.bars-caption { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+.viz-tip {
+  position: absolute; right: 0; transform: translateY(-100%); background: var(--ink); color: #fff; font-size: 13px;
+  padding: 6px 10px; border-radius: 8px; pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); z-index: 2;
+}
+.viz-tip b { margin-right: 4px; }
+
+.log-list.compact li { padding: 5px 0; font-size: 13.5px; }
+
+@media (min-width: 720px) {
+  .quick { display: flex; flex-wrap: wrap; }
+  .vitals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dash-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .dash-col { display: flex; flex-direction: column; gap: 14px; }
+}
+
+@media (min-width: 1024px) {
+  .vitals { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .tile.hero { grid-column: span 2; grid-row: span 2; justify-content: space-between; }
+  .tile.hero .tile-value { font-size: 64px; }
+  .dash-cols { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 16px; }
+}
+
+/* ---------- 其他页 ---------- */
 .chip { display: inline-flex; align-items: center; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); color: var(--ink-2); margin-left: 4px; font-weight: 600; white-space: nowrap; }
 .chip.ok { background: var(--teal-soft); color: var(--teal-strong); }
 .chip.danger { background: var(--red-soft); color: var(--red); }
@@ -304,7 +474,7 @@ details.card > summary { cursor: pointer; }
 @media (max-width: 420px) {
   .btn { padding: 6px 11px; }
   .big-num { font-size: 44px; }
-  .tabs .tab { padding: 10px 8px 8px; font-size: 14.5px; }
+  .tile.hero .tile-value { font-size: 48px; }
 }
 </style>
 </head>
@@ -312,8 +482,10 @@ details.card > summary { cursor: pointer; }
 <noscript><p style="padding:16px">本页面需要启用 JavaScript。</p></noscript>
 <div id="banner"></div>
 <header id="topbar" class="topbar"></header>
+<div class="p-shell">
 <nav id="tabs" class="tabs" aria-label="玩家面板"></nav>
 <main id="main" class="main"></main>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="modal-root"></div>
 <script>
@@ -1550,6 +1722,152 @@ details.card > summary { cursor: pointer; }
     };
   }
 
+  // ---------------------------------------------------------------- 玩家总览
+
+  var ALERT_ORDER = { critical: 0, warning: 1, info: 2 };
+
+  /** 携带中物品的占位（按引用的库存实例计算，不复制物品）。 */
+  function loadoutTicks(s) {
+    if (!s.loadout) return 0;
+    return s.loadout.items.reduce(function (sum, row) {
+      var e = findEntry(s.inventory, row.entryId);
+      return sum + (e ? row.qty * (getDef(e.defId, s.customItems).capacityTicks || 0) : 0);
+    }, 0);
+  }
+
+  /**
+   * 玩家总览的提醒：只汇总已经记录下来的事实与已确认规则，不推导新规则。
+   * level: critical（严重）／warning（注意）／info（提示）；tab: 去哪一页处理。
+   */
+  function playerAlerts(s) {
+    var out = [];
+    var r = s.rules;
+    var day = s.publicInfo ? s.publicInfo.day : null;
+    if (s.alive === false) out.push({ level: 'info', text: '已标记死亡：财富分不保留，爱恨与任务分保留', tab: 'status' });
+    if (isNum(s.hp) && s.hp <= 0) out.push({ level: 'critical', text: '生命为 0：处理方式与死亡时点待主持人裁定', tab: 'status' });
+    if (s.thirst === '脱水') out.push({ level: 'critical', text: '脱水：直接昏迷', tab: 'status' });
+    else if (s.thirst === '口渴') out.push({ level: 'warning', text: '口渴：补水幅度待定，饮水后手动调整', tab: 'status' });
+    if (s.consciousness === '昏迷' && s.thirst !== '脱水') out.push({ level: 'critical', text: '昏迷中：如何解除尚未确定', tab: 'status' });
+    if ((hungerZone(s.hunger, r) || s.hungerManual) === '饥饿') out.push({ level: 'warning', text: '饥饿：相关成功率降低', tab: 'status' });
+    (s.statuses || []).forEach(function (st) {
+      if (st.statusId === 'bleeding' && isInt(st.nextDay) && isInt(day) && day >= st.nextDay) {
+        out.push({ level: 'warning', text: '流血伤口第 ' + st.nextDay + ' 天到期：先与主持人确认是否扣1生命', tab: 'status' });
+      }
+    });
+    var used = listTicks(s.inventory, s.customItems, r);
+    if (isInt(r.inventoryCapacityTicks) && used > r.inventoryCapacityTicks) {
+      out.push({ level: 'warning', text: '库存超出上限 ' + fmtUnits(used - r.inventoryCapacityTicks) + ' 单位（只警告，由主持人裁定）', tab: 'inventory' });
+    }
+    if (s.loadout) {
+      var carried = loadoutTicks(s);
+      var label = s.loadout.context === 'event' ? '事件' : '守夜';
+      if (isInt(s.loadout.limitTicks) && carried > s.loadout.limitTicks) {
+        out.push({ level: 'warning', text: label + '携带超出上限 ' + fmtUnits(carried - s.loadout.limitTicks) + ' 单位', tab: 'loadout' });
+      }
+      out.push({ level: 'info', text: label + '携带中：' + fmtUnits(carried) + ' 单位，返回后记得清空标记', tab: 'loadout' });
+    }
+    if (s.scavenge && s.scavenge.status === 'running') {
+      out.push({ level: 'warning', text: '搜刮进行中：第 ' + s.scavenge.rounds.length + '／' + s.scavenge.cfg.rounds + ' 轮，超时会自动选默认项', tab: 'scavenge' });
+    } else if (s.scavenge && s.scavenge.status === 'organize') {
+      out.push({ level: 'warning', text: '搜刮三轮已完成：待整理并一次性提交', tab: 'scavenge' });
+    }
+    if (s.alive !== false && !(s.action && s.action.day === day && s.action.used)) {
+      out.push({ level: 'info', text: '第 ' + day + ' 天的个人行动未标记为已使用', tab: 'action' });
+    }
+    return out.sort(function (a, b) { return ALERT_ORDER[a.level] - ALERT_ORDER[b.level]; });
+  }
+
+  /**
+   * 主持台的待办：只看已经记录下来的进度，不推导新规则。
+   * 主持台可以屏幕共享，所以文字只用公开信息（人名、件数、份数），绝不带物品、候选或事件内容。
+   * level 同 playerAlerts；tab: 去哪一页处理（'flow' 表示就在主持台的当前阶段卡里）。
+   */
+  function hostAlerts(s) {
+    var out = [];
+    var t = s.today;
+    var r = s.rules;
+    function nameOf(id) {
+      var p = s.players.filter(function (x) { return x.id === id; })[0];
+      return p ? p.name : '（已移除）';
+    }
+    var alive = s.players.filter(function (p) { return p.alive !== false; });
+    var aliveIds = alive.map(function (p) { return p.id; });
+
+    if (!s.players.length) out.push({ level: 'critical', text: '还没有登记玩家', tab: 'settings' });
+    if (!s.started && s.players.length) {
+      var done = s.opening.done.filter(Boolean).length;
+      if (done < 2) out.push({ level: 'warning', text: '开局领取完成 ' + done + '／2 次', tab: 'supply' });
+    }
+    var unseated = alive.filter(function (p) { return s.seatOrder.indexOf(p.id) < 0; });
+    if (unseated.length) out.push({ level: 'warning', text: '不在座次：' + unseated.map(function (p) { return p.name; }).join('、'), tab: 'flow' });
+    var deadSeated = s.seatOrder.filter(function (id) { return aliveIds.indexOf(id) < 0; });
+    if (deadSeated.length) out.push({ level: 'info', text: '已死亡仍在座次：' + deadSeated.map(nameOf).join('、') + '（是否移出由主持人决定）', tab: 'flow' });
+
+    var night = s.pendingNightResult;
+    if (s.started && night && night.publishedDay == null && s.day > night.day) {
+      out.push({ level: 'warning', text: s.phase === 'night' ? '有一条昨夜结果待公布' : '昨夜结果还没有公布', tab: 'flow' });
+    }
+
+    s.batches.forEach(function (b) {
+      if (b.status !== 'open') return;
+      var left = b.pickOrder.filter(function (id) { return !b.picks.some(function (p) { return p.playerId === id; }); });
+      out.push(left.length
+        ? { level: 'warning', text: '「' + b.label + '」还有 ' + left.length + ' 人未领取', tab: 'supply' }
+        : { level: 'info', text: '「' + b.label + '」已全部领取，可以结束批次', tab: 'supply' });
+    });
+
+    if (s.started) {
+      if (s.phase === 'supply' && !t.batchIds.length) out.push({ level: 'info', text: '今天还没有发放批次', tab: 'supply' });
+      if (s.phase === 'rotation' && !t.rotationDone) out.push({ level: 'warning', text: '今日尚未轮换', tab: 'flow' });
+      if (s.phase === 'actions') {
+        if (!t.actionOrder) {
+          out.push({ level: 'warning', text: '尚未生成本轮行动顺序', tab: 'flow' });
+        } else {
+          var left = t.actionOrder.filter(function (id) { return t.actedIds.indexOf(id) < 0 && aliveIds.indexOf(id) >= 0; });
+          if (left.length) out.push({ level: 'info', text: '轮到 ' + nameOf(left[0]) + ' 行动（还剩 ' + left.length + ' 人）', tab: 'flow' });
+        }
+      }
+      if (s.phase === 'watch' || (t.finalWatch && s.phase === 'event')) {
+        if (!t.finalWatch) {
+          out.push({ level: 'warning', text: '守夜名单未确认（已收到 ' + submittedCandidates(t).length + ' 份提交）', tab: 'watch' });
+        } else {
+          if (!t.finalWatch.published) out.push({ level: 'info', text: '守夜名单已确认，尚未公开', tab: 'watch' });
+          if (!(night && night.day === s.day)) out.push({ level: 'info', text: '今晚的守夜结果还没有保存为草稿', tab: 'watch' });
+        }
+      }
+      var eventDue = s.phase === 'event' || (r.eventPosition == null && (t.eventCheck || t.eventFlow));
+      if (eventDue) {
+        var flow = t.eventFlow;
+        var res = flow && flow.resolutionId ? s.resolutions.filter(function (x) { return x.id === flow.resolutionId; })[0] : null;
+        if (!t.eventCheck && !flow) out.push({ level: 'warning', text: '今日事件尚未判定', tab: 'events' });
+        else if (t.eventCheck && t.eventCheck.triggered && !flow) out.push({ level: 'warning', text: '今日触发了公共事件，尚未选择事件', tab: 'events' });
+        else if (flow && !flow.published && !res) out.push({ level: 'warning', text: '事件已选定，尚未公布到公开页', tab: 'events' });
+        else if (flow && !res) out.push({ level: 'warning', text: '事件已公布，等待录入投票并结算', tab: 'events' });
+        else if (res && !res.public) out.push({ level: 'info', text: '事件已结算，结果尚未公开', tab: 'events' });
+      }
+    }
+
+    if (isInt(r.rescueTarget) && s.rescueProgress >= r.rescueTarget && !s.settlement) {
+      out.push({ level: 'warning', text: '营救进度已达阈值 ' + r.rescueTarget + '：何时结算由主持人决定', tab: 'records' });
+    }
+    var pending = pendingConfigItems(r).length;
+    if (pending) out.push({ level: 'info', text: '规则配置未完成 ' + pending + ' 项', tab: 'settings' });
+    return out.sort(function (a, b) { return ALERT_ORDER[a.level] - ALERT_ORDER[b.level]; });
+  }
+
+  /** 按分类汇总库存占位（总览的「占位构成」）。只返回有物品的分类，保持分类表顺序。 */
+  function capacityByCategory(list, customItems, rules) {
+    return CATEGORIES.map(function (cat) {
+      var entries = list.filter(function (e) { return getDef(e.defId, customItems).category === cat.id; });
+      return {
+        id: cat.id,
+        name: cat.name,
+        ticks: entries.reduce(function (sum, e) { return sum + entryTicks(e, customItems, rules); }, 0),
+        pieces: countPieces(entries)
+      };
+    }).filter(function (c) { return c.pieces > 0; });
+  }
+
   // ---------------------------------------------------------------- 搜刮
 
   function defaultScavengeTemplate() {
@@ -1965,6 +2283,10 @@ details.card > summary { cursor: pointer; }
     mapNotesTotal: mapNotesTotal,
     settlementTotal: settlementTotal,
     combatSummary: combatSummary,
+    loadoutTicks: loadoutTicks,
+    playerAlerts: playerAlerts,
+    hostAlerts: hostAlerts,
+    capacityByCategory: capacityByCategory,
     defaultScavengeTemplate: defaultScavengeTemplate,
     generateCombo: generateCombo,
     comboTicks: comboTicks,
@@ -2035,6 +2357,12 @@ details.card > summary { cursor: pointer; }
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
     undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
     warn: '<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/>',
+    stop: '<path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3z"/><path d="M12 7.5v5.5M12 16.5v.5"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    exitFull: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
     timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     minus: '<path d="M5 12h14"/>',
@@ -2383,7 +2711,43 @@ details.card > summary { cursor: pointer; }
       h('button', { type: 'button', class: 'btn icon-btn', 'aria-label': '增加', onclick: function () { onchange((value || 0) + (opts.delta || 1)); } }, icon('plus')));
   }
 
+  // ---------------------------------------------------------------- 仪表盘部件（主持人与玩家共用）
+
+  /* 状态一律「图标形状＋文字＋颜色」三重编码：橙与红在色觉差异下难以区分，颜色从不单独表达含义。 */
+  var SEV = {
+    ok: { cls: 'ok', icon: 'check', word: '正常' },
+    info: { cls: 'info', icon: 'info', word: '提示' },
+    warning: { cls: 'warn', icon: 'warn', word: '注意' },
+    critical: { cls: 'crit', icon: 'stop', word: '危险' }
+  };
+
+  function sevBadge(level, word) {
+    var sv = SEV[level] || SEV.info;
+    return h('span', { class: 'sev sev-' + sv.cls }, icon(sv.icon), word || sv.word);
+  }
+
+  /** 进度条：填充色表示严重度，轨道是同一色相的浅色阶。 */
+  function meter(value, max, level, label) {
+    var pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+    return h('span', {
+      class: 'meter2 m-' + (SEV[level] || SEV.ok).cls, role: 'meter', 'aria-label': label,
+      'aria-valuemin': '0', 'aria-valuemax': String(max), 'aria-valuenow': String(value)
+    }, h('span', { class: 'meter2-fill', style: 'width:' + pct + '%' }));
+  }
+
+  /** 指标卡：标签 · 状态徽章 · 数值（＋单位）· 可视化 · 说明。整张卡可点击跳转。 */
+  function statTile(o) {
+    return h(o.onclick ? 'button' : 'div', { type: o.onclick ? 'button' : null, class: 'tile ' + (o.cls || ''), 'data-tile': o.key, onclick: o.onclick || null },
+      h('span', { class: 'tile-head' }, h('span', { class: 'tile-label' }, o.label), o.badge || null),
+      h('span', { class: 'tile-value' }, o.value, o.unit ? h('span', { class: 'tile-unit' }, o.unit) : null),
+      o.viz || null,
+      o.sub ? h('span', { class: 'tile-sub' }, o.sub) : null);
+  }
+
   root.ShelterUI = {
+    sevBadge: sevBadge,
+    meter: meter,
+    statTile: statTile,
     h: h,
     clear: clear,
     icon: icon,
@@ -2433,11 +2797,13 @@ details.card > summary { cursor: pointer; }
   var KEY_SLOT = 'shelter-playtest:player:slot';
   var KEY_TAB = 'shelter-playtest:player:tab';
 
+  /* primary：手机底栏常驻；其余收进「更多」。电脑端全部显示在侧栏。 */
   var TABS = [
-    { id: 'status', name: '状态' },
-    { id: 'inventory', name: '库存' },
-    { id: 'loadout', name: '携带' },
-    { id: 'scavenge', name: '搜刮' },
+    { id: 'dashboard', name: '总览', primary: true },
+    { id: 'status', name: '状态', primary: true },
+    { id: 'inventory', name: '库存', primary: true },
+    { id: 'loadout', name: '携带', primary: true },
+    { id: 'scavenge', name: '搜刮', primary: true },
     { id: 'action', name: '行动' },
     { id: 'identity', name: '身份' },
     { id: 'score', name: '分数' },
@@ -2452,7 +2818,8 @@ details.card > summary { cursor: pointer; }
   var state = null;
   var notices = [];
   var undo = new U.UndoStack(40);
-  var ui = { tab: 'status', filter: 'all', drafts: {}, keep: {}, transfer: {} };
+  var KEY_HIDE_ID = 'shelter-playtest:player:hide-identity';
+  var ui = { tab: 'dashboard', filter: 'all', drafts: {}, keep: {}, transfer: {}, moreOpen: false, hideIdentity: U.readKey(KEY_HIDE_ID) === '1' };
 
   // ================================================================ 演示
 
@@ -2600,6 +2967,7 @@ details.card > summary { cursor: pointer; }
 
   function setTab(id) {
     ui.tab = id;
+    ui.moreOpen = false;
     U.writeKey(KEY_TAB, id);
     render();
     window.scrollTo(0, 0);
@@ -2646,7 +3014,7 @@ details.card > summary { cursor: pointer; }
     var used = invTicks();
     var cap = state.rules.inventoryCapacityTicks;
     var over = C.isInt(cap) && used > cap;
-    top.appendChild(h('div', { class: 'p-top' },
+    top.appendChild(h('div', { class: 'p-top' + (ui.tab === 'dashboard' ? ' on-dashboard' : '') },
       h('div', { class: 'p-top-row' },
         h('div', { class: 'p-name' }, h('b', null, state.name || '未命名玩家'), state.alive ? null : chip('已死亡', 'danger')),
         h('div', { class: 'p-day' },
@@ -2678,18 +3046,258 @@ details.card > summary { cursor: pointer; }
     });
   }
 
+  function tabButton(t) {
+    return h('button', { type: 'button', class: 'tab ' + (ui.tab === t.id ? 'on' : ''), 'data-tab': t.id, 'aria-current': ui.tab === t.id ? 'page' : null, onclick: function () { setTab(t.id); } }, t.name);
+  }
+
+  /** 手机：底栏 5 个常用页 +「更多」；平板：顶部一行；电脑：左侧栏。三种布局共用同一组按钮，由 CSS 排布。 */
   function renderTabs() {
     var nav = U.clear(document.getElementById('tabs'));
-    TABS.forEach(function (t) {
-      nav.appendChild(h('button', { type: 'button', class: 'tab ' + (ui.tab === t.id ? 'on' : ''), 'data-tab': t.id, 'aria-current': ui.tab === t.id ? 'page' : null, onclick: function () { setTab(t.id); } }, t.name));
-    });
+    var current = TABS.find(function (t) { return t.id === ui.tab; });
+    var inMore = current && !current.primary;
+    nav.appendChild(h('div', { class: 'tabs-primary' },
+      TABS.filter(function (t) { return t.primary; }).map(tabButton),
+      h('button', {
+        type: 'button', class: 'tab more-btn ' + (inMore ? 'on' : ''), 'aria-expanded': ui.moreOpen ? 'true' : 'false', 'aria-controls': 'tabs-more',
+        onclick: function (e) { e.stopPropagation(); ui.moreOpen = !ui.moreOpen; renderTabs(); }
+      }, inMore ? current.name : '更多')));
+    nav.appendChild(h('div', { class: 'tabs-secondary' + (ui.moreOpen ? ' open' : ''), id: 'tabs-more' },
+      TABS.filter(function (t) { return !t.primary; }).map(tabButton)));
   }
 
   function renderMain() {
     var main = U.clear(document.getElementById('main'));
-    var views = { status: renderStatus, inventory: renderInventory, loadout: renderLoadout, scavenge: renderScavenge, action: renderAction, identity: renderIdentity, score: renderScore, save: renderSave };
+    var views = { dashboard: renderDashboard, status: renderStatus, inventory: renderInventory, loadout: renderLoadout, scavenge: renderScavenge, action: renderAction, identity: renderIdentity, score: renderScore, save: renderSave };
     main.className = 'main p-main tab-' + ui.tab;
-    main.appendChild((views[ui.tab] || renderStatus)());
+    main.appendChild((views[ui.tab] || renderDashboard)());
+  }
+
+  // ================================================================ 总览
+
+  var sevBadge = U.sevBadge;
+  var meter = U.meter;
+
+  /** 分级条：三档状态（如口渴）按档位填充，2px 间隔分开。 */
+  function stepsBar(names, index, level) {
+    var cls = { ok: 'ok', info: 'info', warning: 'warn', critical: 'crit' }[level] || 'ok';
+    return h('span', { class: 'steps m-' + cls, 'aria-hidden': 'true' },
+      names.map(function (n, i) { return h('span', { class: 'step' + (i <= index ? ' on' : '') }); }));
+  }
+
+  /** 生命没有确定上限时，用「一格一点生命」表示，不暗示上限。 */
+  function pips(n) {
+    var shown = Math.max(0, Math.min(n, 12));
+    var out = [];
+    for (var i = 0; i < shown; i++) out.push(h('span', { class: 'pip' }));
+    if (n > 12) out.push(h('span', { class: 'pip-more' }, '+' + (n - 12)));
+    return h('span', { class: 'pips', 'aria-hidden': 'true' }, out);
+  }
+
+  function tile(o) {
+    return U.statTile(Object.assign({ onclick: function () { setTab(o.tab); } }, o));
+  }
+
+  function renderDashboard() {
+    return h('div', { class: 'dash' },
+      vitalsSection(),
+      quickActions(),
+      h('div', { class: 'dash-cols' },
+        h('div', { class: 'dash-col' }, alertsCard(), compositionCard(), recentCard()),
+        h('div', { class: 'dash-col' }, todayCard(), conditionsCard(), identityCard())));
+  }
+
+  function vitalsSection() {
+    var r = state.rules;
+    var hp = state.hp;
+    var zone = C.hungerZone(state.hunger, r);
+    var manual = state.hungerManual;
+    var hungerWord = zone || manual || '未记录';
+    var hungerLevel = hungerWord === '饥饿' ? 'warning' : hungerWord === '未记录' ? 'info' : 'ok';
+    var thirstIdx = THIRST.indexOf(state.thirst);
+    var thirstLevel = thirstIdx >= 2 ? 'critical' : thirstIdx === 1 ? 'warning' : 'ok';
+    var used = invTicks();
+    var cap = r.inventoryCapacityTicks;
+    var over = C.isInt(cap) && used > cap;
+    var counts = C.wealthCounts(state.inventory);
+    var w = C.wealthScore(counts, !state.alive);
+    var actedToday = state.action.day === today() && state.action.used;
+    var carried = state.loadout ? state.loadout.items.reduce(function (n, row) { return n + row.qty; }, 0) : 0;
+    return h('section', { class: 'vitals', 'aria-label': '核心状态' },
+      tile({
+        key: 'hp', cls: 'hero', tab: 'status', label: '生命',
+        badge: !state.alive ? sevBadge('info', '已死亡') : hp <= 0 ? sevBadge('critical', '生命为 0') : sevBadge('ok', '存活'),
+        value: String(hp), unit: C.isInt(r.hpMax) ? '／' + r.hpMax : '',
+        viz: C.isInt(r.hpMax) ? meter(hp, r.hpMax, hp <= 0 ? 'critical' : 'ok', '生命') : pips(hp),
+        sub: '基础战斗力 ' + Math.max(0, hp) + (C.isInt(r.hpMax) ? '' : ' · 生命上限待配置')
+      }),
+      tile({
+        key: 'hunger', tab: 'status', label: '饥饿', badge: sevBadge(hungerLevel, zone ? '自动' : '手动'),
+        value: hungerWord, unit: C.isNum(state.hunger) ? ' ' + state.hunger : '',
+        viz: C.isInt(r.hungerMax) && C.isNum(state.hunger) ? meter(state.hunger, r.hungerMax, hungerLevel, '饥饿值') : null,
+        sub: zone ? '按阈值自动判定' : '阈值待配置'
+      }),
+      tile({
+        key: 'thirst', tab: 'status', label: '口渴', badge: sevBadge(thirstLevel),
+        value: state.thirst, viz: stepsBar(THIRST, thirstIdx, thirstLevel), sub: '补水幅度待定'
+      }),
+      tile({
+        key: 'mind', tab: 'status', label: '意识', badge: sevBadge(state.consciousness === '昏迷' ? 'critical' : 'ok'),
+        value: state.consciousness, sub: state.statuses.length ? '负面状态 ' + state.statuses.length + ' 个' : '没有负面状态'
+      }),
+      tile({
+        key: 'inventory', tab: 'inventory', label: '库存占位', badge: over ? sevBadge('warning', '超出上限') : sevBadge('ok', '未超出'),
+        value: C.fmtUnits(used), unit: '／' + C.fmtUnits(cap) + ' 单位',
+        viz: meter(used, cap || used || 1, over ? 'warning' : 'ok', '库存占位'),
+        sub: C.countPieces(state.inventory) + ' 件' + (carried ? ' · 携带中 ' + carried + ' 件' : '')
+      }),
+      tile({
+        key: 'wealth', tab: 'score', label: '财富估算',
+        badge: !state.alive ? sevBadge('info', '死亡清零') : w.pending ? sevBadge('warning', '待主持人计分') : null,
+        value: w.score == null ? '—' : String(w.score), unit: w.score == null ? '' : ' 分',
+        sub: '钞票 ' + counts.cash + ' · 名画 ' + counts.painting + ' · 珠宝 ' + counts.jewel + ' · 地图笔记 ' + C.mapNotesTotal(state.inventory)
+      }),
+      tile({
+        key: 'today', tab: 'action', label: '今天', badge: actedToday ? sevBadge('ok', '已行动') : sevBadge('info', '未行动'),
+        value: '第 ' + today() + ' 天', sub: state.publicInfo.seat ? '座次 ' + state.publicInfo.seat : '座次未记录'
+      }));
+  }
+
+  function quickActions() {
+    var sc = state.scavenge;
+    var scavLive = sc && (sc.status === 'running' || sc.status === 'organize');
+    var actedToday = state.action.day === today() && state.action.used;
+    return h('div', { class: 'quick', role: 'group', 'aria-label': '快捷操作' },
+      h('button', { type: 'button', class: 'btn primary', onclick: addItemDialog }, U.icon('plus'), '添加物品'),
+      h('button', { type: 'button', class: 'btn' + (scavLive ? ' risk' : ''), onclick: function () { setTab('scavenge'); } }, scavLive ? '继续搜刮' : '搜刮'),
+      h('button', {
+        type: 'button', class: 'btn', onclick: function () {
+          commit('行动标记', function (s) { s.action = { day: today(), used: !actedToday, note: s.action.note || '' }; log(s, actedToday ? '取消今日行动已使用' : '标记今日行动已使用'); });
+        }
+      }, actedToday ? '取消行动标记' : '标记今日已行动'),
+      h('button', { type: 'button', class: 'btn', onclick: function () { setTab('score'); } }, '分数上报'));
+  }
+
+  function dashCard(title, body, opts) {
+    opts = opts || {};
+    return h('section', { class: 'card dash-card ' + (opts.cls || ''), 'aria-label': title },
+      h('div', { class: 'card-head' }, h('h2', null, title), opts.action || null),
+      body);
+  }
+
+  function linkBtn(label, tab) {
+    return h('button', { type: 'button', class: 'btn small ghost go', onclick: function () { setTab(tab); } }, label, U.icon('arrow'));
+  }
+
+  function alertsCard() {
+    var alerts = C.playerAlerts(state);
+    var body = alerts.length ? h('ul', { class: 'alerts' }, alerts.map(function (a) {
+      return h('li', { class: 'alert-row' },
+        sevBadge(a.level),
+        h('span', { class: 'alert-text' }, a.text),
+        h('button', { type: 'button', class: 'btn small', onclick: function () { setTab(a.tab); } }, '查看'));
+    })) : h('p', { class: 'all-clear' }, sevBadge('ok', '一切正常'), ' 没有需要处理的提醒。');
+    return dashCard('需要留意', body, { cls: 'c-alerts' });
+  }
+
+  function compositionCard() {
+    var rows = C.capacityByCategory(state.inventory, state.customItems, state.rules);
+    var cap = state.rules.inventoryCapacityTicks;
+    var used = invTicks();
+    var scale = Math.max(cap || 0, used, 1);
+    var tip = h('div', { class: 'viz-tip', role: 'status', 'aria-live': 'polite', hidden: true });
+    function showTip(el, row) {
+      tip.textContent = '';
+      tip.appendChild(h('b', null, C.fmtUnits(row.ticks) + ' 单位'));
+      tip.appendChild(document.createTextNode(' ' + row.name + ' · ' + row.pieces + ' 件' + (cap ? ' · 占上限 ' + Math.round((row.ticks / cap) * 100) + '%' : '')));
+      tip.hidden = false;
+      tip.style.top = (el.offsetTop - 6) + 'px';
+    }
+    var body = rows.length ? h('div', { class: 'bars-wrap' },
+      h('ul', { class: 'bars', 'aria-label': '各分类占位（单位）' }, rows.map(function (row) {
+        var li = h('li', { class: 'bar-row', tabindex: '0', 'aria-label': row.name + ' ' + C.fmtUnits(row.ticks) + ' 单位，' + row.pieces + ' 件' },
+          h('span', { class: 'bar-label' }, row.name),
+          h('span', { class: 'bar-track' },
+            h('span', { class: 'bar', style: 'width:calc((100% - 6.5em) * ' + (row.ticks / scale).toFixed(4) + ')' }),
+            h('span', { class: 'bar-value' }, C.fmtUnits(row.ticks), h('span', { class: 'muted' }, ' · ' + row.pieces + '件'))));
+        li.addEventListener('pointerenter', function () { showTip(li, row); });
+        li.addEventListener('focus', function () { showTip(li, row); });
+        li.addEventListener('pointerleave', function () { tip.hidden = true; });
+        li.addEventListener('blur', function () { tip.hidden = true; });
+        return li;
+      })),
+      tip,
+      h('p', { class: 'bars-caption' }, '比例尺 0–' + C.fmtUnits(scale) + ' 单位' + (cap ? '（个人总库存上限 ' + C.fmtUnits(cap) + '）' : '') + '；已用 ' + C.fmtUnits(used) + ' 单位')) :
+      h('p', { class: 'empty' }, '库存是空的。主持人发放物资后在「库存」页手动添加。');
+    return dashCard('占位构成', body, { cls: 'c-comp', action: linkBtn('库存', 'inventory') });
+  }
+
+  function todayCard() {
+    var lo = state.loadout;
+    var sc = state.scavenge;
+    var items = [];
+    if (lo) {
+      var carriedEntries = [];
+      lo.items.forEach(function (row) {
+        var e = C.findEntry(state.inventory, row.entryId);
+        if (e) for (var i = 0; i < row.qty; i++) carriedEntries.push(e);
+      });
+      var cs = C.combatSummary(state.hp, carriedEntries, state.customItems, tempAttack());
+      items.push(h('li', null, h('b', null, (lo.context === 'event' ? '事件' : '守夜') + '携带中'),
+        h('span', null, C.fmtUnits(C.loadoutTicks(state)) + '／' + (lo.limitTicks == null ? '上限待定' : C.fmtUnits(lo.limitTicks)) + ' 单位 · ' +
+          lo.items.map(function (row) { var e = C.findEntry(state.inventory, row.entryId); return e ? defOf(e).name + (row.qty > 1 ? '×' + row.qty : '') : ''; }).filter(Boolean).join('、')),
+        h('span', { class: 'muted small' }, '战斗力 ' + (cs.multiple ? cs.bestOnly + '～' + cs.stacked + '（叠加待定）' : cs.stacked))));
+    }
+    if (sc && sc.status !== 'submitted') items.push(h('li', null, h('b', null, '搜刮'), h('span', null, sc.status === 'running' ? '进行中：第 ' + sc.rounds.length + '／' + sc.cfg.rounds + ' 轮' : '待整理提交')));
+    state.temporaryEffects.forEach(function (fx) { items.push(h('li', null, h('b', null, '临时效果'), h('span', null, fx.text))); });
+    if (state.publicInfo.notes) items.push(h('li', null, h('b', null, '公共笔记'), h('span', { class: 'clamp' }, state.publicInfo.notes)));
+    var body = items.length ? h('ul', { class: 'facts' }, items) : h('p', { class: 'empty' }, '没有携带中的物品、进行中的搜刮或临时效果。');
+    return dashCard('进行中', body, { cls: 'c-today', action: linkBtn('携带', 'loadout') });
+  }
+
+  function conditionsCard() {
+    var body = state.statuses.length ? h('ul', { class: 'facts' }, state.statuses.map(function (st) {
+      var due = st.statusId === 'bleeding' && C.isInt(st.nextDay) && today() >= st.nextDay;
+      return h('li', null, h('b', null, st.name), h('span', null,
+        st.statusId === 'bleeding' ? '第 ' + st.startDay + ' 天获得 · 第 ' + (st.nextDay == null ? '?' : st.nextDay) + ' 天提醒' : (st.note || '效果见状态页')),
+        due ? sevBadge('warning', '到期') : null);
+    })) : h('p', { class: 'all-clear' }, sevBadge('ok', '无'), ' 没有负面状态。');
+    return dashCard('负面状态', body, { cls: 'c-cond', action: linkBtn('状态', 'status') });
+  }
+
+  function identityCard() {
+    var prof = state.rules.professionsEnabled ? C.getProfession(state.professionId) : null;
+    var task = state.rules.tasksEnabled ? C.getTask(state.taskId) : null;
+    var toggle = h('button', {
+      type: 'button', class: 'btn small ghost', 'aria-pressed': ui.hideIdentity ? 'true' : 'false', onclick: function () {
+        ui.hideIdentity = !ui.hideIdentity;
+        U.writeKey(KEY_HIDE_ID, ui.hideIdentity ? '1' : '0');
+        render();
+      }
+    }, U.icon(ui.hideIdentity ? 'unlock' : 'eyeOff'), ui.hideIdentity ? '显示' : '遮住');
+    var body;
+    if (ui.hideIdentity) {
+      body = h('p', { class: 'muted' }, '身份与目标已遮住（只在这台设备上生效）。');
+    } else {
+      var rows = [
+        ['爱的人', state.loveName || '未填写'],
+        ['恨的人', state.hateName || '未填写']
+      ];
+      if (prof) rows.push(['职业', prof.name + '（草案）']);
+      if (task) {
+        var progress = task.progress === 'events' ? state.taskProgress.events.length + '／' + task.target : task.progress === 'counter' ? state.taskProgress.count + '／' + task.target : '结算时判断';
+        rows.push(['秘密任务', task.name + ' · ' + (state.taskProgress.done ? '已完成' : progress)]);
+      }
+      body = h('dl', { class: 'kv' }, rows.map(function (r) { return [h('dt', null, r[0]), h('dd', null, r[1])]; }));
+    }
+    return dashCard('身份与目标', body, { cls: 'c-id', action: toggle });
+  }
+
+  function recentCard() {
+    var list = state.log.slice(0, 6);
+    var body = list.length ? h('ul', { class: 'log-list compact' }, list.map(function (l) {
+      return h('li', null, h('span', { class: 'log-meta' }, (l.day != null ? '第' + l.day + '天 ' : '') + U.fmtTime(l.at).slice(6)), l.text);
+    })) : h('p', { class: 'empty' }, '还没有记录。');
+    return dashCard('最近记录', body, { cls: 'c-recent', action: linkBtn('全部', 'save') });
   }
 
   // ================================================================ 状态
@@ -2937,7 +3545,7 @@ details.card > summary { cursor: pointer; }
     var over = C.isInt(cap) && used > cap;
     var list = state.inventory.filter(function (e) { return ui.filter === 'all' || defOf(e).category === ui.filter; });
     return h('div', { class: 'stack' },
-      h('section', { class: 'card' },
+      h('section', { class: 'card wide' },
         h('div', { class: 'row between' }, h('h2', null, '库存'), h('span', { class: 'cap ' + (over ? 'risk-text' : 'ok-text') }, '总占位 ', h('b', null, C.fmtUnits(used) + ' / ' + C.fmtUnits(cap)), ' 单位')),
         h('div', { class: 'meter' + (over ? ' over' : ''), role: 'img', 'aria-label': '库存占位 ' + C.fmtUnits(used) + ' / ' + C.fmtUnits(cap) }, h('span', { style: 'width:' + Math.min(100, cap ? (used / cap) * 100 : 0) + '%' })),
         over ? h('div', { class: 'callout risk' }, '超出总库存上限 ' + C.fmtUnits(used - cap) + ' 单位：只警告，不阻断主持人裁定。') : null,
@@ -2948,7 +3556,7 @@ details.card > summary { cursor: pointer; }
         })),
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn primary', onclick: addItemDialog }, '+ 添加物品'),
-          h('button', { type: 'button', class: 'btn', onclick: customItemDialog }, '新建自定义物品'))),
+          h('button', { type: 'button', class: 'btn', onclick: customItemDialog }, '添加自定义物品'))),
       list.length ? list.map(itemCard) : h('p', { class: 'empty card' }, state.inventory.length ? '这个分类下没有物品。' : '库存是空的。主持人发放物资后，请在这里手动添加。'));
   }
 
@@ -3045,27 +3653,55 @@ details.card > summary { cursor: pointer; }
     });
   }
 
+  /**
+   * 添加自定义物品：新名字＝登记定义并加入库存；已有同名物品＝直接按原有定义加入库存，
+   * 不会重复登记，也不会因为同名报错。
+   */
   function customItemDialog() {
     var nameI = h('input', { type: 'text', placeholder: '物品名称', autofocus: true });
     var catSel = U.select(C.CATEGORIES.map(function (c) { return [c.id, c.name]; }), 'custom', function () {});
     var units = h('input', { type: 'number', class: 'num', min: 0, step: 0.5, value: 0.5 });
     var effect = h('input', { type: 'text', placeholder: '效果（按主持人说明）' });
+    var qty = h('input', { type: 'number', class: 'num', min: 1, value: 1 });
+    var remark = h('input', { type: 'text', placeholder: '可选' });
+    var hint = h('p', { class: 'callout info small', hidden: true });
+    var newFields = h('div', { class: 'stack' }, U.field('分类', catSel), U.field('占位（单位）', units), U.field('效果', effect));
+    function existing() { return C.findDefByName(nameI.value.trim(), state.customItems); }
+    nameI.addEventListener('input', function () {
+      var d = existing();
+      hint.hidden = !d;
+      newFields.hidden = !!d;
+      if (d) hint.textContent = '已有同名物品「' + d.name + '」（' + (d.ruleStatus === 'custom' ? '自定义' : '内置') + '，每件占 ' + C.fmtUnits(d.capacityTicks) + ' 单位）：会按原有定义加入库存。';
+    });
     U.modal({
-      title: '新建自定义物品',
-      body: h('div', { class: 'stack' }, U.field('名称', nameI), U.field('分类', catSel), U.field('占位（单位）', units), U.field('效果', effect),
+      title: '添加自定义物品',
+      body: h('div', { class: 'stack' }, U.field('名称', nameI), hint, newFields,
+        h('div', { class: 'grid2' }, U.field('数量（件）', qty), U.field('备注', remark)),
         h('p', { class: 'muted small' }, '主持人也可以把自定义物品放进规则包，你在「存档」页导入即可。')),
-      actions: [{ label: '取消', value: false }, { label: '创建', kind: 'primary', value: true }]
+      actions: [{ label: '取消', value: false }, { label: '加入库存', kind: 'primary', value: true }]
     }).then(function (ok) {
       if (!ok) return;
+      var name = nameI.value.trim();
+      var count = parseInt(qty.value, 10);
       var n = U.parseNumber(units.value, true);
-      if (!nameI.value.trim()) { U.toast('请输入名称', 'warn'); return; }
-      if (n == null || Number.isNaN(n) || n < 0 || Math.round(n * 2) !== n * 2) { U.toast('占位需为 0.5 的倍数', 'warn'); return; }
-      if (C.findDefByName(nameI.value.trim(), state.customItems)) { U.toast('已有同名物品', 'warn'); return; }
-      commit('新建自定义物品', function (s) {
-        var d = C.newCustomItem({ name: nameI.value, category: catSel.value, capacityTicks: Math.round(n * 2), effectText: effect.value });
-        s.customItems.push(d);
-        log(s, '新建自定义物品：' + d.name);
+      var found = existing();
+      if (!name) { U.toast('请输入名称', 'warn'); return; }
+      if (!(count > 0)) { U.toast('数量必须是正整数', 'warn'); return; }
+      if (!found && (n == null || Number.isNaN(n) || n < 0 || Math.round(n * 2) !== n * 2)) { U.toast('占位需为 0.5 的倍数', 'warn'); return; }
+      var note = remark.value.trim() || undefined;
+      commit('添加自定义物品', function (s) {
+        var def = found;
+        if (!def) {
+          def = C.newCustomItem({ name: name, category: catSel.value, capacityTicks: Math.round(n * 2), effectText: effect.value });
+          s.customItems.push(def);
+          log(s, '新建自定义物品：' + def.name + '（每件占 ' + C.fmtUnits(def.capacityTicks) + ' 单位）');
+        }
+        C.addItem(s.inventory, def.id, count, { customItems: s.customItems, rules: s.rules, remark: note });
+        log(s, '添加物品：' + def.name + '×' + count + (note ? '（' + note + '）' : ''));
       });
+      U.toast(found ? '已按原有的「' + found.name + '」加入库存 ×' + count : '已创建并加入库存：' + name + ' ×' + count, 'ok');
+      ui.filter = 'all';
+      render();
     });
   }
 
@@ -3655,7 +4291,7 @@ details.card > summary { cursor: pointer; }
     var round = C.currentScavengeRound(sc);
     if (!round) return h('p', null, '处理中…');
     var remaining = Math.max(0, round.deadline - Date.now());
-    return h('section', { class: 'card scav' },
+    return h('section', { class: 'card scav wide' },
       h('div', { class: 'row between' }, h('h2', null, '第 ' + (round.index + 1) + ' / ' + sc.cfg.rounds + ' 轮'),
         h('div', { class: 'scav-clock', id: 'scav-clock' }, (remaining / 1000).toFixed(1) + ' 秒')),
       h('div', { class: 'meter' }, h('span', { id: 'scav-bar', style: 'width:' + (remaining / (sc.cfg.seconds * 1000)) * 100 + '%' })),
@@ -4207,6 +4843,11 @@ details.card > summary { cursor: pointer; }
     var tab = U.readKey(KEY_TAB);
     if (tab && TABS.some(function (t) { return t.id === tab; })) ui.tab = tab;
     state = loadState();
+    // 点击「更多」面板以外的地方时收起
+    document.addEventListener('click', function (e) {
+      // 点击后被重绘掉的按钮已脱离文档，不能据此判断是「点在外面」
+      if (ui.moreOpen && e.target.isConnected && !e.target.closest('#tabs')) { ui.moreOpen = false; renderTabs(); }
+    });
     if (state.scavenge && state.scavenge.status === 'running') {
       if (C.settleScavenge(state.scavenge, Date.now(), state.customItems, Math.random)) log(state, '搜刮：离开期间已超时的回合按默认项记录');
     }

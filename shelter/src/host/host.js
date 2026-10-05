@@ -17,15 +17,16 @@
   var KEY_SLOT = 'shelter-playtest:host:slot';
   var KEY_TAB = 'shelter-playtest:host:tab';
 
+  // 三组：可以屏幕共享的（主持台、公开展示）｜要先暂停共享的秘密页｜设置。从左到右越来越「不能给人看」。
   var TABS = [
-    { id: 'stage', name: '公开展示' },
-    { id: 'flow', name: '流程与座次' },
-    { id: 'supply', name: '补给与公共池', secret: true },
-    { id: 'watch', name: '守夜', secret: true },
-    { id: 'events', name: '公共事件', secret: true },
-    { id: 'records', name: '记录与结算', secret: true },
-    { id: 'log', name: '日志', secret: true },
-    { id: 'settings', name: '设置与存档' }
+    { id: 'flow', name: '主持台', group: 'public' },
+    { id: 'stage', name: '公开展示', group: 'public' },
+    { id: 'supply', name: '补给与公共池', secret: true, group: 'secret' },
+    { id: 'watch', name: '守夜', secret: true, group: 'secret' },
+    { id: 'events', name: '公共事件', secret: true, group: 'secret' },
+    { id: 'records', name: '记录与结算', secret: true, group: 'secret' },
+    { id: 'log', name: '日志', secret: true, group: 'secret' },
+    { id: 'settings', name: '设置与存档', group: 'setup' }
   ];
 
   var ACTION_TYPES = [
@@ -40,7 +41,7 @@
   var state = null;
   var notices = [];
   var undo = new U.UndoStack(40);
-  var ui = { tab: 'stage', revealed: {}, drafts: {}, showAllNight: false };
+  var ui = { tab: 'flow', revealed: {}, drafts: {}, showAllNight: false, present: false, presentFs: false };
 
   // ================================================================ 演示内容（明确标记）
 
@@ -221,6 +222,7 @@
   }
 
   function setTab(id) {
+    if (ui.present && id !== 'stage') exitPresent(true);
     ui.tab = id;
     U.writeKey(KEY_TAB, id);
     render();
@@ -365,32 +367,37 @@
     var pending = C.pendingConfigItems(state.rules);
     var alive = aliveIds().length;
     var last = undo.peek();
+    var target = state.rules.rescueTarget;
     top.appendChild(h('div', { class: 'top-main' },
-      h('div', { class: 'brand' }, h('b', null, '避难所 Playtest'), h('span', { class: 'muted' }, ' · 主持人')),
+      h('div', { class: 'brand' }, h('b', null, '避难所 Playtest'), h('span', { class: 'brand-role' }, '主持人')),
       h('div', { class: 'top-stats' },
         stat('天数', state.started ? '第 ' + state.day + ' 天' : '未开始'),
         stat('阶段', C.phaseLabel(state.phase)),
-        stat('人数', state.players.length + ' 人 · 存活 ' + alive),
-        stat('营救进度', state.rescueProgress + (state.rules.rescueTarget != null ? ' / ' + state.rules.rescueTarget : '（阈值待定）'), 'teal')),
+        stat('存活', alive + ' / ' + state.players.length + ' 人'),
+        stat('营救进度', state.rescueProgress + (target != null ? ' / ' + target : '（阈值待定）'), 'teal'),
+        pending.length ? h('button', { type: 'button', class: 'cfg-chip', onclick: function () { setTab('settings'); } },
+          U.icon('warn'), '配置未完成 ' + pending.length + ' 项') : null),
       h('div', { class: 'top-actions' },
-        h('button', { type: 'button', class: 'btn', onclick: prevPhase, disabled: !state.started }, '← 回退'),
-        h('button', { type: 'button', class: 'btn primary', onclick: nextPhase },
-          !state.started ? '开始第 1 天 →' : isLastPhase() ? '进入第 ' + (state.day + 1) + ' 天 →' : '下一阶段 →'),
-        h('button', { type: 'button', class: 'btn', onclick: manualAdjust }, '手动调整'),
-        h('button', { type: 'button', class: 'btn', onclick: undoLast, disabled: !last, title: last ? '撤销：' + last.label : '没有可撤销的操作' }, U.icon('undo'), '撤销'),
+        h('span', { class: 'top-group' },
+          h('button', { type: 'button', class: 'btn', onclick: prevPhase, disabled: !state.started }, '← 回退'),
+          h('button', { type: 'button', class: 'btn primary', onclick: nextPhase },
+            !state.started ? '开始第 1 天 →' : isLastPhase() ? '进入第 ' + (state.day + 1) + ' 天 →' : '下一阶段 →')),
+        h('span', { class: 'top-group' },
+          h('button', { type: 'button', class: 'btn', onclick: undoLast, disabled: !last, title: last ? '撤销：' + last.label : '没有可撤销的操作' }, U.icon('undo'), '撤销'),
+          h('button', { type: 'button', class: 'btn', onclick: manualAdjust }, '手动调整')),
         h('button', { type: 'button', class: 'btn danger', onclick: hideAllSecrets }, U.icon('eyeOff'), '一键隐藏所有秘密'))));
-    if (pending.length) {
-      top.appendChild(h('div', { class: 'top-pending' },
-        U.icon('warn'),
-        h('span', null, '配置未完成 ' + pending.length + ' 项：' + pending.slice(0, 5).map(function (p) { return p.label; }).join('、') + (pending.length > 5 ? '…' : '')),
-        h('button', { type: 'button', class: 'btn-link', onclick: function () { setTab('settings'); } }, '去配置')));
-    }
   }
 
   function renderTabs() {
     var nav = U.clear(document.getElementById('tabs'));
+    var groups = { public: null, secret: null, setup: null };
     TABS.forEach(function (t) {
-      nav.appendChild(h('button', {
+      if (!groups[t.group]) {
+        groups[t.group] = h('div', { class: 'tab-group g-' + t.group, role: 'group', 'aria-label': t.group === 'secret' ? '秘密页（先暂停屏幕共享）' : t.group === 'public' ? '可以共享的页' : '设置' },
+          t.group === 'secret' ? h('span', { class: 'tab-group-label' }, U.icon('lock'), '先暂停共享') : null);
+        nav.appendChild(groups[t.group]);
+      }
+      groups[t.group].appendChild(h('button', {
         type: 'button',
         class: 'tab ' + (ui.tab === t.id ? 'on' : ''),
         'aria-current': ui.tab === t.id ? 'page' : null,
@@ -403,39 +410,66 @@
   function renderMain() {
     var main = U.clear(document.getElementById('main'));
     var views = { stage: renderStage, flow: renderFlow, supply: renderSupply, watch: renderWatch, events: renderEvents, records: renderRecords, log: renderLog, settings: renderSettings };
+    if (ui.present && ui.tab !== 'stage') exitPresent(true);
     main.className = 'main tab-' + ui.tab;
     main.appendChild((views[ui.tab] || renderStage)());
   }
 
   // ================================================================ 公开展示
 
+  // 给 Discord 屏幕共享看的页面：最大的字是「现在是哪个阶段」，其次是「轮到谁」。
+  // 版面固定为 主视区（随阶段切换：行动顺序／领取顺序／公共事件／座次）＋ 侧栏（计时、营救进度）＋ 下方补充。
   function renderStage() {
     var seq = C.phaseSequence(state.rules);
     var p = C.PHASES[state.phase] || {};
+    var idx = seq.indexOf(state.phase);
+    var focus = stageFocus();
+    var more = [
+      focus.kind !== 'event' ? stageEvent() : null,
+      focus.kind !== 'supply' ? stageSupply() : null,
+      h('div', { class: 'stage-panel feed-panel' }, h('h3', null, '公开结果'), feedList(true))
+    ].filter(Boolean);
     return h('div', { class: 'stage' },
-      h('section', { class: 'stage-top' },
-        h('div', { class: 'stage-block' },
-          h('div', { class: 'stage-label' }, '天数'),
-          h('div', { class: 'stage-value' }, state.started ? '第 ' + state.day + ' 天' : '未开始')),
-        h('div', { class: 'stage-block grow' },
-          h('div', { class: 'stage-label' }, '当前阶段'),
-          h('div', { class: 'stage-value' }, C.phaseLabel(state.phase)),
-          h('div', { class: 'stage-desc' }, p.desc || ''),
-          state.started ? h('div', { class: 'phase-dots' }, seq.map(function (ph) {
-            return h('span', { class: 'phase-dot ' + (ph === state.phase ? 'on' : '') }, C.PHASES[ph].no ? String(C.PHASES[ph].no) : '事', h('i', null, C.PHASES[ph].name));
-          })) : null),
-        h('div', { class: 'stage-block' },
-          h('div', { class: 'stage-label' }, '营救进度'),
-          h('div', { class: 'stage-value teal' }, String(state.rescueProgress)),
-          h('div', { class: 'stage-desc' }, state.rules.rescueTarget != null ? '阈值 ' + state.rules.rescueTarget + '（不会自动结束）' : '阈值未知 · 军方热线：忙音'))),
-      h('section', { class: 'stage-mid' },
-        h('div', { class: 'stage-panel' }, h('h3', null, '座次'), seatChips(true)),
-        stageActionOrder(),
-        stageSupply(),
-        stageEvent()),
-      h('section', { class: 'stage-bottom' },
-        timerWidget(true),
-        h('div', { class: 'stage-panel grow' }, h('h3', null, '公开结果'), feedList(true))));
+      h('section', { class: 'stage-hero', 'aria-label': '当前进度' },
+        h('div', { class: 'hero-top' },
+          h('span', { class: 'hero-day' }, state.started ? '第 ' + state.day + ' 天' : '尚未开始'),
+          ui.present
+            ? h('button', { type: 'button', class: 'btn small ghost present-btn', onclick: function () { exitPresent(); } }, U.icon('exitFull'), '退出展示（Esc）')
+            : h('button', { type: 'button', class: 'btn small present-btn', onclick: enterPresent, title: '隐藏主持人工具栏，只留公开内容' }, U.icon('expand'), '全屏展示')),
+        h('h1', { class: 'hero-phase' },
+          p.no ? h('span', { class: 'hero-no' }, '阶段' + p.no) : null,
+          h('span', null, p.name || state.phase)),
+        p.desc ? h('p', { class: 'hero-desc' }, p.desc) : null,
+        state.started && idx >= 0 ? stageTrack(seq, idx) : null),
+      h('div', { class: 'stage-grid' },
+        h('div', { class: 'stage-focus' }, focus.node,
+          focus.kind !== 'seats' ? h('div', { class: 'stage-panel' }, h('h3', null, '座次'), seatChips(true)) : null),
+        h('aside', { class: 'stage-side' }, timerWidget(true), stageRescue())),
+      h('div', { class: 'stage-more' }, more));
+  }
+
+  /** 一天的阶段走到哪了：每段一条横杠，做完的实心、当前的加粗加高、未到的只有轨道。 */
+  function stageTrack(seq, idx) {
+    return h('ol', { class: 'track', 'aria-label': '今天的阶段' }, seq.map(function (ph, i) {
+      var st = i < idx ? 'done' : i === idx ? 'on' : 'todo';
+      var no = C.PHASES[ph].no ? String(C.PHASES[ph].no) : '事';
+      return h('li', { class: 'track-seg ' + st, 'aria-current': st === 'on' ? 'step' : null },
+        h('span', { class: 'track-bar' }),
+        h('span', { class: 'track-label' }, st === 'done' ? '✓ ' : '', h('span', { class: 'track-no' }, no + ' '), h('span', { class: 'track-name' }, C.PHASES[ph].name)));
+    }));
+  }
+
+  /** 主视区随阶段切换：个人行动看「轮到谁」，补给看领取顺序，事件看投票选项，其余看座次。 */
+  function stageFocus() {
+    var t = state.today;
+    var ph = state.phase;
+    if (ph === 'actions' && t.actionOrder) return { kind: 'actions', node: stageActionOrder() };
+    var supply = stageSupply(true);
+    if (ph === 'supply' && supply) return { kind: 'supply', node: supply };
+    var ev = stageEvent();
+    if (ev && (ph === 'event' || state.stage.event)) return { kind: 'event', node: ev };
+    if (supply && openBatches().length) return { kind: 'supply', node: supply };
+    return { kind: 'seats', node: h('div', { class: 'stage-panel focus' }, h('h3', null, '座次'), seatChips(true)) };
   }
 
   function seatChips(withMarks) {
@@ -450,38 +484,45 @@
         else if (C.nextActor(t.actionOrder, t.actedIds) === id) marks.push(chip('▶ 行动中', 'now'));
       }
       if (id === last) marks.push(chip('末位', ''));
-      return h('li', { class: 'seat' }, h('span', { class: 'seat-no' }, String(i + 1)), h('span', { class: 'seat-name' }, nameOf(id)), marks);
+      return h('li', { class: 'seat' + (isAlive(id) ? '' : ' dead') }, h('span', { class: 'seat-no' }, String(i + 1)), h('span', { class: 'seat-name' }, nameOf(id)), marks);
     }));
   }
 
   function stageActionOrder() {
     var t = state.today;
-    if (state.phase !== 'actions' || !t.actionOrder) return null;
     var current = C.nextActor(t.actionOrder, t.actedIds);
-    return h('div', { class: 'stage-panel' },
-      h('h3', null, '本轮行动顺序（固定）'),
-      h('div', { class: 'order-line' }, t.actionOrder.map(function (id) {
-        var acted = t.actedIds.indexOf(id) >= 0;
-        return h('span', { class: 'order-item ' + (acted ? 'done' : id === current ? 'now' : '') }, (acted ? '✓ ' : id === current ? '▶ ' : '') + nameOf(id));
+    var acted = t.actedIds.length;
+    return h('div', { class: 'stage-panel focus focus-actions' },
+      h('h3', null, '个人行动'),
+      h('div', { class: 'focus-now' },
+        current ? h('span', { class: 'focus-label' }, '轮到') : null,
+        h('span', { class: 'focus-name' }, current ? nameOf(current) : '本轮行动全部完成'),
+        h('span', { class: 'focus-count' }, '已行动 ' + acted + '／' + t.actionOrder.length)),
+      h('ol', { class: 'order-line' }, t.actionOrder.map(function (id) {
+        var done = t.actedIds.indexOf(id) >= 0;
+        return h('li', { class: 'order-item ' + (done ? 'done' : id === current ? 'now' : '') }, (done ? '✓ ' : id === current ? '▶ ' : '') + nameOf(id));
       })),
-      h('p', { class: 'muted small' }, '换位只改变实际座次，不改变本轮行动顺序。'));
+      h('p', { class: 'muted small' }, '本轮行动顺序固定；换位只改变实际座次，不改变这个顺序。'));
   }
 
   function openBatches() {
     return state.batches.filter(function (b) { return b.status === 'open'; });
   }
 
-  function stageSupply() {
+  function stageSupply(asFocus) {
     var list = openBatches();
     var showCount = state.stage.showPoolCount;
     if (!list.length && !showCount) return null;
-    return h('div', { class: 'stage-panel' },
-      h('h3', null, '补给'),
+    return h('div', { class: 'stage-panel' + (asFocus ? ' focus' : '') },
+      h('h3', null, '补给领取'),
       list.map(function (b) {
-        return h('div', { class: 'order-line' }, h('b', null, b.label + '：'), b.pickOrder.map(function (id) {
-          var picked = b.picks.some(function (p) { return p.playerId === id; });
-          return h('span', { class: 'order-item ' + (picked ? 'done' : '') }, (picked ? '✓ ' : '') + nameOf(id));
-        }));
+        var next = b.pickOrder.filter(function (id) { return !b.picks.some(function (p) { return p.playerId === id; }); })[0];
+        return h('div', { class: 'supply-batch' },
+          asFocus && next ? h('div', { class: 'focus-now' }, h('span', { class: 'focus-label' }, '轮到'), h('span', { class: 'focus-name' }, nameOf(next)), h('span', { class: 'focus-count' }, b.label + ' · 已领取 ' + b.picks.length + '／' + b.pickOrder.length)) : h('b', null, b.label),
+          h('ol', { class: 'order-line' }, b.pickOrder.map(function (id) {
+            var picked = b.picks.some(function (p) { return p.playerId === id; });
+            return h('li', { class: 'order-item ' + (picked ? 'done' : id === next ? 'now' : '') }, (picked ? '✓ ' : id === next ? '▶ ' : '') + nameOf(id));
+          })));
       }),
       showCount ? h('p', null, '公共池剩余：', h('b', null, C.countPieces(state.pool) + ' 件')) : null);
   }
@@ -492,13 +533,49 @@
     if (!ev && !check) return null;
     return h('div', { class: 'stage-panel stage-event' },
       h('h3', null, '公共事件'),
-      check && !ev ? h('p', null, check.triggered ? '今日判定：触发事件（等待主持人公布）' : '今日判定：无事件') : null,
+      check && !ev ? h('p', { class: 'event-check' }, check.triggered ? '今日判定：触发事件，等待主持人公布' : '今日判定：无事件') : null,
       ev ? h('div', null,
-        h('div', { class: 'event-title' }, ev.name, ev.location ? h('span', { class: 'muted' }, ' · ' + ev.location) : null),
+        h('div', { class: 'event-title' }, ev.name, ev.location ? h('span', { class: 'event-loc' }, ev.location) : null),
         ev.body ? h('p', { class: 'event-body' }, ev.body) : null,
-        ev.options && ev.options.length ? h('div', { class: 'vote-options' }, h('span', { class: 'muted' }, 'Discord 投票：'), ev.options.map(function (o, i) {
-          return h('span', { class: 'vote-option' }, String.fromCharCode(65 + i) + '. ' + o);
+        ev.options && ev.options.length ? h('div', { class: 'vote-options' }, h('span', { class: 'muted' }, 'Discord 投票'), ev.options.map(function (o, i) {
+          return h('span', { class: 'vote-option' }, h('b', null, String.fromCharCode(65 + i)), o);
         })) : null) : null);
+  }
+
+  function stageRescue() {
+    var target = state.rules.rescueTarget;
+    return h('div', { class: 'stage-panel rescue-panel' },
+      h('h3', null, '营救进度'),
+      h('div', { class: 'rescue-value' }, String(state.rescueProgress), target != null ? h('span', { class: 'rescue-of' }, '／' + target) : null),
+      target != null ? U.meter(state.rescueProgress, target, 'ok', '营救进度') : null,
+      h('p', { class: 'muted small' }, target != null ? '阈值 ' + target + '（到达后由主持人宣布结算）' : '阈值未知 · 军方热线：忙音'));
+  }
+
+  // ---------------------------------------------------------------- 全屏展示：隐藏主持人工具栏，只留公开展示页
+
+  function enterPresent() {
+    ui.present = true;
+    ui.presentFs = false;
+    document.body.classList.add('presenting');
+    render();
+    var el = document.documentElement;
+    try {
+      if (el.requestFullscreen) {
+        var p = el.requestFullscreen();
+        if (p && p.then) p.then(function () { ui.presentFs = true; }, function () {});
+      }
+    } catch (e) { /* 不支持全屏时只隐藏工具栏 */ }
+  }
+
+  function exitPresent(silent) {
+    if (!ui.present) return;
+    ui.present = false;
+    document.body.classList.remove('presenting');
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+    } catch (e) { /* 忽略 */ }
+    ui.presentFs = false;
+    if (!silent) render();
   }
 
   function feedList(todayFirst) {
@@ -522,13 +599,15 @@
   function timerWidget(big) {
     var tm = state.timer;
     var remaining = timerRemaining();
-    return h('div', { class: 'timer ' + (big ? 'big' : '') },
-      h('div', { class: 'stage-label' }, U.icon('timer'), ' 计时'),
+    var word = remaining <= 0 ? '时间到' : tm.running ? '计时中' : remaining < tm.durationMs ? '已暂停' : '未开始';
+    return h('div', { class: 'timer ' + (big ? 'big' : 'compact') },
+      h('div', { class: 'timer-head' }, h('span', { class: 'stage-label' }, U.icon('timer'), ' 计时'),
+        h('span', { class: 'timer-state ' + (remaining <= 0 ? 'done' : tm.running ? 'run' : '') }, word)),
       h('div', { class: 'timer-display' + (remaining <= 0 ? ' done' : ''), id: 'timer-display' }, U.fmtClock(remaining)),
       h('div', { class: 'row tight' },
         tm.running
           ? h('button', { type: 'button', class: 'btn', onclick: timerPause }, '暂停')
-          : h('button', { type: 'button', class: 'btn primary', onclick: timerStart, disabled: remaining <= 0 }, '开始'),
+          : h('button', { type: 'button', class: 'btn' + (big ? ' primary' : ''), onclick: timerStart, disabled: remaining <= 0 }, '开始'),
         h('button', { type: 'button', class: 'btn', onclick: timerReset }, '重置')),
       h('div', { class: 'row tight' }, [30, 60, 120, 180, 300].map(function (sec) {
         return h('button', { type: 'button', class: 'btn small', onclick: function () { timerSet(sec * 1000); } }, sec < 60 ? sec + '秒' : sec / 60 + '分');
@@ -600,41 +679,102 @@
     }
   }
 
-  // ================================================================ 流程与座次
+  // ================================================================ 主持台（流程与座次）
 
+  // 主持台：主持人自己看的工作台（不含秘密，可以共享）。
+  // 读法从上到下：今天走到哪（阶段轨）→ 现在要处理什么（当前阶段卡，主区）→ 还有什么没收尾（待办，侧栏顶部）。
+  // 电脑上主区＋侧栏两列；平板与手机变成一列，按「待办 → 当前阶段 → 概况 → 其余」排序。
   function renderFlow() {
-    return h('div', { class: 'stack' },
-      guideCard(),
-      phaseCard(),
-      currentPhaseCard(),
-      seatsCard(),
-      h('div', { class: 'grid2' }, rescueCard(), announceCard()));
+    return h('div', { class: 'console' },
+      phaseRail(),
+      h('div', { class: 'console-cols' },
+        h('div', { class: 'console-main' }, currentPhaseCard(), seatsCard(), announceCard()),
+        h('aside', { class: 'console-side', 'aria-label': '待办与概况' }, todoCard(), overviewTiles(), rescueCard(), timerCard(), guideCard())));
+  }
+
+  /** 阶段轨：整天的流程一行排开，做完的打勾，当前的高亮；点任一阶段可跳转。 */
+  function phaseRail() {
+    var seq = ['setup'].concat(C.phaseSequence(state.rules));
+    var cur = seq.indexOf(state.phase);
+    var pos = state.rules.eventPosition;
+    return h('section', { class: 'rail-card' },
+      h('ol', { class: 'rail', 'aria-label': '每日流程' }, seq.map(function (ph, i) {
+        var st = cur < 0 ? 'todo' : i < cur ? 'done' : i === cur ? 'on' : 'todo';
+        var no = ph === 'setup' ? '开' : C.PHASES[ph].no ? String(C.PHASES[ph].no) : '事';
+        return h('li', { class: 'rail-step ' + st },
+          h('button', {
+            type: 'button',
+            'aria-current': st === 'on' ? 'step' : null,
+            'aria-label': C.PHASES[ph].name + (st === 'done' ? '（已过）' : st === 'on' ? '（当前）' : ''),
+            onclick: function () { if (st !== 'on') jumpPhase(ph); }
+          }, h('span', { class: 'rail-no' }, st === 'done' ? '✓' : no), h('span', { class: 'rail-name' }, C.PHASES[ph].name)));
+      })),
+      h('p', { class: 'rail-note' },
+        h('span', null, '点阶段可直接跳转：只移动进度，记入日志，不回滚数据。'),
+        h('span', null, pos ? '公共事件在' + (pos === 'beforeSupply' ? '阶段2之前' : '阶段6之后') : '公共事件位置未配置：手动触发')));
   }
 
   function guideCard() {
-    return h('details', { class: 'card guide' },
-      h('summary', null, h('b', null, '怎么用这一页（主持人速查）')),
+    return h('details', { class: 'card side-card guide' },
+      h('summary', null, h('b', null, '主持人速查')),
       h('ol', null,
-        h('li', null, '公开展示页可以直接屏幕共享：只有天数、阶段、营救、座次、公开事件、计时和公开结果。'),
-        h('li', null, '带锁的标签页含秘密。打开前先暂停 Discord 共享；处理完点顶栏「一键隐藏所有秘密」再恢复共享。'),
+        h('li', null, '「主持台」和「公开展示」都没有秘密，可以直接屏幕共享；给玩家看时用公开展示的「全屏展示」。'),
+        h('li', null, '带锁的页含秘密。打开前先暂停 Discord 共享；处理完点顶栏「一键隐藏所有秘密」再恢复共享。'),
         h('li', null, '主持人端不会把任何东西「发」给玩家：发放、事件后果、治疗都生成可复制的文本，由玩家在自己的页面手动修改。'),
         h('li', null, '「下一阶段／回退／手动调整」都会写进日志；顶栏的「撤销」可以回滚最近的操作。')));
   }
 
-  function phaseCard() {
-    var seq = ['setup'].concat(C.phaseSequence(state.rules));
-    return h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, '每日流程'),
-        h('span', { class: 'muted small' }, state.rules.eventPosition ? '公共事件位置：' + (state.rules.eventPosition === 'beforeSupply' ? '阶段2之前' : '阶段6之后') : '公共事件位置未配置：由主持人手动触发')),
-      h('div', { class: 'phase-steps' }, seq.map(function (ph) {
-        var on = ph === state.phase;
-        return h('button', {
-          type: 'button',
-          class: 'phase-step ' + (on ? 'on' : ''),
-          onclick: function () { if (!on) jumpPhase(ph); }
-        }, h('span', { class: 'phase-no' }, ph === 'setup' ? '开' : C.PHASES[ph].no ? String(C.PHASES[ph].no) : '事'), C.PHASES[ph].name);
-      })),
-      h('p', { class: 'muted small' }, '点任一阶段可直接跳转（记入日志，不回滚数据）。'));
+  /** 待办：从已记录的进度推出来的「还没收尾的事」，点右侧链接直接去处理。 */
+  function todoCard() {
+    var list = C.hostAlerts(state);
+    return h('section', { class: 'card side-card todo' },
+      h('div', { class: 'card-head' }, h('h2', null, '待办'),
+        list.length ? h('span', { class: 'muted small' }, list.length + ' 项') : U.sevBadge('ok', '都处理完了')),
+      list.length ? h('ul', { class: 'todo-list' }, list.map(function (a) {
+        var t = TABS.filter(function (x) { return x.id === a.tab; })[0];
+        return h('li', { class: 'todo-item lv-' + a.level },
+          U.sevBadge(a.level),
+          h('span', { class: 'todo-text' }, a.text),
+          h('button', { type: 'button', class: 'btn-link todo-go', onclick: function () { goTodo(a); } },
+            a.tab === 'flow' ? '去处理' : [t && t.secret ? U.icon('lock') : null, t ? t.name : '前往']));
+      })) : h('p', { class: 'empty' }, '当前阶段没有未收尾的事项，可以进入下一阶段。'));
+  }
+
+  function goTodo(a) {
+    if (a.tab !== 'flow') { setTab(a.tab); return; }
+    var target = /座次/.test(a.text) ? document.getElementById('seats-card') : document.getElementById('phase-card');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.classList.remove('flash');
+      void target.offsetWidth;
+      target.classList.add('flash');
+    }
+  }
+
+  /** 概况：两张小卡，点了跳到对应页。数值都是公开信息。 */
+  function overviewTiles() {
+    var total = state.players.length;
+    var alive = aliveIds().length;
+    var dead = total - alive;
+    var today = state.publicFeed.filter(function (f) { return f.day === state.day; });
+    var latest = today[today.length - 1];
+    return h('div', { class: 'tiles-2' },
+      U.statTile({
+        key: 'alive', label: '存活', value: String(alive), unit: '／' + total + ' 人',
+        badge: dead ? U.sevBadge('info', '死亡 ' + dead) : null,
+        viz: total ? U.meter(alive, total, 'ok', '存活人数') : null,
+        sub: '座次 ' + state.seatOrder.length + ' 人',
+        onclick: function () { setTab('settings'); }
+      }),
+      U.statTile({
+        key: 'feed', label: state.started ? '今天的公开结果' : '公开结果', value: String(state.started ? today.length : state.publicFeed.length), unit: '条',
+        sub: latest ? '最新：' + latest.text : '还没有发布',
+        onclick: function () { setTab('stage'); }
+      }));
+  }
+
+  function timerCard() {
+    return h('section', { class: 'card side-card timer-card' }, timerWidget(false));
   }
 
   function jumpPhase(ph) {
@@ -817,10 +957,57 @@
     else if (ph === 'watch') body = watchPanel();
     else if (ph === 'event') body = eventTriggerCard(true);
     else body = h('p', null, '未知阶段');
-    return h('section', { class: 'card current-phase' },
-      h('div', { class: 'card-head' }, h('h2', null, (state.started ? '第 ' + state.day + ' 天 · ' : '') + C.phaseLabel(ph))),
+    var prog = phaseProgress();
+    return h('section', { class: 'card current-phase', id: 'phase-card' },
+      h('div', { class: 'phase-head' },
+        h('div', { class: 'phase-title' },
+          h('span', { class: 'phase-kicker' }, state.started ? '第 ' + state.day + ' 天' : '游戏开始前'),
+          h('h2', null, C.phaseLabel(ph))),
+        prog ? h('div', { class: 'phase-prog' },
+          h('span', { class: 'phase-prog-text' }, prog.label),
+          prog.max ? U.meter(prog.value, prog.max, 'ok', prog.label) : null) : null),
       h('p', { class: 'section-note' }, (C.PHASES[ph] || {}).desc || ''),
-      body);
+      body,
+      phaseFoot());
+  }
+
+  /** 当前阶段的完成度（只在能数清楚的阶段显示）。 */
+  function phaseProgress() {
+    var t = state.today;
+    var ph = state.phase;
+    if (ph === 'setup') {
+      var done = state.opening.done.filter(Boolean).length;
+      return { value: done, max: 2, label: '开局领取 ' + done + '／2 次' };
+    }
+    if (ph === 'actions' && t.actionOrder) {
+      return { value: t.actedIds.length, max: t.actionOrder.length, label: '已行动 ' + t.actedIds.length + '／' + t.actionOrder.length };
+    }
+    if (ph === 'supply') {
+      var list = state.batches.filter(function (b) { return t.batchIds.indexOf(b.id) >= 0 || b.status === 'open'; });
+      if (!list.length) return null;
+      var picked = list.reduce(function (n, b) { return n + b.picks.length; }, 0);
+      var all = list.reduce(function (n, b) { return n + b.pickOrder.length; }, 0);
+      return { value: picked, max: all, label: '已领取 ' + picked + '／' + all };
+    }
+    if (ph === 'rotation') return { value: t.rotationDone ? 1 : 0, max: 0, label: t.rotationDone ? '✓ 今日已轮换' : '尚未轮换' };
+    if (ph === 'watch') return { value: 0, max: 0, label: t.finalWatch ? '✓ 名单已确认' : '已收到 ' + C.submittedCandidates(t).length + ' 份提交' };
+    if (ph === 'night') {
+      var r = state.pendingNightResult;
+      return { value: 0, max: 0, label: t.nightPublished ? '✓ 昨夜结果已公布' : r && r.publishedDay == null && state.day > r.day ? '昨夜结果待公布' : '没有待公布的结果' };
+    }
+    return null;
+  }
+
+  /** 卡片底部的「下一步」：和顶栏按钮是同一个动作，写明要去的阶段，免得来回看顶栏。 */
+  function phaseFoot() {
+    if (!state.started) return null;
+    var seq = C.phaseSequence(state.rules);
+    var idx = seq.indexOf(state.phase);
+    var nextName = idx === seq.length - 1 ? null : C.PHASES[seq[idx + 1]].name;
+    return h('div', { class: 'phase-foot' },
+      h('span', { class: 'muted small' }, '这一阶段处理完后'),
+      h('button', { type: 'button', class: 'btn', onclick: nextPhase },
+        nextName ? '进入「' + nextName + '」' : '结束今天，进入第 ' + (state.day + 1) + ' 天', U.icon('arrow')));
   }
 
   function goSecret(tab, label) {
@@ -923,8 +1110,8 @@
     var current = C.nextActor(t.actionOrder, t.actedIds);
     var acted = t.actedIds.length;
     return h('div', { class: 'stack' },
-      h('p', null, '本轮固定行动顺序（进入阶段5时从座次复制，换位不会改变它）：已行动 ' + acted + '／' + t.actionOrder.length),
-      h('div', { class: 'table-wrap' }, h('table', { class: 'tbl' },
+      h('p', { class: 'muted small' }, '行动顺序在进入阶段5时从座次复制，整轮固定；换位只改实际座次，不改这个顺序。'),
+      h('div', { class: 'table-wrap' }, h('table', { class: 'tbl actions-tbl' },
         h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, '玩家'), h('th', null, '状态'), h('th', null, '本轮记录'), h('th', null, '实际座次'), h('th', null, '操作'))),
         h('tbody', null, t.actionOrder.map(function (id, i) {
           var done = t.actedIds.indexOf(id) >= 0;
@@ -932,12 +1119,12 @@
           var seat = state.seatOrder.indexOf(id);
           var swaps = t.swapRequests.filter(function (r) { return r.fromId === id; }).length;
           return h('tr', { class: done ? 'done' : id === current ? 'current' : '', 'data-player': id },
-            h('td', null, String(i + 1)),
-            h('td', null, nameOf(id), !isAlive(id) ? chip('已死亡', 'danger') : null),
-            h('td', null, done ? '✓ 已行动' : id === current ? '▶ 当前' : '等待'),
-            h('td', null, acts.length ? acts.map(actionText).join('、') : '—', swaps ? h('span', { class: 'muted small' }, '（换位请求 ' + swaps + '/' + state.rules.swapRequestLimit + '）') : null),
-            h('td', null, seat >= 0 ? '第 ' + (seat + 1) + ' 座' : '不在座次'),
-            h('td', null, h('div', { class: 'row tight' },
+            h('td', { class: 'c-no' }, String(i + 1)),
+            h('td', { class: 'c-name' }, nameOf(id), !isAlive(id) ? chip('已死亡', 'danger') : null),
+            h('td', { class: 'c-state' }, done ? '✓ 已行动' : id === current ? '▶ 当前' : '等待'),
+            h('td', { class: 'c-rec' }, acts.length ? acts.map(actionText).join('、') : '—', swaps ? h('span', { class: 'muted small' }, '（换位请求 ' + swaps + '/' + state.rules.swapRequestLimit + '）') : null),
+            h('td', { class: 'c-seat' }, seat >= 0 ? '第 ' + (seat + 1) + ' 座' : '不在座次'),
+            h('td', { class: 'c-ops' }, h('div', { class: 'row tight' },
               done ? null : h('button', { type: 'button', class: 'btn small primary', onclick: function () { recordActionDialog(id); } }, '记录行动'),
               done ? null : h('button', { type: 'button', class: 'btn small', onclick: function () { swapDialog(id); } }, '换位请求'),
               done || acts.length ? h('button', { type: 'button', class: 'btn small', onclick: function () { undoActionFor(id); } }, '撤销行动') : null)));
@@ -1060,7 +1247,7 @@
 
   function seatsCard() {
     var notSeated = state.players.filter(function (p) { return state.seatOrder.indexOf(p.id) < 0; });
-    return h('section', { class: 'card' },
+    return h('section', { class: 'card', id: 'seats-card' },
       h('div', { class: 'card-head' }, h('h2', null, '座次（实际座位）'), h('span', { class: 'muted small' }, '玩家用稳定 ID 识别，不用座位号当身份')),
       state.seatOrder.length ? h('ol', { class: 'seat-edit' }, state.seatOrder.map(function (id, i) {
         return h('li', null,
@@ -1113,25 +1300,27 @@
       });
     }
     var target = state.rules.rescueTarget;
-    return h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, '营救进度')),
-      h('div', { class: 'rescue-big' }, String(state.rescueProgress), target != null ? h('span', { class: 'muted' }, ' / ' + target) : null),
-      target != null ? h('div', { class: 'meter' + (state.rescueProgress >= target ? ' over' : '') }, h('span', { style: 'width:' + Math.min(100, Math.max(0, (state.rescueProgress / target) * 100)) + '%' })) : null,
-      h('div', { class: 'row' },
-        h('button', { type: 'button', class: 'btn', onclick: function () { change(state.rescueProgress - 1); } }, '−1'),
-        h('button', { type: 'button', class: 'btn', onclick: function () { change(state.rescueProgress + 1); } }, '+1'),
-        h('button', {
-          type: 'button', class: 'btn', onclick: function () {
-            var input = h('input', { type: 'number', value: state.rescueProgress, autofocus: true });
-            U.modal({ title: '设定营救进度', body: U.field('营救进度', input), actions: [{ label: '取消', value: null }, { label: '设定', kind: 'primary', value: function () { return input.value; } }] })
-              .then(function (v) { if (v != null && v !== '') change(parseInt(v, 10)); });
-          }
-        }, '设为…')),
-      h('p', { class: 'muted small' }, target == null ? '阈值未知：不会自动结束游戏，主持人在「记录与结算」点击结算。' : '到达阈值也不会自动结束，由主持人点击结算。'));
+    var reached = target != null && state.rescueProgress >= target;
+    return h('section', { class: 'card side-card rescue-card' },
+      h('div', { class: 'card-head' }, h('h2', null, '营救进度'), reached ? U.sevBadge('warning', '已达阈值') : null),
+      h('div', { class: 'rescue-row' },
+        h('div', { class: 'rescue-big' }, String(state.rescueProgress), h('span', { class: 'rescue-of' }, target != null ? '／' + target : '阈值待定')),
+        h('div', { class: 'row tight' },
+          h('button', { type: 'button', class: 'btn icon-btn', 'aria-label': '营救进度减一', onclick: function () { change(state.rescueProgress - 1); } }, '−1'),
+          h('button', { type: 'button', class: 'btn icon-btn', 'aria-label': '营救进度加一', onclick: function () { change(state.rescueProgress + 1); } }, '+1'),
+          h('button', {
+            type: 'button', class: 'btn small', onclick: function () {
+              var input = h('input', { type: 'number', value: state.rescueProgress, autofocus: true });
+              U.modal({ title: '设定营救进度', body: U.field('营救进度', input), actions: [{ label: '取消', value: null }, { label: '设定', kind: 'primary', value: function () { return input.value; } }] })
+                .then(function (v) { if (v != null && v !== '') change(parseInt(v, 10)); });
+            }
+          }, '设为…'))),
+      target != null ? U.meter(state.rescueProgress, target, 'ok', '营救进度') : null,
+      h('p', { class: 'muted small' }, target == null ? '阈值未知：不会自动结束，主持人在「记录与结算」点击结算。' : '到达阈值也不会自动结束，由主持人点击结算。'));
   }
 
   function announceCard() {
-    return h('section', { class: 'card' },
+    return h('section', { class: 'card announce-card' },
       h('div', { class: 'card-head' }, h('h2', null, '发布公开结果')),
       draftArea('announce', 3, '例如：第2天自由交流结束；B 与 D 达成交易。会显示在公开展示页。'),
       h('div', { class: 'row' }, h('button', {
@@ -1638,7 +1827,7 @@
     var planners = t.plannerIds;
     return h('section', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', null, '今日计划者与候选'), h('span', { class: 'muted small' }, '只统计真正消耗行动计划的人')),
-      planners.length ? null : h('p', { class: 'empty' }, '今天还没有人计划守夜名单。在「流程与座次」记录行动时选择「计划守夜名单」。'),
+      planners.length ? null : h('p', { class: 'empty' }, '今天还没有人计划守夜名单。在「主持台」记录行动时选择「计划守夜名单」。'),
       planners.map(function (pid) {
         var cand = t.watchCandidates.find(function (c) { return c.plannerId === pid; });
         if (!cand) {
@@ -2933,6 +3122,7 @@
     var catSel = U.select(C.CATEGORIES.map(function (c) { return [c.id, c.name]; }), 'custom', function () {});
     var units = h('input', { type: 'number', class: 'num', min: 0, step: 0.5, value: 0.5 });
     var effect = h('input', { type: 'text', placeholder: '效果说明' });
+    var toPool = h('input', { type: 'number', class: 'num', min: 0, value: 0, 'aria-label': '同时加入公共池的件数' });
     return h('section', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', null, '自定义物品')),
       h('p', { class: 'section-note' }, '支持主持人自定义物品。背包扩容只在概念阶段提过、没有具体数值，不内置为正式道具。玩家页也可以添加同名自定义物品，或导入你的规则包。'),
@@ -2947,19 +3137,32 @@
             }
           }, '删除'));
       })) : h('p', { class: 'empty' }, '暂无自定义物品。'),
-      h('div', { class: 'row' }, nameI, catSel, h('span', { class: 'row tight' }, units, '单位'), effect, h('button', {
-        type: 'button', class: 'btn primary', onclick: function () {
-          var n = U.parseNumber(units.value, true);
-          if (!nameI.value.trim()) { U.toast('请输入名称', 'warn'); return; }
-          if (n == null || Number.isNaN(n) || n < 0 || Math.round(n * 2) !== n * 2) { U.toast('占位需为 0.5 的倍数', 'warn'); return; }
-          if (C.findDefByName(nameI.value.trim(), state.customItems)) { U.toast('已有同名物品', 'warn'); return; }
-          commit('新增自定义物品', function (s) {
-            var d = C.newCustomItem({ name: nameI.value, category: catSel.value, capacityTicks: Math.round(n * 2), effectText: effect.value });
-            s.customItems.push(d);
-            log(s, '新增自定义物品：' + d.name);
-          });
-        }
-      }, '新增')));
+      h('div', { class: 'row' }, nameI, catSel, h('span', { class: 'row tight' }, units, '单位'), effect,
+        h('span', { class: 'row tight' }, '同时加入公共池', toPool, '件'),
+        h('button', {
+          type: 'button', class: 'btn primary', onclick: function () {
+            var n = U.parseNumber(units.value, true);
+            var count = parseInt(toPool.value, 10) || 0;
+            var name = nameI.value.trim();
+            var found = C.findDefByName(name, state.customItems);
+            if (!name) { U.toast('请输入名称', 'warn'); return; }
+            if (count < 0) { U.toast('件数不能是负数', 'warn'); return; }
+            if (!found && (n == null || Number.isNaN(n) || n < 0 || Math.round(n * 2) !== n * 2)) { U.toast('占位需为 0.5 的倍数', 'warn'); return; }
+            if (found && !count) { U.toast('已有同名物品「' + found.name + '」，不必重复创建；填写件数即可直接加入公共池', 'warn'); return; }
+            commit('新增自定义物品', function (s) {
+              var d = found;
+              if (!d) {
+                d = C.newCustomItem({ name: name, category: catSel.value, capacityTicks: Math.round(n * 2), effectText: effect.value });
+                s.customItems.push(d);
+                log(s, '新增自定义物品：' + d.name);
+              }
+              if (count) {
+                C.addItem(s.pool, d.id, count, { customItems: s.customItems, rules: s.rules });
+                log(s, '公共池加入：' + d.name + '×' + count, true);
+              }
+            });
+          }
+        }, '新增')));
   }
 
   function dictionaryCard() {
@@ -3100,6 +3303,13 @@
     save();
     render();
     setInterval(timerTick, 250);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && ui.present && !document.querySelector('.overlay')) exitPresent();
+    });
+    document.addEventListener('fullscreenchange', function () {
+      // 用浏览器自己的方式（Esc／F11）退出全屏时，一并退出展示模式
+      if (!document.fullscreenElement && ui.present && ui.presentFs) exitPresent();
+    });
     window.addEventListener('storage', function (e) {
       if (e.key === (slot === 'demo' ? KEY_DEMO : KEY_MAIN)) {
         notices.push({ kind: 'risk', text: '另一个标签页修改了同一份主持人存档。为避免互相覆盖，请只保留一个主持人标签页，然后刷新本页。' });

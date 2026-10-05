@@ -1230,6 +1230,152 @@
     };
   }
 
+  // ---------------------------------------------------------------- 玩家总览
+
+  var ALERT_ORDER = { critical: 0, warning: 1, info: 2 };
+
+  /** 携带中物品的占位（按引用的库存实例计算，不复制物品）。 */
+  function loadoutTicks(s) {
+    if (!s.loadout) return 0;
+    return s.loadout.items.reduce(function (sum, row) {
+      var e = findEntry(s.inventory, row.entryId);
+      return sum + (e ? row.qty * (getDef(e.defId, s.customItems).capacityTicks || 0) : 0);
+    }, 0);
+  }
+
+  /**
+   * 玩家总览的提醒：只汇总已经记录下来的事实与已确认规则，不推导新规则。
+   * level: critical（严重）／warning（注意）／info（提示）；tab: 去哪一页处理。
+   */
+  function playerAlerts(s) {
+    var out = [];
+    var r = s.rules;
+    var day = s.publicInfo ? s.publicInfo.day : null;
+    if (s.alive === false) out.push({ level: 'info', text: '已标记死亡：财富分不保留，爱恨与任务分保留', tab: 'status' });
+    if (isNum(s.hp) && s.hp <= 0) out.push({ level: 'critical', text: '生命为 0：处理方式与死亡时点待主持人裁定', tab: 'status' });
+    if (s.thirst === '脱水') out.push({ level: 'critical', text: '脱水：直接昏迷', tab: 'status' });
+    else if (s.thirst === '口渴') out.push({ level: 'warning', text: '口渴：补水幅度待定，饮水后手动调整', tab: 'status' });
+    if (s.consciousness === '昏迷' && s.thirst !== '脱水') out.push({ level: 'critical', text: '昏迷中：如何解除尚未确定', tab: 'status' });
+    if ((hungerZone(s.hunger, r) || s.hungerManual) === '饥饿') out.push({ level: 'warning', text: '饥饿：相关成功率降低', tab: 'status' });
+    (s.statuses || []).forEach(function (st) {
+      if (st.statusId === 'bleeding' && isInt(st.nextDay) && isInt(day) && day >= st.nextDay) {
+        out.push({ level: 'warning', text: '流血伤口第 ' + st.nextDay + ' 天到期：先与主持人确认是否扣1生命', tab: 'status' });
+      }
+    });
+    var used = listTicks(s.inventory, s.customItems, r);
+    if (isInt(r.inventoryCapacityTicks) && used > r.inventoryCapacityTicks) {
+      out.push({ level: 'warning', text: '库存超出上限 ' + fmtUnits(used - r.inventoryCapacityTicks) + ' 单位（只警告，由主持人裁定）', tab: 'inventory' });
+    }
+    if (s.loadout) {
+      var carried = loadoutTicks(s);
+      var label = s.loadout.context === 'event' ? '事件' : '守夜';
+      if (isInt(s.loadout.limitTicks) && carried > s.loadout.limitTicks) {
+        out.push({ level: 'warning', text: label + '携带超出上限 ' + fmtUnits(carried - s.loadout.limitTicks) + ' 单位', tab: 'loadout' });
+      }
+      out.push({ level: 'info', text: label + '携带中：' + fmtUnits(carried) + ' 单位，返回后记得清空标记', tab: 'loadout' });
+    }
+    if (s.scavenge && s.scavenge.status === 'running') {
+      out.push({ level: 'warning', text: '搜刮进行中：第 ' + s.scavenge.rounds.length + '／' + s.scavenge.cfg.rounds + ' 轮，超时会自动选默认项', tab: 'scavenge' });
+    } else if (s.scavenge && s.scavenge.status === 'organize') {
+      out.push({ level: 'warning', text: '搜刮三轮已完成：待整理并一次性提交', tab: 'scavenge' });
+    }
+    if (s.alive !== false && !(s.action && s.action.day === day && s.action.used)) {
+      out.push({ level: 'info', text: '第 ' + day + ' 天的个人行动未标记为已使用', tab: 'action' });
+    }
+    return out.sort(function (a, b) { return ALERT_ORDER[a.level] - ALERT_ORDER[b.level]; });
+  }
+
+  /**
+   * 主持台的待办：只看已经记录下来的进度，不推导新规则。
+   * 主持台可以屏幕共享，所以文字只用公开信息（人名、件数、份数），绝不带物品、候选或事件内容。
+   * level 同 playerAlerts；tab: 去哪一页处理（'flow' 表示就在主持台的当前阶段卡里）。
+   */
+  function hostAlerts(s) {
+    var out = [];
+    var t = s.today;
+    var r = s.rules;
+    function nameOf(id) {
+      var p = s.players.filter(function (x) { return x.id === id; })[0];
+      return p ? p.name : '（已移除）';
+    }
+    var alive = s.players.filter(function (p) { return p.alive !== false; });
+    var aliveIds = alive.map(function (p) { return p.id; });
+
+    if (!s.players.length) out.push({ level: 'critical', text: '还没有登记玩家', tab: 'settings' });
+    if (!s.started && s.players.length) {
+      var done = s.opening.done.filter(Boolean).length;
+      if (done < 2) out.push({ level: 'warning', text: '开局领取完成 ' + done + '／2 次', tab: 'supply' });
+    }
+    var unseated = alive.filter(function (p) { return s.seatOrder.indexOf(p.id) < 0; });
+    if (unseated.length) out.push({ level: 'warning', text: '不在座次：' + unseated.map(function (p) { return p.name; }).join('、'), tab: 'flow' });
+    var deadSeated = s.seatOrder.filter(function (id) { return aliveIds.indexOf(id) < 0; });
+    if (deadSeated.length) out.push({ level: 'info', text: '已死亡仍在座次：' + deadSeated.map(nameOf).join('、') + '（是否移出由主持人决定）', tab: 'flow' });
+
+    var night = s.pendingNightResult;
+    if (s.started && night && night.publishedDay == null && s.day > night.day) {
+      out.push({ level: 'warning', text: s.phase === 'night' ? '有一条昨夜结果待公布' : '昨夜结果还没有公布', tab: 'flow' });
+    }
+
+    s.batches.forEach(function (b) {
+      if (b.status !== 'open') return;
+      var left = b.pickOrder.filter(function (id) { return !b.picks.some(function (p) { return p.playerId === id; }); });
+      out.push(left.length
+        ? { level: 'warning', text: '「' + b.label + '」还有 ' + left.length + ' 人未领取', tab: 'supply' }
+        : { level: 'info', text: '「' + b.label + '」已全部领取，可以结束批次', tab: 'supply' });
+    });
+
+    if (s.started) {
+      if (s.phase === 'supply' && !t.batchIds.length) out.push({ level: 'info', text: '今天还没有发放批次', tab: 'supply' });
+      if (s.phase === 'rotation' && !t.rotationDone) out.push({ level: 'warning', text: '今日尚未轮换', tab: 'flow' });
+      if (s.phase === 'actions') {
+        if (!t.actionOrder) {
+          out.push({ level: 'warning', text: '尚未生成本轮行动顺序', tab: 'flow' });
+        } else {
+          var left = t.actionOrder.filter(function (id) { return t.actedIds.indexOf(id) < 0 && aliveIds.indexOf(id) >= 0; });
+          if (left.length) out.push({ level: 'info', text: '轮到 ' + nameOf(left[0]) + ' 行动（还剩 ' + left.length + ' 人）', tab: 'flow' });
+        }
+      }
+      if (s.phase === 'watch' || (t.finalWatch && s.phase === 'event')) {
+        if (!t.finalWatch) {
+          out.push({ level: 'warning', text: '守夜名单未确认（已收到 ' + submittedCandidates(t).length + ' 份提交）', tab: 'watch' });
+        } else {
+          if (!t.finalWatch.published) out.push({ level: 'info', text: '守夜名单已确认，尚未公开', tab: 'watch' });
+          if (!(night && night.day === s.day)) out.push({ level: 'info', text: '今晚的守夜结果还没有保存为草稿', tab: 'watch' });
+        }
+      }
+      var eventDue = s.phase === 'event' || (r.eventPosition == null && (t.eventCheck || t.eventFlow));
+      if (eventDue) {
+        var flow = t.eventFlow;
+        var res = flow && flow.resolutionId ? s.resolutions.filter(function (x) { return x.id === flow.resolutionId; })[0] : null;
+        if (!t.eventCheck && !flow) out.push({ level: 'warning', text: '今日事件尚未判定', tab: 'events' });
+        else if (t.eventCheck && t.eventCheck.triggered && !flow) out.push({ level: 'warning', text: '今日触发了公共事件，尚未选择事件', tab: 'events' });
+        else if (flow && !flow.published && !res) out.push({ level: 'warning', text: '事件已选定，尚未公布到公开页', tab: 'events' });
+        else if (flow && !res) out.push({ level: 'warning', text: '事件已公布，等待录入投票并结算', tab: 'events' });
+        else if (res && !res.public) out.push({ level: 'info', text: '事件已结算，结果尚未公开', tab: 'events' });
+      }
+    }
+
+    if (isInt(r.rescueTarget) && s.rescueProgress >= r.rescueTarget && !s.settlement) {
+      out.push({ level: 'warning', text: '营救进度已达阈值 ' + r.rescueTarget + '：何时结算由主持人决定', tab: 'records' });
+    }
+    var pending = pendingConfigItems(r).length;
+    if (pending) out.push({ level: 'info', text: '规则配置未完成 ' + pending + ' 项', tab: 'settings' });
+    return out.sort(function (a, b) { return ALERT_ORDER[a.level] - ALERT_ORDER[b.level]; });
+  }
+
+  /** 按分类汇总库存占位（总览的「占位构成」）。只返回有物品的分类，保持分类表顺序。 */
+  function capacityByCategory(list, customItems, rules) {
+    return CATEGORIES.map(function (cat) {
+      var entries = list.filter(function (e) { return getDef(e.defId, customItems).category === cat.id; });
+      return {
+        id: cat.id,
+        name: cat.name,
+        ticks: entries.reduce(function (sum, e) { return sum + entryTicks(e, customItems, rules); }, 0),
+        pieces: countPieces(entries)
+      };
+    }).filter(function (c) { return c.pieces > 0; });
+  }
+
   // ---------------------------------------------------------------- 搜刮
 
   function defaultScavengeTemplate() {
@@ -1645,6 +1791,10 @@
     mapNotesTotal: mapNotesTotal,
     settlementTotal: settlementTotal,
     combatSummary: combatSummary,
+    loadoutTicks: loadoutTicks,
+    playerAlerts: playerAlerts,
+    hostAlerts: hostAlerts,
+    capacityByCategory: capacityByCategory,
     defaultScavengeTemplate: defaultScavengeTemplate,
     generateCombo: generateCombo,
     comboTicks: comboTicks,
