@@ -324,8 +324,9 @@ details.card > summary { cursor: pointer; }
   .tile.hero .tile-value { font-size: 48px; }
 }
 
-/* 守夜名单区 */
-.watch-section h3 { font-size: 15px; margin: 4px 0 2px; }
-.pick-part { margin-top: 6px; border-top: 1px dashed var(--line-strong); padding-top: 10px; }
-.pick-part > summary { cursor: pointer; padding: 4px 0; }
-.pick-part > .stack { margin-top: 8px; }
+/* 玩家名单 */
+.name-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.name-chip { display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-weight: 600; }
+.name-chip-x { border: 0; background: none; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; color: var(--muted); font-size: 16px; line-height: 1; }
+.name-chip-x:hover, .name-chip-x:focus-visible { background: var(--red-soft); color: var(--red); }
+.roster-card .row input { flex: 1 1 200px; min-width: 0; }

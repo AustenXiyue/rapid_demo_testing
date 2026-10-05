@@ -340,6 +340,112 @@ test('规则第3版：守夜人数旧默认值 2 改为自动；旧版六条默�
   assert.equal(out.watchTemplates[0].rev, 2);
 });
 
+test('守夜卡片第2版：10% 全员卡只写一句话；普通卡人名不重复、人数＝玩家总数三分之一向上取整；角标与倾向句各自按概率出现', () => {
+  const rules = C.defaultRules();
+  const roster = ['甲', '乙', '丙', '丁', '戊', '己', '庚'];
+  const rng = C.seededRng(42);
+  const N = 20000;
+  let all = 0; let normal = 0; let skill = 0; let plan = 0; let line = 0;
+  const lines = new Set();
+  for (let i = 0; i < N; i++) {
+    const c = C.makeWatchCardV2(roster, rng, rules);
+    assert.equal(c.v, 2);
+    assert.equal(c.total, 7);
+    if (c.all) {
+      all++;
+      assert.deepEqual([c.names, c.skill, c.plan, c.tendency], [[], false, false, null], '全员卡上没有名字、图标和其他文字');
+      assert.deepEqual(C.watchCardFace(c), { all: true, text: '所有人需要进行守夜' });
+      continue;
+    }
+    normal++;
+    assert.equal(c.names.length, 3, '7 人 → 三分之一向上取整 3 人');
+    assert.equal(new Set(c.names).size, 3, '名字不重复');
+    c.names.forEach((n) => assert.ok(roster.includes(n)));
+    if (c.skill) skill++;
+    if (c.plan) plan++;
+    if (c.tendency) { line++; lines.add(C.watchCardFace(c).line); }
+  }
+  const near = (x, p, label) => assert.ok(Math.abs(x - p) < 0.015, label + '：' + x.toFixed(3) + ' 应接近 ' + p);
+  near(all / N, 0.1, '全员卡');
+  near(skill / normal, 0.33, '左下技能图标');
+  near(plan / normal, 0.33, '右下计划图标');
+  near(line / normal, 0.25, '正上方倾向句');
+  assert.deepEqual([...lines].sort(), ['似乎今晚守夜的人会有更多危险', '似乎今晚守夜的人会有更多求救线索'].sort());
+
+  const face = C.watchCardFace({ v: 2, all: false, names: ['甲'], skill: true, plan: false, tendency: 'danger' });
+  assert.deepEqual(face, { all: false, line: '似乎今晚守夜的人会有更多危险', names: ['甲'], skill: '今天使用技能的人需要守夜', plan: '' });
+
+  const sizes = [2, 3, 4, 6, 9].map((n) => {
+    const r = C.seededRng(7);
+    let c;
+    do { c = C.makeWatchCardV2(roster.slice(0, n), r, rules); } while (c.all);
+    return c.names.length;
+  });
+  assert.deepEqual(sizes, [1, 1, 2, 2, 3].map((x, i) => Math.min(x, [2, 3, 4, 6, 7][i])), '人数随名单变化（名单只有 7 人时最多 7 个名字）');
+  const fixed = C.makeWatchCardV2(roster, () => 0.5, Object.assign({}, rules, { watchSize: 4 }));
+  assert.equal(fixed.names.length, 4, '规则里固定了人数就用固定的');
+  assert.equal(C.makeWatchCardV2(['甲', '甲', ' 乙 ', ''], () => 0.5, rules).total, 2, '名单去重、去空格');
+
+  const a = C.drawWatchPair(roster, C.seededRng(C.hashSeed('p1|3|甲,乙')), rules);
+  const b = C.drawWatchPair(roster, C.seededRng(C.hashSeed('p1|3|甲,乙')), rules);
+  assert.equal(a.length, 2);
+  assert.deepEqual(a.map((c) => [c.all, c.names, c.skill, c.plan, c.tendency]), b.map((c) => [c.all, c.names, c.skill, c.plan, c.tendency]), '同一玩家同一天重抽还是这两张');
+});
+
+test('守夜卡片链接：带着已选卡片的完整结果，主持人读出来一模一样；夹在消息里也能读；兼容上一版代码', () => {
+  const card = { v: 2, id: 'wc_1', all: false, names: ['阿珍', '老陈'], skill: true, plan: true, tendency: 'rescue', total: 6 };
+  const data = { v: 2, day: 3, from: 'B·阿珍', card };
+  const hash = C.watchLinkHash(data);
+  assert.match(hash, /^#watch=[A-Za-z0-9_-]+$/, '链接里只有网址安全字符');
+  const link = 'https://www.xxxmnalx.com/game/shelter/host.html' + hash;
+  assert.ok(link.length < 400, '链接不长：' + link.length);
+  assert.deepEqual(C.readWatchLink(link), { ok: true, data });
+  assert.deepEqual(C.readWatchLink('守夜卡片 ' + link + ' 麻烦了').data, data);
+  const allCard = { v: 2, id: 'wc_2', all: true, names: [], skill: false, plan: false, tendency: null, total: 6 };
+  assert.deepEqual(C.readWatchLink(C.watchLinkHash({ v: 2, day: 1, from: '甲', card: allCard })).data.card, allCard);
+
+  assert.equal(C.readWatchLink(link.slice(0, -12)).ok, false, '截断的链接给出提示');
+  assert.equal(C.readWatchLink('#watch=' + Buffer.from('{"v":2}').toString('base64url')).ok, false, '没有卡片');
+  assert.match(C.readWatchLink('随便一句话').reason, /没有找到守夜卡片链接/);
+
+  const c1 = { id: 'old1', title: '①' };
+  const c2 = { id: 'old2', title: '②' };
+  const legacy = C.readWatchLink('【守夜】' + C.encodeShareCode('WATCH', { v: 1, day: 2, from: '甲', cards: [c1, c2], chosen: 1 }));
+  assert.deepEqual(legacy, { ok: true, data: { v: 1, day: 2, from: '甲', card: c2 } }, '上一版的 SHELTER-WATCH 代码取选中的那张');
+});
+
+test('守夜卡片解析：卡上名字 ∪ 图标点到的人；全员卡＝所有存活；名字换成主持人端 id，不认识的单独列出', () => {
+  const players = [{ id: 'p1', name: '甲' }, { id: 'p2', name: '乙' }, { id: 'p3', name: '丙' }, { id: 'p4', name: '丁', alive: false }];
+  const card = { v: 2, id: 'x', all: false, names: ['甲', '戊'], skill: true, plan: false, tendency: 'rescue', total: 4 };
+  const r = C.adoptWatchCardV2(card, players);
+  assert.deepEqual(r.card.ids, ['p1']);
+  assert.deepEqual(r.unknown, ['戊']);
+  assert.equal(card.ids, undefined, '原卡不被改动');
+  const ctx = { plannerIds: ['p3'], skillUserIds: ['p2', 'p4'], aliveIds: ['p1', 'p2', 'p3'] };
+  const res = C.resolveWatchOption(r.card, ctx);
+  assert.deepEqual(res.memberIds, ['p1', 'p2'], '技能使用者加进来；死亡的人不算');
+  assert.deepEqual(res.tendencies, ['rescue']);
+  assert.deepEqual(C.resolveWatchOption(Object.assign({}, r.card, { plan: true }), ctx).memberIds, ['p1', 'p2', 'p3']);
+  assert.deepEqual(C.resolveWatchOption({ v: 2, all: true }, ctx).memberIds, ['p1', 'p2', 'p3']);
+  const empty = C.resolveWatchOption({ v: 2, all: false, ids: [], skill: true, plan: false }, { plannerIds: [], skillUserIds: [], aliveIds: ['p1'] });
+  assert.equal(empty.needsHost, true);
+  assert.match(C.describeWatchOption(card), /^「守夜卡」甲、戊 守夜；今天使用技能的人需要守夜；似乎今晚守夜的人会有更多求救线索$/);
+  assert.equal(C.describeWatchOption({ v: 2, all: true }), '「全员守夜卡」所有人需要进行守夜');
+});
+
+test('玩家名单：存档里录入其他玩家；旧存档从导入过的名单补出（不含自己和已死亡的人）', () => {
+  const p = C.newPlayerState();
+  assert.deepEqual(p.otherNames, []);
+  assert.equal(p.watchPlan, null);
+  const old = JSON.parse(JSON.stringify(p));
+  delete old.otherNames;
+  old.name = '甲';
+  old.roster = { players: [{ name: '甲' }, { name: '乙' }, { name: '丙', alive: false }, { name: '丁' }] };
+  assert.deepEqual(C.normalizeSave(old, 'shelter-player').otherNames, ['乙', '丁']);
+  const kept = Object.assign(JSON.parse(JSON.stringify(p)), { otherNames: ['戊'] });
+  assert.deepEqual(C.normalizeSave(kept, 'shelter-player').otherNames, ['戊'], '已录入的名字原样保留');
+});
+
 test('公共事件：80% 只控制触发；分支概率单独计算，合计100%才允许自动抽签', () => {
   let triggered = 0;
   const rng = C.seededRng(99);

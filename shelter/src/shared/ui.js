@@ -61,6 +61,8 @@
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
     exitFull: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+    skill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    plan: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 11h6M9 15h4"/>',
     timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     minus: '<path d="M5 12h14"/>',
@@ -483,6 +485,57 @@
       t.effects.length ? h('span', { class: 'watch-card-fx' }, t.effects.map(function (e) { return h('span', { class: 'fx' }, e); })) : null);
   }
 
+  /**
+   * 第2版守夜卡的卡面。face 来自 ShelterCore.watchCardFace。
+   * 全员卡整张只写一句话；普通卡：正上方倾向句（可无）、中央人名、左下技能图标、右下计划图标。
+   * opts.onclick 时整张卡是按钮（可选中）；选中标记放在卡面外，不改卡面内容。
+   */
+  function watchCardFace(face, opts) {
+    opts = opts || {};
+    var inner = face.all
+      ? h('span', { class: 'wcard-all' }, face.text)
+      : [
+        h('span', { class: 'wcard-line' }, face.line || ''),
+        h('span', { class: 'wcard-names' }, face.names.map(function (n) { return h('span', { class: 'wcard-name' }, n); })),
+        h('span', { class: 'wcard-corners' },
+          h('span', { class: 'wcard-corner left' }, face.skill ? [icon('skill'), h('span', null, face.skill)] : null),
+          h('span', { class: 'wcard-corner right' }, face.plan ? [h('span', null, face.plan), icon('plan')] : null))
+      ];
+    var clickable = typeof opts.onclick === 'function';
+    var card = h(clickable ? 'button' : 'div', {
+      type: clickable ? 'button' : null,
+      class: 'wcard' + (face.all ? ' is-all' : '') + (opts.selected ? ' on' : ''),
+      'aria-pressed': clickable ? (opts.selected ? 'true' : 'false') : null,
+      'data-wcard': opts.id || null,
+      onclick: clickable ? opts.onclick : null
+    }, inner);
+    return h('div', { class: 'wcard-slot' }, card,
+      opts.selected ? h('span', { class: 'wcard-picked' }, icon('check'), opts.pickedText || '已选这张') : (opts.caption ? h('span', { class: 'wcard-caption' }, opts.caption) : null));
+  }
+
+  /**
+   * 一键重置：删除本机上以 prefixes 开头的所有本地数据（存档、演示、备份、页面设置），
+   * 然后带上时间戳重新载入，绕开浏览器对旧页面的缓存。语言选择保留。
+   */
+  function wipeLocal(prefixes) {
+    var removed = 0;
+    try {
+      var keys = [];
+      for (var i = 0; i < root.localStorage.length; i++) keys.push(root.localStorage.key(i));
+      keys.forEach(function (k) {
+        if (k && prefixes.some(function (p) { return k.indexOf(p) === 0; })) { root.localStorage.removeItem(k); removed++; }
+      });
+    } catch (e) { /* 存储不可用时没有可删的 */ }
+    try { root.sessionStorage.clear(); } catch (e) { /* 忽略 */ }
+    try { if (root.caches && root.caches.keys) root.caches.keys().then(function (ks) { ks.forEach(function (k) { root.caches.delete(k); }); }); } catch (e) { /* 忽略 */ }
+    return removed;
+  }
+
+  function reloadFresh() {
+    var url = location.href.replace(/#.*$/, '').replace(/([?&])fresh=\d+&?/, '$1').replace(/[?&]$/, '');
+    location.replace(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'fresh=' + Date.now());
+  }
+
   /** 「从剪贴板粘贴」：浏览器不允许时提示手动粘贴。 */
   function pasteButton(onText) {
     return h('button', {
@@ -516,6 +569,9 @@
     langToggle: langToggle,
     localizeDemo: localizeDemo,
     watchCard: watchCard,
+    watchCardFace: watchCardFace,
+    wipeLocal: wipeLocal,
+    reloadFresh: reloadFresh,
     pasteButton: pasteButton,
     sevBadge: sevBadge,
     meter: meter,

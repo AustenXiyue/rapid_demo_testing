@@ -1065,6 +1065,27 @@ test('英文界面：主持人与玩家每一页都没有残留中文（演示�
     await tab(player, id);
     assert.deepEqual(await leftoverChinese(player), [], 'player ' + id);
   }
+  // 守夜卡片：录入名单 → 点亮计划 → 抽卡选卡 → 主持人打开链接
+  await tab(player, 'save');
+  await player.locator('.roster-card').getByRole('textbox').fill('A·Chen, C·Tiger, D·Nun');
+  await player.locator('.roster-card').getByRole('button', { name: 'Add', exact: true }).click();
+  await player.locator('.roster-card .name-chip').first().waitFor();
+  assert.deepEqual(await leftoverChinese(player), [], 'player roster');
+  await tab(player, 'action');
+  await player.locator('[data-action="plan"]').click();
+  assert.deepEqual(await leftoverChinese(player), [], 'player watch (before draw)');
+  await btn(player, 'Draw the watch roster').click();
+  await player.locator('.watch-section .wcard').first().click();
+  assert.deepEqual(await leftoverChinese(player), [], 'player watch cards');
+  await host.goto(await player.locator('.share-row input').inputValue());
+  await host.check('#confirm-share-paused');
+  assert.deepEqual(await leftoverChinese(host), [], 'host link prompt');
+  await modalBtn(host, 'View card');
+  await modal(host).locator('.wcard').waitFor();
+  assert.deepEqual(await leftoverChinese(host), [], 'host card prompt');
+  await modalBtn(host, "Add to today's pool");
+  await host.locator('[data-gate-open="watch"] .wcard').first().waitFor();
+  assert.deepEqual(await leftoverChinese(host), [], 'host watch with a linked card');
   await tab(player, 'inventory');
   assert.equal((await read(player, PLAYER_DEMO)).thirst, '不渴', '规则用的状态值保持中文，不受界面语言影响');
   assert.deepEqual(errors, []);
@@ -1085,9 +1106,9 @@ test('入口页：中英文切换，与两个面板共用同一个选择', async
   await context.close();
 });
 
-// ---------------------------------------------------------------- 守夜名单：玩家抽卡 → 代码 → 主持人候选池 → 末位拍板
+// ---------------------------------------------------------------- 守夜名单：玩家抽卡 → 分享链接 → 主持人打开即入池 → 末位拍板
 
-test('守夜名单：计划者在玩家页抽两张卡、复制代码；主持人粘贴进候选池；多人时末位用名单码拍板', async () => {
+test('守夜名单：只在点亮「计划守夜名单」时出现；抽两张、选一张、复制链接；主持人打开链接看到同一张卡，不重新随机', async () => {
   const { context: hc } = await newContext();
   const { page: host, errors } = await open(hc, HOST);
   await hostDemo(host);
@@ -1098,88 +1119,169 @@ test('守夜名单：计划者在玩家页抽两张卡、复制代码；主持�
   await nextPhase(host); // 4
   await btn(host, '执行每日轮换').click();
   await nextPhase(host); // 5 个人行动
-  // 规则包里带玩家名单
-  await tab(host, 'settings');
-  await host.locator('summary', { hasText: '规则包（发给玩家）' }).click();
-  const pack = await host.locator('details', { hasText: '规则包（发给玩家）' }).locator('textarea').inputValue();
-  assert.ok(JSON.parse(pack).roster.players.some((p) => p.name === 'B·阿珍'));
+  const allNames = (await read(host, HOST_DEMO)).players.map((p) => p.name);
 
+  // 玩家：填姓名，在「存档 → 玩家名单」录入其他玩家，与自己的名字组成完整名单
   async function player(name) {
     const { context } = await newContext({ viewport: { width: 390, height: 844 } });
-    const { page } = await open(context, PLAYER);
-    await tab(page, 'save');
-    await page.locator('details', { hasText: '导入主持人规则包' }).locator('textarea').fill(pack);
-    await btn(page, '校验并导入').click();
+    const { page, errors: perr } = await open(context, PLAYER);
     await tab(page, 'action');
     const nameInput = page.locator('.field', { hasText: '姓名' }).locator('input');
     await nameInput.fill(name);
     await nameInput.press('Enter');
     await nameInput.blur();
     await page.waitForFunction((n) => JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).name === n, name);
-    return { context, page };
-  }
-  async function planAndCopy(page, index) {
-    await page.locator('[data-action="plan"]').click();
-    const cards = page.locator('.watch-section .watch-cards').first().locator('.watch-card');
-    assert.equal(await cards.count(), 2, '两张候选卡');
-    const before = await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).watchPlan.cards));
-    await cards.nth(index).click();
-    // 撤销选卡再重新点亮行动：还是同一对卡，不能重抽
-    await page.locator('[data-action="plan"]').click();
-    await page.locator('[data-action="plan"]').click();
-    const after = await page.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).watchPlan.cards));
-    assert.equal(after, before, '同一天重新点亮不会重抽');
-    await cards.nth(index).click();
-    return page.locator('.watch-section .copy-text').first().inputValue();
-  }
-  async function hostPaste(code) {
-    await tab(host, 'watch');
-    if (await host.locator('[data-gate="watch"]').count()) await reveal(host, 'watch');
-    await host.locator('.code-reader textarea').fill(code);
-    await btn(host, '读取代码').click();
+    await tab(page, 'save');
+    const roster = page.locator('.roster-card');
+    await roster.getByRole('textbox', { name: '其他玩家的名字' }).fill(allNames.filter((n) => n !== name).join('，'));
+    await roster.getByRole('button', { name: '添加', exact: true }).click();
+    await roster.getByText('共 6 人 → 每张普通卡 2 人必定守夜。').waitFor();
+    await tab(page, 'action');
+    return { context, page, perr };
   }
 
-  // 第一位计划者：只有一份提交时直接成为最终名单
   const p1 = await player('B·阿珍');
-  const code1 = await planAndCopy(p1.page, 0);
-  assert.match(code1, /^【守夜提交·第1天】B·阿珍：我选第 1 张。\nSHELTER-WATCH:/);
-  const card1 = JSON.parse(await p1.page.evaluate(() => localStorage.getItem('shelter-playtest:player:v1'))).watchPlan.cards[0];
-  if (card1.designatedNames) assert.equal(card1.designatedNames.length, 2, '6 人局随机抽 2 人');
-  await hostPaste(code1);
-  await modal(host).getByText('按代码里的名字「B·阿珍」自动匹配').waitFor();
+  const pg = p1.page;
+  assert.equal(await pg.locator('.watch-section').count(), 0, '没选「计划守夜名单」时不显示');
+  await pg.locator('[data-action="other"]').click();
+  assert.equal(await pg.locator('.watch-section').count(), 0, '选了别的行动也不显示');
+  await pg.locator('[data-action="plan"]').click();
+  await pg.locator('.watch-section').waitFor();
+  assert.equal(await pg.locator('.watch-section .wcard').count(), 0, '点「确认抽取守夜名单」之前不抽');
+  await btn(pg, '确认抽取守夜名单').click();
+  const cards = pg.locator('.watch-section .wcard');
+  assert.equal(await cards.count(), 2, '随机生成两张卡');
+  let ps = await read(pg, PLAYER_KEY);
+  const pair = JSON.stringify(ps.watchPlan.cards);
+  for (let i = 0; i < 2; i++) {
+    const c = ps.watchPlan.cards[i];
+    const text = (await cards.nth(i).innerText()).trim();
+    if (c.all) {
+      assert.equal(text, '所有人需要进行守夜', '全员卡只有这一句');
+    } else {
+      assert.equal(c.names.length, 2, '6 人 → 三分之一向上取整 2 人');
+      assert.equal(new Set(c.names).size, 2, '名字不重复');
+      c.names.forEach((n) => { assert.ok(allNames.includes(n)); assert.ok(text.includes(n)); });
+      assert.equal(text.includes('今天使用技能的人需要守夜'), c.skill);
+      assert.equal(text.includes('今天计划守夜名单的人需要守夜'), c.plan);
+    }
+  }
+  assert.equal(await pg.locator('.share-row').count(), 0, '选卡之前没有链接');
+  await cards.nth(0).click();
+  // 取消行动再点亮：还是同一对卡，不能靠重抽挑卡
+  await pg.locator('[data-action="plan"]').click();
+  assert.equal(await pg.locator('.watch-section').count(), 0);
+  await pg.locator('[data-action="plan"]').click();
+  assert.equal(JSON.stringify((await read(pg, PLAYER_KEY)).watchPlan.cards), pair, '同一天不能重抽');
+  await cards.nth(1).click();
+  await pg.locator('.wcard-slot', { has: pg.locator('.wcard.on') }).getByText('已选这张').waitFor();
+  const link = await pg.getByRole('textbox', { name: '分享链接' }).inputValue();
+  assert.match(link, /host\.html#watch=[A-Za-z0-9_-]+$/, '链接指向主持人页');
+  ps = await read(pg, PLAYER_KEY);
+  const chosenCard = ps.watchPlan.cards[1];
+  const playerFace = await cards.nth(1).innerText();
+
+  // 主持人在已打开的主持人页里打开链接：先确认暂停共享，才显示卡面
+  await host.goto(link);
+  await modal(host).getByText('收到守夜卡片链接').waitFor();
+  assert.equal(await modal(host).locator('.wcard').count(), 0, '确认暂停共享之前不显示卡面');
+  assert.ok(!host.url().includes('#watch='), '地址栏里的卡片已清掉');
+  await host.check('#confirm-share-paused');
+  await modalBtn(host, '查看卡片');
+  await modal(host).getByText('已按链接里的名字自动匹配：B·阿珍').waitFor();
+  assert.equal(await modal(host).locator('.wcard').innerText(), playerFace, '主持人看到的卡面与玩家选中的一模一样');
   await modalBtn(host, '加入今天的候选池');
   let s = await read(host, HOST_DEMO);
-  assert.deepEqual(s.today.plannerIds, [P(2)], '收到代码时补记计划者');
-  assert.equal(s.today.watchCandidates[0].source, 'code');
-  assert.equal(s.today.watchCandidates[0].chosenIndex, 0);
+  assert.deepEqual(s.today.plannerIds, [P(2)], '收到链接时补记计划者');
+  const cand = s.today.watchCandidates[0];
+  assert.equal(cand.source, 'link');
+  const { ids, ...sameCard } = cand.options[0];
+  assert.deepEqual(sameCard, chosenCard, '主持人这边保存的就是玩家选的那张，没有重新随机');
+  assert.equal(ids.length, chosenCard.all ? 0 : 2, '名字换成主持人端的玩家 id');
+  await host.locator('[data-gate-open="watch"]').waitFor();
   await host.getByText('只有一份提交：B·阿珍 选中的名单直接成为最终名单。').waitFor();
 
-  // 第二位计划者 → 两份提交：末位拍板
+  // 第二位计划者：主持人在新标签页打开链接；原来的主持人标签页自动同步，不弹冲突提示
   const p2 = await player('C·胖虎');
-  await hostPaste(await planAndCopy(p2.page, 1));
-  await modalBtn(host, '加入今天的候选池');
-  const poolText = await host.locator('.copy-block', { has: host.getByRole('button', { name: '复制名单码' }) }).locator('textarea').inputValue();
-  assert.match(poolText, /SHELTER-POOL:/);
+  await p2.page.locator('[data-action="plan"]').click();
+  await btn(p2.page, '确认抽取守夜名单').click();
+  await p2.page.locator('.watch-section .wcard').nth(0).click();
+  const link2 = await p2.page.getByRole('textbox', { name: '分享链接' }).inputValue();
+  const { page: host2, errors: errors2 } = await open(hc, link2);
+  await host2.check('#confirm-share-paused');
+  await modalBtn(host2, '查看卡片');
+  await modalBtn(host2, '加入今天的候选池');
+  await host.getByText('收到 2 份提交').waitFor();
+  assert.ok(!(await bodyText(host)).includes('另一个标签页修改了同一份主持人存档'), '原标签页直接同步');
+  await host2.close();
+
+  // 两份提交：末位拍板（私信文本 + 按钮），不再需要代码往返
+  await host.getByRole('button', { name: '复制给末位的私信' }).waitFor();
+  await btn(host, '末位选第 2 份').click();
   s = await read(host, HOST_DEMO);
-  const lastName = s.players.find((p) => p.id === s.seatOrder.at(-1)).name;
-  const p3 = await player(lastName);
-  await p3.page.locator('.pick-part > summary').click();
-  await p3.page.locator('.pick-part textarea').fill(poolText);
-  await btn(p3.page, '读取名单码').click();
-  const pickCards = p3.page.locator('.pick-part .watch-card');
-  assert.equal(await pickCards.count(), 2, '末位看到两份提交');
-  await pickCards.nth(1).click();
-  const pickCode = await p3.page.locator('.pick-part .copy-text').inputValue();
-  assert.match(pickCode, /SHELTER-PICK:/);
-  await hostPaste(pickCode);
-  s = await read(host, HOST_DEMO);
-  const chosen = s.today.watchCandidates.find((c) => c.id === s.today.watchDecision);
-  assert.equal(chosen.plannerId, P(3), '末位选了 C·胖虎 的提交');
+  assert.equal(s.today.watchCandidates.find((c) => c.id === s.today.watchDecision).plannerId, P(3), '末位选了 C·胖虎 的提交');
   await btn(host, '确认最终名单（保存人员快照）').click();
   s = await read(host, HOST_DEMO);
   assert.ok(s.today.finalWatch.memberIds.length >= 1);
-  assert.ok(!s.today.plannerIds.includes(s.seatOrder.at(-1)) || [P(2), P(3)].includes(s.seatOrder.at(-1)), '只拍板不算计划者');
+
+  // 粘贴入口：坏链接给出提示，不改存档
+  const before = JSON.stringify((await read(host, HOST_DEMO)).today);
+  await host.locator('.code-reader textarea').fill('https://example.com/host.html#watch=abc');
+  await btn(host, '读取链接').click();
+  await host.getByText(/链接不完整或已损坏|最终名单已确认/).first().waitFor();
+  assert.equal(JSON.stringify((await read(host, HOST_DEMO)).today), before);
+
   assert.deepEqual(errors, []);
-  for (const c of [p1, p2, p3]) await c.context.close();
+  assert.deepEqual(errors2, []);
+  assert.deepEqual([...p1.perr, ...p2.perr], []);
+  for (const c of [p1, p2]) await c.context.close();
   await hc.close();
+});
+
+test('一键重置：玩家页、主持人页只删自己的本机数据并重新载入；入口页可清空全部（语言选择保留）', async () => {
+  const { context } = await newContext();
+  const { page: player, errors } = await open(context, PLAYER);
+  await tab(player, 'action');
+  const nameInput = player.locator('.field', { hasText: '姓名' }).locator('input');
+  await nameInput.fill('要被清掉的名字');
+  await nameInput.press('Enter');
+  await nameInput.blur();
+  await player.waitForFunction(() => JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).name === '要被清掉的名字');
+  await playerDemo(player);
+  await player.evaluate(() => {
+    localStorage.setItem('shelter-playtest:host:v1', '{"keep":true}');
+    localStorage.setItem('shelter-playtest:lang', 'zh');
+    localStorage.setItem('unrelated-site-key', '1');
+  });
+  await tab(player, 'save');
+  await btn(player, '一键重置').click();
+  await modal(player).getByText('删除后无法恢复').waitFor();
+  await Promise.all([player.waitForURL(/[?&]fresh=\d+/), modalBtn(player, '删除并重新载入')]);
+  await player.locator('.tabs-primary').waitFor();
+  const keys = await player.evaluate(() => Object.keys(localStorage).sort());
+  assert.ok(!keys.includes(PLAYER_DEMO), '演示存档已删除');
+  const fresh = await read(player, PLAYER_KEY);
+  assert.equal(fresh ? fresh.name : '', '', '玩家存档回到空白');
+  assert.equal(await player.evaluate(() => localStorage.getItem('shelter-playtest:host:v1')), '{"keep":true}', '主持人数据不受影响');
+  assert.equal(await player.evaluate(() => localStorage.getItem('shelter-playtest:lang')), 'zh', '语言选择保留');
+  assert.equal(await player.evaluate(() => localStorage.getItem('unrelated-site-key')), '1', '不碰别的网站数据');
+
+  const { page: host, errors: hostErrors } = await open(context, HOST);
+  await hostDemo(host);
+  await tab(host, 'settings');
+  await btn(host, '一键重置').click();
+  await Promise.all([host.waitForURL(/[?&]fresh=\d+/), modalBtn(host, '删除并重新载入')]);
+  await host.locator('[data-tab="settings"]').waitFor();
+  assert.equal(await host.evaluate((k) => localStorage.getItem(k), HOST_DEMO), null, '主持人演示存档已删除');
+  assert.notEqual(await host.evaluate((k) => localStorage.getItem(k), PLAYER_KEY), null, '玩家数据不受影响');
+
+  // 入口页：清空两页的全部数据，语言选择保留
+  const landing = await context.newPage();
+  await landing.goto('file://' + join(ROOT, 'index.html'));
+  landing.on('dialog', (d) => d.accept());
+  await Promise.all([landing.waitForURL(/[?&]fresh=\d+/), landing.locator('#reset-btn').click()]);
+  const left = await landing.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('shelter-playtest:')));
+  assert.deepEqual(left, ['shelter-playtest:lang']);
+  assert.deepEqual([...errors, ...hostErrors], []);
+  await context.close();
 });

@@ -39,6 +39,7 @@
   var store = null;
   var state = null;
   var notices = [];
+  var wiping = false;
   var undo = new U.UndoStack(40);
   var KEY_HIDE_ID = 'shelter-playtest:player:hide-identity';
   var ui = { tab: 'dashboard', filter: 'all', sort: U.readKey(KEY_SORT) === 'default' ? 'default' : 'category', drafts: {}, keep: {}, transfer: {}, moreOpen: false, hideIdentity: U.readKey(KEY_HIDE_ID) === '1' };
@@ -93,7 +94,7 @@
 
   function save() {
     state.updatedAt = Date.now();
-    if (!store.available) return;
+    if (wiping || !store.available) return;
     if (!store.write(state)) {
       var msg = '自动保存失败（' + ((store.lastError && store.lastError.name) || '未知错误') + '），可能是存储空间已满：请立即导出 JSON。';
       if (!notices.some(function (n) { return n.text === msg; })) notices.push({ kind: 'danger', text: msg });
@@ -1836,7 +1837,7 @@
 
   /* 每天一次、会消耗当日行动的选择。点亮一个即记为今天的行动；再点一次取消。 */
   var ACTIONS = [
-    { id: 'plan', name: '计划守夜名单', desc: '为今晚抽两份守夜候选，交给主持人' },
+    { id: 'plan', name: '计划守夜名单', desc: '为今晚抽两张守夜卡，选一张发给主持人' },
     { id: 'swap', name: '尝试换位', desc: '请求与别人交换实际座位，双方同意才生效' },
     { id: 'skill', name: '使用职业技能', desc: '' },
     { id: 'other', name: '其他行动', desc: '主持人允许的其他行动' },
@@ -1860,10 +1861,6 @@
         return;
       }
       s.action = { day: today(), used: true, type: type, note: old && old.used ? old.note || '' : '' };
-      if (type === 'plan' && !(s.watchPlan && s.watchPlan.day === today())) {
-        s.watchPlan = { day: today(), cards: drawPlanCards(s), chosen: null };
-        log(s, '抽到两张守夜候选卡');
-      }
       if (type === 'skill' && prof) {
         var id = C.uid('sk');
         s.skillLog.unshift({ id: id, day: today(), text: prof.name + '技能' });
@@ -1873,93 +1870,115 @@
     });
   }
 
-  /** 同一个玩家同一天抽到的两张卡是固定的（按玩家 id＋天数＋名单定种子），撤销或重新点亮都不会重抽。 */
-  function drawPlanCards(s) {
-    var alive = C.rosterAlive(s.roster);
-    var seed = C.hashSeed(s.playerId + '|' + today() + '|' + alive.map(function (p) { return p.name; }).join(','));
-    return C.drawWatchCards(s.watchTemplates || C.defaultWatchTemplates(), { alive: alive, rules: s.rules }, C.seededRng(seed));
+  // ---------------------------------------------------------------- 守夜名单（只负责抽取、选择与分享）
+
+  /** 完整名单：自己的名字＋存档里录入的其他玩家，去重。 */
+  function fullRoster() {
+    var list = [];
+    if (state.name && state.name.trim()) list.push(state.name.trim());
+    (state.otherNames || []).forEach(function (n) {
+      n = String(n || '').trim();
+      if (n && list.indexOf(n) < 0) list.push(n);
+    });
+    return list;
   }
 
-  function showWatchEffects() {
-    return state.rules.watchShowEffects !== false;
+  function todayWatchPlan() {
+    var p = state.watchPlan;
+    return p && p.v === 2 && p.day === today() ? p : null;
   }
 
-  function choosePlanCard(i) {
-    commit('选择守夜候选卡', function (s) {
-      if (s.watchPlan.chosen === i) return false;
-      s.watchPlan.chosen = i;
-      log(s, '选择守夜候选卡' + (i ? '②' : '①'));
+  /** 两张卡按「玩家＋天数＋名单」定种子：撤销后重新抽还是这两张，不能靠重抽挑卡。 */
+  function drawWatch() {
+    var roster = fullRoster();
+    commit('抽取守夜名单', function (s) {
+      var seed = C.hashSeed(s.playerId + '|' + today() + '|' + roster.join(','));
+      s.watchPlan = { v: 2, day: today(), cards: C.drawWatchPair(roster, C.seededRng(seed), s.rules), chosen: null };
+      log(s, '抽取守夜名单：两张卡');
     });
   }
 
-  /** 守夜名单：计划者的两张候选卡＋发给主持人的代码；末位玩家粘贴主持人的名单码后拍板。 */
+  function choosePlanCard(i) {
+    commit('选择守夜卡', function (s) {
+      if (s.watchPlan.chosen === i) return false;
+      s.watchPlan.chosen = i;
+      log(s, '选择守夜卡：第 ' + (i + 1) + ' 张');
+    });
+  }
+
+  /** 主持人页的地址：与玩家页同一目录下的 host.html。 */
+  function hostPageUrl() {
+    var u = location.href.replace(/[#?].*$/, '');
+    if (/player(\.html)?$/.test(u)) return u.replace(/player(\.html)?$/, 'host.html');
+    try { return new URL('host.html', u).href; } catch (e) { return 'host.html'; }
+  }
+
+  /** 分享链接带着已选卡片的完整结果，主持人打开后看到同一张卡，不重新随机。 */
+  function watchShareLink(plan) {
+    return hostPageUrl() + C.watchLinkHash({ v: 2, day: plan.day, from: state.name || '', card: plan.cards[plan.chosen] });
+  }
+
+  /** 只在今天的行动是「计划守夜名单」时出现。 */
   function watchSection(current) {
-    var plan = state.watchPlan && state.watchPlan.day === today() ? state.watchPlan : null;
-    var planning = current === 'plan';
-    var hasRoster = !!(state.roster && state.roster.players && state.roster.players.length);
-    var show = showWatchEffects();
+    if (current !== 'plan') return null;
+    var plan = todayWatchPlan();
+    var roster = fullRoster();
     var parts = [h('div', { class: 'card-head' }, h('h2', null, '守夜名单'), plan && plan.chosen != null ? sevBadge('ok', '已选第 ' + (plan.chosen + 1) + ' 张') : null)];
-    if (plan || planning) {
-      parts.push(h('h3', null, '我的两张候选卡'));
-      parts.push(h('p', { class: 'muted small' }, '每张卡写明谁守夜、倾向和可能遭遇。选一张，把代码发给主持人；主持人把它放进今天的候选池。只有你一个人计划时，你选的直接生效。'));
-      if (!hasRoster) {
-        parts.push(h('div', { class: 'callout info' }, '还没有玩家名单：卡片只写人数，主持人收到代码后按存活名单抽人。导入主持人的规则包后会显示名字。 ',
-          h('button', { type: 'button', class: 'btn-link', onclick: function () { setTab('save'); } }, '去导入规则包')));
+    if (!plan) {
+      parts.push(h('p', { class: 'muted small' }, '点下面的按钮随机抽两张卡，选一张，把分享链接发给主持人。今天抽过就固定，不能重抽。'));
+      if (!(state.name && state.name.trim())) parts.push(h('div', { class: 'callout info' }, '先在下方「身份与秘密」填写你的姓名。'));
+      if (roster.length < 2) {
+        parts.push(h('div', { class: 'callout info' }, '名单里还没有其他玩家：先到「存档 → 玩家名单」录入其他玩家的名字。 ',
+          h('button', { type: 'button', class: 'btn-link', onclick: function () { setTab('save'); } }, '去录入')));
       }
-      if (plan) {
-        parts.push(h('div', { class: 'watch-cards', role: 'group', 'aria-label': '我的两张候选卡' }, plan.cards.map(function (c, i) {
-          return U.watchCard(C.watchCardText(c, null, show), { label: i ? '②' : '①', selected: plan.chosen === i, id: c.id, onclick: function () { choosePlanCard(i); } });
-        })));
-        if (plan.chosen != null) {
-          var code = C.encodeShareCode('WATCH', { v: 1, day: plan.day, from: myName(), cards: plan.cards, chosen: plan.chosen });
-          parts.push(U.copyBlock('【守夜提交·第' + plan.day + '天】' + myName() + '：我选第 ' + (plan.chosen + 1) + ' 张。\n' + code, { label: '复制给主持人', rows: 3, note: '私发给主持人，主持人粘贴进「守夜」页' }));
-        }
-        if (!planning) parts.push(h('p', { class: 'muted small' }, '今天的行动不是「计划守夜名单」：卡片保留，重新点亮后还是这两张。'));
-      }
+      parts.push(h('button', { type: 'button', class: 'btn primary big', disabled: roster.length < 2 || !(state.name && state.name.trim()), onclick: drawWatch }, '确认抽取守夜名单'));
     } else {
-      parts.push(h('p', { class: 'muted' }, '点亮上方「计划守夜名单」后，会在这里抽两张候选卡。'));
+      parts.push(h('p', { class: 'muted small' }, '选一张，再复制分享链接发给主持人。主持人打开链接就能看到同一张卡。'));
+      parts.push(h('div', { class: 'wcards', role: 'group', 'aria-label': '两张守夜卡' }, plan.cards.map(function (c, i) {
+        return U.watchCardFace(C.watchCardFace(c), { id: c.id, selected: plan.chosen === i, caption: '第 ' + (i + 1) + ' 张', onclick: function () { choosePlanCard(i); } });
+      })));
+      if (plan.chosen != null) {
+        var link = watchShareLink(plan);
+        parts.push(h('div', { class: 'share-row' },
+          h('input', { type: 'text', readonly: true, value: link, 'aria-label': '分享链接', onclick: function (e) { e.target.select(); } }),
+          h('button', { type: 'button', class: 'btn primary', onclick: function () {
+            U.copyText(link).then(function (ok) { U.toast(ok ? '已复制分享链接，发给主持人即可' : '复制失败：请长按链接手动复制', ok ? 'ok' : 'warn'); });
+          } }, U.icon('copy'), '复制分享链接')));
+      }
     }
-    parts.push(pickPart(show));
     return h('section', { class: 'card wide watch-section' }, parts);
   }
 
-  function pickPart(show) {
-    var pick = state.watchPick;
-    var box = h('textarea', { rows: 2, placeholder: '粘贴主持人发来的名单码（SHELTER-POOL…）', 'aria-label': '粘贴主持人发来的名单码' });
-    function read(text) {
-      var r = C.decodeShareCode(text);
-      if (!r.ok) { U.toast(r.reason, 'warn'); return; }
-      if (r.kind !== 'POOL' || !r.data || !Array.isArray(r.data.entries) || !r.data.entries.length) { U.toast('这不是主持人发来的名单码', 'warn'); return; }
-      commit('收到守夜名单码', function (s) {
-        s.watchPick = { day: r.data.day, entries: r.data.entries, chosenCardId: null };
-        log(s, '收到第' + r.data.day + '天的守夜名单码：' + r.data.entries.length + ' 份提交');
+  /** 存档页：录入其他玩家的名字，与自己的名字一起组成守夜卡的完整名单。 */
+  function rosterCard() {
+    var roster = fullRoster();
+    var input = h('input', { type: 'text', placeholder: '其他玩家的名字，多个用逗号分开', 'aria-label': '其他玩家的名字' });
+    function add() {
+      var names = input.value.split(/[，,、;；\n]+/).map(function (n) { return n.trim(); }).filter(Boolean);
+      if (!names.length) { U.toast('请输入名字', 'warn'); return; }
+      commit('录入玩家名字', function (s) {
+        var added = names.filter(function (n) { return n !== s.name && s.otherNames.indexOf(n) < 0; });
+        if (!added.length) return false;
+        s.otherNames = s.otherNames.concat(added);
+        log(s, '录入玩家名字：' + added.join('、'));
       });
     }
-    var out = [
-      h('p', { class: 'muted small' }, '两人及以上计划时，由实际换位后座次最后的玩家从所有提交里选一份。只负责拍板不算计划者。主持人会把名单码发给你，粘贴进来就能看到所有提交：'),
-      h('div', { class: 'code-reader' }, box, h('div', { class: 'row' },
-        h('button', { type: 'button', class: 'btn', onclick: function () { read(box.value); } }, '读取名单码'),
-        U.pasteButton(function (text) { box.value = text; read(text); })))
-    ];
-    if (pick) {
-      out.push(h('p', { class: 'small' }, '第 ' + pick.day + ' 天 · ' + pick.entries.length + ' 份提交：点一份作为最终名单。'));
-      out.push(h('div', { class: 'watch-cards', role: 'group', 'aria-label': '末位拍板' }, pick.entries.map(function (e, i) {
-        var t = C.watchCardText(e.card, null, show);
-        t.title = e.planner + ' 提交 · ' + t.title;
-        return U.watchCard(t, { label: String(i + 1), selected: pick.chosenCardId === e.card.id, id: e.card.id, onclick: function () {
-          commit('末位拍板', function (s) { s.watchPick.chosenCardId = e.card.id; log(s, '守夜拍板：选择 ' + e.planner + ' 提交的名单'); });
-        } });
-      })));
-      var chosen = pick.entries.filter(function (e) { return e.card.id === pick.chosenCardId; })[0];
-      if (chosen) {
-        var code = C.encodeShareCode('PICK', { v: 1, day: pick.day, from: myName(), cardId: chosen.card.id });
-        out.push(U.copyBlock('【守夜拍板·第' + pick.day + '天】' + myName() + '：我选 ' + chosen.planner + ' 提交的名单。\n' + code, { label: '复制拍板码给主持人', rows: 3, note: '私发给主持人' }));
-      }
-    }
-    // 只有末位用得到：平时收起，粘贴过名单码后自动展开
-    return h('details', { class: 'pick-part', open: !!pick },
-      h('summary', null, h('b', null, '末位拍板'), h('span', { class: 'muted small' }, ' · 收到主持人的名单码时用')),
-      h('div', { class: 'stack' }, out));
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    return h('section', { class: 'card roster-card' },
+      h('div', { class: 'card-head' }, h('h2', null, '玩家名单'), chip(roster.length + ' 人', roster.length >= 2 ? 'ok' : '')),
+      h('p', { class: 'section-note' }, '守夜卡从这份名单里抽人：你自己的名字加上其他玩家的名字。每张普通卡必定守夜的人数是总人数的三分之一，向上取整。'),
+      h('p', null, h('b', null, '我：'), state.name && state.name.trim() ? state.name : h('span', { class: 'muted' }, '还没填姓名'), ' ',
+        h('button', { type: 'button', class: 'btn-link', onclick: function () { setTab('action'); } }, '在「行动与身份」修改')),
+      (state.otherNames || []).length ? h('ul', { class: 'name-chips' }, state.otherNames.map(function (n) {
+        return h('li', { class: 'name-chip' }, h('span', null, n), h('button', {
+          type: 'button', class: 'name-chip-x', 'aria-label': '移除 ' + n, onclick: function () {
+            commit('移除玩家名字', function (s) { s.otherNames = s.otherNames.filter(function (x) { return x !== n; }); log(s, '移除玩家名字：' + n); });
+          }
+        }, '×'));
+      })) : h('p', { class: 'muted small' }, '还没有录入其他玩家。'),
+      h('div', { class: 'row' }, input, h('button', { type: 'button', class: 'btn', onclick: add }, '添加')),
+      roster.length >= 2 ? h('p', { class: 'muted small' }, '共 ' + roster.length + ' 人 → 每张普通卡 ' + C.watchCount(roster.length, state.rules) + ' 人必定守夜。') : null,
+      h('p', { class: 'muted small' }, '也可以导入主持人的规则包，自动填好名单。'));
   }
 
   function renderAction() {
@@ -2143,7 +2162,7 @@
   // ================================================================ 记录与存档
 
   function renderSave() {
-    return h('div', { class: 'stack' }, publicInfoCard(), rulesCard(), saveCard(), handoffsCard(), logCard());
+    return h('div', { class: 'stack' }, rosterCard(), publicInfoCard(), rulesCard(), saveCard(), handoffsCard(), logCard());
   }
 
   function publicInfoCard() {
@@ -2154,7 +2173,7 @@
     notes.value = pi.notes || '';
     notes.addEventListener('change', function () { commit('公共笔记', function (s) { s.publicInfo.notes = notes.value; }, { undo: false }); });
     return h('section', { class: 'card' },
-      h('h2', null, '公共信息记录'),
+      h('div', { class: 'card-head' }, h('h2', null, '公共信息记录')),
       h('p', { class: 'section-note' }, '公共库存、座次、日期由主持人维护权威记录；这里只手动记必要信息。'),
       h('div', { class: 'grid2' }, U.field('当前第几天', U.stepper(pi.day, function (v) { setDay(v); }, { label: '天数' })), U.field('我的座次', seat)),
       U.field('公共笔记', notes));
@@ -2192,10 +2211,7 @@
     var pack = h('textarea', { rows: 3, placeholder: '粘贴主持人发来的规则包 JSON' });
     return h('section', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', null, '规则（本机副本）'), h('span', { class: 'muted small' }, '以主持人通知为准')),
-      h('div', { class: 'row' }, toggle('professionsEnabled', '启用职业草案'), toggle('tasksEnabled', '启用秘密任务草案'), toggle('draftStatusesEnabled', '启用候选负面状态'), toggle('watchShowEffects', '守夜卡片显示可能遭遇')),
-      h('p', { class: 'small' }, h('b', null, '玩家名单：'), state.roster && state.roster.players && state.roster.players.length
-        ? state.roster.players.map(function (p) { return p.name + (p.alive === false ? '（已死亡）' : ''); }).join('、') + '（第 ' + state.roster.day + ' 天导入）'
-        : '还没有导入（规则包里带，守夜候选卡要用来显示名字）'),
+      h('div', { class: 'row' }, toggle('professionsEnabled', '启用职业草案'), toggle('tasksEnabled', '启用秘密任务草案'), toggle('draftStatusesEnabled', '启用候选负面状态')),
       h('div', { class: 'rules-grid' },
         unitsField('inventoryCapacityTicks', '个人总库存上限（暂定10）'),
         unitsField('scavengeKeepTicks', '搜刮自留额度（4）'),
@@ -2205,11 +2221,11 @@
         intField('hpMax', '生命上限（待定）'),
         intField('hungerFullAt', '充盈阈值 ≥（待定）'),
         intField('hungerHungryAt', '饥饿阈值 ≤（待定）')),
-      h('details', { open: !(state.roster && state.roster.players && state.roster.players.length) }, h('summary', null, '导入主持人规则包'),
+      h('details', null, h('summary', null, '导入主持人规则包'),
         h('div', { class: 'stack' }, pack, h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn', onclick: function () { importRulesPack(pack.value); } }, '校验并导入'),
           U.pasteButton(function (text) { pack.value = text; importRulesPack(text); })),
-          h('p', { class: 'muted small' }, '只更新规则、自定义物品、玩家名单与守夜名单模板（以及包里附带的搜刮模板），不碰你的库存和状态。'))));
+          h('p', { class: 'muted small' }, '只更新规则、自定义物品与玩家名单（以及包里附带的搜刮模板），不碰你的库存和状态。'))));
   }
 
   function importRulesPack(text) {
@@ -2226,8 +2242,10 @@
         else s.customItems.push(d);
       });
       if (data.scavengeTemplate && Array.isArray(data.scavengeTemplate.items)) s.scavengeTemplate = data.scavengeTemplate;
-      if (data.roster && Array.isArray(data.roster.players)) s.roster = data.roster;
-      if (Array.isArray(data.watchTemplates) && data.watchTemplates.length) s.watchTemplates = data.watchTemplates;
+      if (data.roster && Array.isArray(data.roster.players)) {
+        s.roster = data.roster;
+        s.otherNames = data.roster.players.filter(function (p) { return p && p.name && p.alive !== false && p.name !== s.name; }).map(function (p) { return p.name; });
+      }
       log(s, '导入主持人规则包');
     });
     U.toast('规则包已导入', 'ok');
@@ -2253,6 +2271,10 @@
         h('button', { type: 'button', class: 'btn', onclick: undoLast, disabled: !undo.peek() }, U.icon('undo'), '撤销最近操作'),
         h('button', { type: 'button', class: 'btn danger', onclick: resetSave }, '重置'),
         fileInput),
+      h('div', { class: 'card inset reset-box' },
+        h('h3', null, '一键重置（删除本机缓存）'),
+        h('p', { class: 'muted small' }, '删除这个浏览器里的玩家数据：正式存档、演示存档、自动备份和页面设置，然后重新载入最新页面。页面出错或想从头开始时用。删除后无法恢复。'),
+        h('button', { type: 'button', class: 'btn danger', onclick: wipeAll }, '一键重置')),
       backups.length ? h('details', null, h('summary', null, '备份（' + backups.length + '）'), h('ul', { class: 'list-plain' }, backups.map(function (b, i) {
         return h('li', { class: 'row between' }, h('span', null, U.fmtTime(b.at) + ' · ' + (b.reason || '')), h('button', { type: 'button', class: 'btn small', onclick: function () { importSave(store.backups()[i].raw); } }, '恢复'));
       }))) : null,
@@ -2262,6 +2284,22 @@
         slot === 'demo'
           ? h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: exitDemo }, '返回正式存档'), h('button', { type: 'button', class: 'btn danger', onclick: clearDemo }, '清空演示数据'))
           : h('button', { type: 'button', class: 'btn', onclick: enterDemo }, '打开演示存档')));
+  }
+
+  function wipeAll() {
+    U.modal({
+      title: '一键重置？',
+      body: h('div', { class: 'stack' },
+        h('p', null, '会删除这个浏览器里的所有玩家数据（正式存档、演示存档、自动备份、页面设置），然后重新载入页面。删除后无法恢复。'),
+        h('p', { class: 'muted small' }, '主持人页的数据和语言选择不受影响。需要保留的话先导出：'),
+        h('button', { type: 'button', class: 'btn', onclick: function () { U.downloadJSON('shelter-player-' + (state.name || 'me') + '-' + U.stamp() + '.json', state); } }, '先导出 JSON')),
+      actions: [{ label: '取消', value: false }, { label: '删除并重新载入', kind: 'danger', value: true }]
+    }).then(function (ok) {
+      if (!ok) return;
+      wiping = true;
+      U.wipeLocal(['shelter-playtest:player:', 'shelter-playtest:player-demo:']);
+      U.reloadFresh();
+    });
   }
 
   function importSave(text) {

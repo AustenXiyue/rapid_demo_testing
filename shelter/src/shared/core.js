@@ -279,7 +279,6 @@
       eventChance: 80,
       eventPosition: null,
       watchSize: null,
-      watchShowEffects: true,
       swapRequestLimit: 3,
       rescueTarget: null,
       scoreSurvival: null,
@@ -317,8 +316,7 @@
     { key: 'eventChance', label: '每日事件触发概率（%）', type: 'int', min: 0, max: 100, status: 'confirmed', note: '80%有事件、20%无；只控制是否触发' },
     { key: 'eventPosition', label: '公共事件位置', type: 'select', nullable: true, status: 'pending',
       options: [['beforeSupply', '阶段2（资源补给）之前'], ['afterWatch', '阶段6（确认守夜）之后']], note: '未选时由主持人手动触发' },
-    { key: 'watchSize', label: '守夜人数（随机抽人时）', type: 'int', nullable: true, min: 1, status: 'confirmed', note: '留空＝存活人数的三分之一，向上取整（6人2人、7人3人）；特殊条件可改' },
-    { key: 'watchShowEffects', label: '守夜卡片提前显示可能遭遇', type: 'bool', status: 'tentative', note: '风险后果是否提前可见尚未确定：暂定显示；关闭后卡片上只写「主持人确认后公布」' },
+    { key: 'watchSize', label: '守夜卡片上的必定守夜人数', type: 'int', nullable: true, min: 1, status: 'confirmed', note: '留空＝玩家总数的三分之一，向上取整（6人2人、7人3人）；特殊条件可改' },
     { key: 'swapRequestLimit', label: '每人换位请求上限', type: 'int', min: 0, status: 'confirmed', note: '最多3次；主持人可覆盖' },
     { key: 'rescueTarget', label: '营救阈值', type: 'int', nullable: true, status: 'pending', note: '阈值未知：不自动结束，主持人点击结算' },
     { key: 'scoreSurvival', label: '基础生存分', type: 'int', nullable: true, status: 'pending' },
@@ -1109,6 +1107,7 @@
    * ctx: { plannerIds, skillUserIds, aliveIds }
    */
   function resolveWatchOption(opt, ctx) {
+    if (opt && opt.v === 2) return resolveWatchCardV2(opt, ctx);
     var people = [];
     var tendencies = [];
     var peopleEntries = 0;
@@ -1144,6 +1143,22 @@
     return { memberIds: people, tendencies: tendencies, needsHost: needsHost, notes: notes };
   }
 
+  /** 第2版卡片：全员卡＝所有存活玩家；否则卡上名字 ∪ 图标点到的人（今天的技能使用者／计划者）。 */
+  function resolveWatchCardV2(card, ctx) {
+    var alive = ctx.aliveIds || [];
+    var people = [];
+    function add(ids) { (ids || []).forEach(function (id) { if (people.indexOf(id) < 0 && alive.indexOf(id) >= 0) people.push(id); }); }
+    if (card.all) add(alive);
+    else {
+      add(card.ids || []);
+      if (card.skill) add(ctx.skillUserIds);
+      if (card.plan) add(ctx.plannerIds);
+    }
+    var notes = [];
+    if (!people.length) notes.push('按当日记录解析后没有人：请主持人裁定。');
+    return { memberIds: people, tendencies: card.tendency ? [card.tendency] : [], needsHost: !people.length, notes: notes };
+  }
+
   /** 0 份提交：系统随机；1 份：直接成为最终名单；2 份及以上：末位从所有提交中选择。 */
   function watchMode(submittedCount) {
     if (!isInt(submittedCount) || submittedCount <= 0) return 'random';
@@ -1156,6 +1171,11 @@
 
   /** 名单的一行描述（日志、私信用）。nameOf: id → 姓名 */
   function describeWatchOption(opt, nameOf, showEffects) {
+    if (opt && opt.v === 2) {
+      var f = watchCardFace(opt);
+      if (f.all) return '「全员守夜卡」' + f.text;
+      return '「守夜卡」' + (f.names.join('、') || '（无名字）') + ' 守夜' + (f.skill ? '；' + f.skill : '') + (f.plan ? '；' + f.plan : '') + (f.line ? '；' + f.line : '');
+    }
     var t = watchCardText(opt, nameOf, showEffects);
     return '「' + t.title + '」' + t.who + (t.tendency ? '；' + t.tendency : '') + (t.effects.length ? '；' + t.effects.join('，') : '');
   }
@@ -1178,6 +1198,98 @@
     } catch (e) {
       return { ok: false, reason: '代码不完整或已损坏：请重新复制整段' };
     }
+  }
+
+  // ---------------------------------------------------------------- 守夜卡片（第2版：玩家抽卡、选卡、分享链接）
+  //
+  // 每张卡独立随机：
+  //   10%：全员守夜卡——整张卡只写「所有人需要进行守夜」；
+  //   否则：中央是不重复的必定守夜人名（玩家总数的三分之一，向上取整），
+  //         左下角 33% 出现「今天使用技能的人需要守夜」，右下角独立 33% 出现「今天计划守夜名单的人需要守夜」，
+  //         正上方 25% 随机写一句倾向（更多危险／更多求救线索）。
+  // 卡片只负责抽取、选择与分享；确认时守夜的人＝卡上名字 ∪ 被图标点到的人（按当日记录）。
+
+  var WATCH_ALL_TEXT = '所有人需要进行守夜';
+  var WATCH_SKILL_TEXT = '今天使用技能的人需要守夜';
+  var WATCH_PLAN_TEXT = '今天计划守夜名单的人需要守夜';
+  var WATCH_LINES = { danger: '似乎今晚守夜的人会有更多危险', rescue: '似乎今晚守夜的人会有更多求救线索' };
+  var WATCH_ODDS = { all: 0.1, skill: 0.33, plan: 0.33, line: 0.25 };
+
+  /** names：完整名单（玩家自己＋其他玩家）。rules.watchSize 填了就用填的人数。 */
+  function makeWatchCardV2(names, rng, rules) {
+    rng = rng || Math.random;
+    var list = [];
+    (names || []).forEach(function (n) { n = String(n || '').trim(); if (n && list.indexOf(n) < 0) list.push(n); });
+    var card = { v: 2, id: uid('wc'), all: false, names: [], skill: false, plan: false, tendency: null, total: list.length };
+    if (rng() < WATCH_ODDS.all) { card.all = true; return card; }
+    card.names = sample(list, Math.min(watchCount(list.length, rules), list.length), rng);
+    card.skill = rng() < WATCH_ODDS.skill;
+    card.plan = rng() < WATCH_ODDS.plan;
+    if (rng() < WATCH_ODDS.line) card.tendency = rng() < 0.5 ? 'danger' : 'rescue';
+    return card;
+  }
+
+  function drawWatchPair(names, rng, rules) {
+    return [makeWatchCardV2(names, rng, rules), makeWatchCardV2(names, rng, rules)];
+  }
+
+  /** 卡面上的文字（渲染与日志共用）。 */
+  function watchCardFace(card) {
+    if (card.all) return { all: true, text: WATCH_ALL_TEXT };
+    return {
+      all: false,
+      line: card.tendency ? WATCH_LINES[card.tendency] : '',
+      names: card.names || [],
+      skill: card.skill ? WATCH_SKILL_TEXT : '',
+      plan: card.plan ? WATCH_PLAN_TEXT : ''
+    };
+  }
+
+  /** 主持人收到卡片后把名字换成本地玩家 id，不认识的名字单独列出。 */
+  function adoptWatchCardV2(card, players) {
+    var c = clone(card);
+    var unknown = [];
+    c.ids = [];
+    (c.names || []).forEach(function (nm) {
+      var p = players.filter(function (x) { return x.name === nm; })[0];
+      if (p) c.ids.push(p.id); else unknown.push(nm);
+    });
+    return { card: c, unknown: unknown };
+  }
+
+  /** 分享链接：主持人页地址 + #watch=<base64url(JSON)>，带着已选卡片的完整结果，打开后不重新随机。 */
+  function base64UrlEncode(json) {
+    var b64 = typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(json))) : Buffer.from(json, 'utf8').toString('base64');
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function base64UrlDecode(text) {
+    var b64 = text.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    return typeof atob === 'function' ? decodeURIComponent(escape(atob(b64))) : Buffer.from(b64, 'base64').toString('utf8');
+  }
+
+  function watchLinkHash(data) {
+    return '#watch=' + base64UrlEncode(JSON.stringify(data));
+  }
+
+  /** 从链接（或整段消息）里读出卡片；也兼容上一版的 SHELTER-WATCH 代码。 */
+  function readWatchLink(text) {
+    var m = String(text || '').match(/#watch=([A-Za-z0-9_-]+)/);
+    if (m) {
+      try {
+        var data = JSON.parse(base64UrlDecode(m[1]));
+        if (!data || !data.card) return { ok: false, reason: '链接里没有卡片：请让玩家重新复制' };
+        return { ok: true, data: data };
+      } catch (e) {
+        return { ok: false, reason: '链接不完整或已损坏：请让玩家重新复制整条链接' };
+      }
+    }
+    var old = decodeShareCode(text);
+    if (old.ok && old.kind === 'WATCH' && old.data && Array.isArray(old.data.cards) && old.data.cards[old.data.chosen]) {
+      return { ok: true, data: { v: 1, day: old.data.day, from: old.data.from, card: old.data.cards[old.data.chosen] } };
+    }
+    return { ok: false, reason: '没有找到守夜卡片链接：请粘贴玩家发来的整条链接' };
   }
 
   /** 字符串 → 随机种子：同一个玩家同一天抽到的候选卡固定，撤销或重新点亮都不会重抽。 */
@@ -1508,8 +1620,8 @@
     } else if (s.scavenge && s.scavenge.status === 'organize') {
       out.push({ level: 'warning', text: '搜刮三轮已完成：待整理并一次性提交', tab: 'scavenge' });
     }
-    if (s.action && s.action.day === day && s.action.used && s.action.type === 'plan' && s.watchPlan && s.watchPlan.day === day && s.watchPlan.chosen == null) {
-      out.push({ level: 'warning', text: '守夜候选卡还没选：选一张后把代码发给主持人', tab: 'action' });
+    if (s.action && s.action.day === day && s.action.used && s.action.type === 'plan' && !(s.watchPlan && s.watchPlan.day === day && s.watchPlan.chosen != null)) {
+      out.push({ level: 'warning', text: '守夜名单还没抽或没选：抽两张、选一张，把分享链接发给主持人', tab: 'action' });
     }
     if (s.alive !== false && !(s.action && s.action.day === day && s.action.used)) {
       out.push({ level: 'info', text: '第 ' + day + ' 天的个人行动未标记为已使用', tab: 'action' });
@@ -1839,9 +1951,8 @@
       hunger: rules.hungerInitial,
       hungerManual: '普通',
       roster: null,
-      watchTemplates: null,
+      otherNames: [],
       watchPlan: null,
-      watchPick: null,
       thirst: '不渴',
       consciousness: '清醒',
       statuses: [],
@@ -1927,6 +2038,11 @@
       out.manualScores = Object.assign({ loveHate: null, survival: null, task: null, adjust: null, note: '' }, obj.manualScores || {});
       out.taskProgress = Object.assign({ count: 0, events: [], done: false, note: '' }, obj.taskProgress || {});
       out.action = Object.assign({ day: null, used: false, note: '' }, obj.action || {});
+      if (!Array.isArray(obj.otherNames)) {
+        out.otherNames = obj.roster && Array.isArray(obj.roster.players)
+          ? obj.roster.players.filter(function (p) { return p && p.name && p.alive !== false && p.name !== obj.name; }).map(function (p) { return p.name; })
+          : [];
+      }
       // 没改过的示例搜刮模板换成新版权重；自定义模板原样保留
       if (out.scavengeTemplate && out.scavengeTemplate.isExample && out.scavengeTemplate.rev !== 2) out.scavengeTemplate = defaultScavengeTemplate();
     }
@@ -1943,8 +2059,7 @@
       customItems: clone(state.customItems || []),
       scavengeTemplate: scavengeTemplate ? clone(scavengeTemplate) : null,
       // 玩家页生成守夜卡片要用：存活玩家名单与名单模板（都不是秘密）
-      roster: state.players ? { day: state.day, players: state.players.map(function (p) { return { name: p.name, alive: p.alive !== false }; }) } : null,
-      watchTemplates: state.watchTemplates ? clone(state.watchTemplates) : null
+      roster: state.players ? { day: state.day, players: state.players.map(function (p) { return { name: p.name, alive: p.alive !== false }; }) } : null
     };
   }
 
@@ -2043,6 +2158,13 @@
     decodeShareCode: decodeShareCode,
     rosterAlive: rosterAlive,
     hashSeed: hashSeed,
+    makeWatchCardV2: makeWatchCardV2,
+    drawWatchPair: drawWatchPair,
+    watchCardFace: watchCardFace,
+    adoptWatchCardV2: adoptWatchCardV2,
+    watchLinkHash: watchLinkHash,
+    readWatchLink: readWatchLink,
+    WATCH_ODDS: WATCH_ODDS,
     adoptWatchCard: adoptWatchCard,
     isOldDefaultWatchTemplates: isOldDefaultWatchTemplates,
     resolveWatchOption: resolveWatchOption,

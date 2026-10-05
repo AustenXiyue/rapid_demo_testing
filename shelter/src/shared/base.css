@@ -281,3 +281,39 @@ button.watch-card:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); o
 .watch-card-fx { display: flex; flex-wrap: wrap; gap: 4px; }
 .watch-card-fx .fx { font-size: 13px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
 .code-reader { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--surface-2); margin-bottom: 10px; }
+
+/* ---------- 守夜卡（第2版）：竖版卡面，四个位置固定 ---------- */
+.wcards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 8px 0; max-width: 560px; }
+.wcard-slot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; container-type: inline-size; }
+.wcard {
+  position: relative; display: grid; grid-template-rows: auto 1fr auto; align-items: center; gap: 6px;
+  aspect-ratio: 3 / 4; width: 100%; padding: 12px 10px 10px; text-align: center;
+  border-radius: 14px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit;
+  box-shadow: var(--shadow);
+}
+button.wcard { cursor: pointer; }
+button.wcard:hover { border-color: var(--teal); }
+button.wcard:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 2px; }
+.wcard.on { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft), var(--shadow); }
+.wcard-line { align-self: start; min-height: 2.6em; font-size: 13px; font-size: clamp(12px, 6cqi, 16px); line-height: 1.3; color: var(--ink-2); font-style: italic; text-wrap: balance; }
+.wcard-names { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.wcard-name { font-size: 20px; font-size: clamp(16px, 12cqi, 28px); font-weight: 750; line-height: 1.2; overflow-wrap: anywhere; }
+.wcard-corners { align-self: end; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; font-size: clamp(10.5px, 5cqi, 14px); line-height: 1.25; color: var(--ink-2); text-wrap: balance; }
+/* 图标贴在左下／右下角，文字在图标上方，各占半张卡宽 */
+.wcard-corner { display: flex; gap: 3px; min-height: 30px; min-width: 0; }
+.wcard-corner.left { flex-direction: column-reverse; align-items: flex-start; text-align: left; }
+.wcard-corner.right { flex-direction: column; align-items: flex-end; text-align: right; }
+.wcard-corner .icon { flex: 0 0 auto; color: var(--teal-strong); }
+.wcard-corner .icon svg { width: 22px; height: 22px; }
+.wcard.is-all { grid-template-rows: 1fr; background: var(--ink); border-color: var(--ink); color: #fff; }
+.wcard.is-all.on { box-shadow: 0 0 0 3px var(--teal), var(--shadow); }
+.wcard-all { font-size: 22px; font-size: clamp(18px, 13cqi, 34px); font-weight: 750; line-height: 1.35; padding: 0 6px; text-wrap: balance; }
+.wcard-picked, .wcard-caption { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 13px; }
+.wcard-picked { color: var(--teal-strong); font-weight: 650; }
+.wcard-picked .icon svg { width: 14px; height: 14px; }
+.wcard-caption { color: var(--muted); }
+.share-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.share-row input { flex: 1 1 220px; min-width: 0; font-size: 13px; }
+
+/* 一键重置（主持人页、玩家页的存档卡里） */
+.reset-box { margin-top: 12px; border-color: #f0b4ab; }

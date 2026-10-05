@@ -35,6 +35,8 @@
   h3 { font-size: 17px; margin: 28px 0 6px; }
   footer { margin-top: 36px; color: var(--muted); font-size: 13.5px; display: flex; gap: 16px; flex-wrap: wrap; }
   footer a { color: var(--teal); }
+  .reset-link { font: inherit; padding: 0; border: 0; background: none; color: #a8321f; text-decoration: underline; cursor: pointer; }
+  .reset-link:focus-visible { outline: 3px solid rgba(168, 50, 31, 0.3); outline-offset: 2px; }
   @media (max-width: 640px) {
     main { padding-top: 32px; }
     h1 { font-size: 32px; }
@@ -74,6 +76,7 @@
 
   <footer>
     <span data-en="First version · rules snapshot 2026-10-04">第一版 · 规则快照 2026-10-04</span>
+    <button type="button" class="reset-link" id="reset-btn" data-en="Reset everything on this device">一键重置本机数据</button>
     <a href="/" id="home-link" hidden data-en="← Back to xxxmnalx.com">← 返回 xxxmnalx.com</a>
   </footer>
 </main>
@@ -112,6 +115,25 @@
       apply(next);
     });
     apply(read());
+
+    // 一键重置：删除本机上主持人、玩家两页的全部存档、备份和页面设置（保留语言），再重新载入
+    document.getElementById('reset-btn').addEventListener('click', function () {
+      var en = read() === 'en';
+      var ask = en
+        ? 'Delete every Shelter Playtest save on this device (host and player, demo saves, backups and page settings)? This cannot be undone. Export JSON from each page first if you need it.'
+        : '删除这台设备上避难所 Playtest 的全部数据（主持人与玩家的存档、演示存档、备份和页面设置）？删除后无法恢复，需要的话先在各页面导出 JSON。';
+      if (!window.confirm(ask)) return;
+      var n = 0;
+      try {
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+        keys.forEach(function (k) { if (k && k.indexOf('shelter-playtest:') === 0 && k !== KEY) { localStorage.removeItem(k); n++; } });
+      } catch (e) { /* 存储不可用时没有可删的 */ }
+      try { sessionStorage.clear(); } catch (e) { /* 忽略 */ }
+      try { if (window.caches && caches.keys) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }); } catch (e) { /* 忽略 */ }
+      window.alert(en ? 'Deleted ' + n + ' saved item(s). The page will reload.' : '已删除 ' + n + ' 项本机数据，页面将重新载入。');
+      location.replace(location.href.replace(/[?#].*$/, '') + '?fresh=' + Date.now());
+    });
   })();
 </script>
 </body>

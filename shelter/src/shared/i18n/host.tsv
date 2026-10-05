@@ -1110,7 +1110,7 @@ Discord 投票	Discord vote
 下载规则包	Download rules pack
 另一个标签页修改了同一份主持人存档。为避免互相覆盖，请只保留一个主持人标签页，然后刷新本页。	Another tab changed the same host save. To avoid overwriting each other, keep only one host tab open, then refresh this page.
 「计划守夜名单」：玩家在自己的页面抽两张候选卡、选一张，把代码发给你，在「守夜」页粘贴即可。玩家没法用页面时，可在「守夜」页代抽。换位请走「换位请求」。	“Plan watch roster”: the player draws two cards on their own page, picks one and sends you the code; paste it on the Watch page. If a player can't use their page, you can draw for them on the Watch page. For swaps, use “Swap request”.
- 代抽守夜候选：	 — host drew watch options: 
+ 代抽守夜候选：	: 
 今天还没有人计划守夜名单。玩家在自己的页面点亮「计划守夜名单」后会抽到两张卡，选好后把代码发给你。	No one has planned a watch roster today. When a player lights up “Plan watch roster” on their page they get two cards, pick one and send you the code.
 等待玩家发来代码	Waiting for the player's code
 玩家在自己的页面抽卡、选卡后会发来以 SHELTER-WATCH 开头的代码，粘贴到上面即可。	After drawing and picking on their page, the player sends a code starting with SHELTER-WATCH — paste it above.
@@ -1151,3 +1151,49 @@ Discord 投票	Discord vote
 随机抽人时为 	Random draws pick 
  人（存活人数的三分之一，向上取整；可在规则里固定人数）。是否实际守夜不会自动消耗本人额外行动。	 players (one third of the living players, rounded up; you can fix the number in the rules). Watching doesn't cost the watcher an extra action.
 只包含规则配置、自定义物品、玩家名单与守夜名单模板，不含任何秘密。玩家在自己页面的「存档」里粘贴导入（守夜候选卡要用名单显示名字）。	Contains only rule settings, custom items, the player list and watch roster templates — no secrets. Players paste it under Save on their page (watch cards use the list to show names).
+「计划守夜名单」：玩家在自己的页面抽两张卡、选一张，把分享链接发给你，点开链接即可加入候选。玩家没法用页面时，可在「守夜」页代抽。换位请走「换位请求」。	“Plan watch roster”: the player draws two cards on their own page, picks one and sends you a share link; opening the link adds it to the candidates. If a player can't use the page, draw for them on the Watch tab. Seat swaps go through “Swap request”.
+今天还没有人计划守夜名单。玩家在自己的页面点亮「计划守夜名单」、抽两张卡选一张后，会把分享链接发给你：点开链接就会加入这里。	Nobody has planned the watch roster today. When a player lights up “Plan watch roster” on their page, draws two cards and picks one, they send you a share link: opening it adds the card here.
+等待玩家发来链接	Waiting for the player's link
+玩家选好卡片后会发来一条链接：直接点开，或粘贴到上面的框里。	After picking a card the player sends you a link: just open it, or paste it into the box above.
+已提交（链接）	Submitted (link)
+玩家选中的卡	Player's chosen card
+移除这份提交	Remove this submission
+粘贴玩家发来的守夜卡片链接	Paste the watch card link from a player
+读取链接	Read link
+整条消息粘进来也可以。	Pasting the whole message works too.
+主持人这边还没有玩家：先在「设置与存档」录入玩家	No players on the host side yet: add players under “Settings & save” first
+已按链接里的名字自动匹配：	Matched by the name in the link: 
+链接里的名字不在玩家名单里，请手动选择：	The name in the link isn't on the player list; choose by hand: 
+卡片是第 	~
+这张卡已经在今天的候选池里：再次加入只会替换同一位计划者的提交。	This card is already in today's pool: adding it again only replaces the same planner's submission.
+卡片上有不在玩家名单里的名字：	~
+（确认名单时不会自动算进去，可手动勾选）。	~
+卡片和玩家看到的一模一样，这里不会重新随机。加入后：只有一份提交时直接成为最终名单；两份及以上由末位拍板。	The card is exactly what the player saw; nothing is re-randomized here. Once added: a single submission becomes the final roster; with two or more, the last seat decides.
+收到守夜卡片	Watch card received
+：计划守夜名单（收到链接时补记）	: plan watch roster (recorded when the link arrived)
+ 发来守夜卡片：	 sent a watch card: 
+已加入今天的候选池。同一浏览器里别的主持人标签页会自动重新载入存档。	Added to today's pool. Other host tabs in this browser reload the save automatically.
+收到守夜卡片链接	Watch card link received
+玩家发来了一张守夜卡片（第 	~
+ 天）。卡片内容是秘密：请先停止或切换屏幕共享，再查看。	~
+稍后	Later
+查看卡片	View card
+已先放着：需要时把链接粘贴到「守夜 → 今日计划者与候选」	Set aside for now: when you need it, paste the link into “Watch → Today's planners and options”
+移除守夜提交	Remove watch submission
+移除 	Remove 
+ 的守夜提交	's watch submission
+没有人提交名单：由系统按同样的规则随机一张卡（抽取后存档，刷新不变）。	Nobody submitted a roster: the system draws one card with the same rules (saved once drawn; refreshing won't change it).
+没有存活的玩家	No living players
+复制给末位的私信	Copy DM for the last seat
+暂停共享后私发；末位回复编号后，点下面对应的按钮	DM privately after pausing the share; when the last seat replies with a number, click the matching button below
+卡上的名字＋图标点到的人（按今天的行动记录）＝预选人员；全员卡＝所有存活玩家。主持人可以在上面增减。是否实际守夜不会自动消耗本人额外行动。	Names on the card plus whoever the icons point to (from today's action records) = preselected watchers; an “everyone” card = all living players. You can add or remove people above. Keeping watch doesn't automatically use up anyone's extra action.
+一键重置（删除本机缓存）	One-click reset (clear this device's data)
+删除这个浏览器里的主持人正式存档、演示存档、备份和页面设置，然后重新载入最新页面。玩家页的数据不受影响。	Deletes the host's main save, demo save, backups and page settings in this browser, then reloads the latest page. Player page data is untouched.
+一键重置	One-click reset
+一键重置？	One-click reset?
+会删除这个浏览器里的所有主持人数据（正式存档、演示存档、自动备份、页面设置），然后重新载入页面。删除后无法恢复。	This deletes all host data in this browser (main save, demo save, automatic backups, page settings) and reloads the page. It cannot be undone.
+玩家页的数据和语言选择不受影响。需要保留的话先导出：	Player page data and your language choice stay untouched. To keep a copy, export first:
+先导出 JSON	Export JSON first
+删除并重新载入	Delete and reload
+只包含规则配置、自定义物品与玩家名单，不含任何秘密。玩家在自己页面的「存档」里粘贴导入，就会自动填好玩家名单（守夜卡上的名字从这里来）。	Contains only rules, custom items and the player list—no secrets. Players paste it under “Save” on their own page and the player list fills in automatically (names on watch cards come from it).
+另一个标签页更新了存档：本页已重新载入	Another tab updated the save: this page has reloaded it

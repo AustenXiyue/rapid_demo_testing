@@ -402,3 +402,17 @@ hp 必须是数字	hp must be a number
 没有找到代码：请粘贴以 SHELTER- 开头的整段内容	No code found: paste the whole message starting with SHELTER-
 代码不完整或已损坏：请重新复制整段	The code is incomplete or damaged: copy the whole thing again
 守夜候选卡还没选：选一张后把代码发给主持人	Watch card not chosen yet: pick one and send the code to the host
+守夜卡片上的必定守夜人数	Guaranteed watchers per watch card
+留空＝玩家总数的三分之一，向上取整（6人2人、7人3人）；特殊条件可改	Blank = one third of all players, rounded up (6 players → 2, 7 → 3); change it for special conditions
+「全员守夜卡」	“Everyone watches” card: 
+「守夜卡」	“Watch card”: 
+（无名字）	(no names)
+所有人需要进行守夜	Everyone must keep watch
+今天使用技能的人需要守夜	Today's skill users must keep watch
+今天计划守夜名单的人需要守夜	Today's roster planners must keep watch
+似乎今晚守夜的人会有更多危险	It seems tonight's watchers will face more danger
+似乎今晚守夜的人会有更多求救线索	It seems tonight's watchers will find more rescue clues
+链接里没有卡片：请让玩家重新复制	No card in this link: ask the player to copy it again
+链接不完整或已损坏：请让玩家重新复制整条链接	The link is incomplete or damaged: ask the player to copy the whole link again
+没有找到守夜卡片链接：请粘贴玩家发来的整条链接	No watch card link found: paste the whole link the player sent
+守夜名单还没抽或没选：抽两张、选一张，把分享链接发给主持人	Watch roster not drawn or picked yet: draw two cards, pick one and send the share link to the host

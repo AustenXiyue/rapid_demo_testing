@@ -524,7 +524,7 @@
 模板加入物品	Add items to template
 加入自定义物品（权重0）	Add custom items (weight 0)
 恢复示例模板	Restore sample template
-为今晚抽两份守夜候选，交给主持人	Draw two watch roster options for tonight and give them to the host
+为今晚抽两张守夜卡，选一张发给主持人	Draw two watch cards for tonight and send one to the host
 尝试换位	Try a seat swap
 请求与别人交换实际座位，双方同意才生效	Ask someone to swap actual seats; it only happens if both agree
 使用职业技能	Use profession skill
@@ -706,3 +706,36 @@
 还没有导入（规则包里带，守夜候选卡要用来显示名字）	Not imported yet (it comes with the rules pack; watch cards use it to show names)
 只更新规则、自定义物品、玩家名单与守夜名单模板（以及包里附带的搜刮模板），不碰你的库存和状态。	Only updates rules, custom items, the player list and watch roster templates (plus any scavenge template in the pack); your inventory and status are untouched.
  · 收到主持人的名单码时用	 · use it when the host sends you a list code
+抽取守夜名单	Draw watch roster
+抽取守夜名单：两张卡	Drew watch roster: two cards
+选择守夜卡	Pick watch card
+选择守夜卡：第 	~
+点下面的按钮随机抽两张卡，选一张，把分享链接发给主持人。今天抽过就固定，不能重抽。	Tap the button below to draw two random cards, pick one and send the share link to the host. Once drawn today the cards are fixed—no redraws.
+先在下方「身份与秘密」填写你的姓名。	First fill in your name under “Identity & secrets” below.
+名单里还没有其他玩家：先到「存档 → 玩家名单」录入其他玩家的名字。 	No other players on your list yet: add their names under “Save → Player list” first. 
+去录入	Add names
+确认抽取守夜名单	Draw the watch roster
+选一张，再复制分享链接发给主持人。主持人打开链接就能看到同一张卡。	Pick one, then copy the share link and send it to the host. Opening the link shows the host the very same card.
+两张守夜卡	Two watch cards
+分享链接	Share link
+已复制分享链接，发给主持人即可	Share link copied—just send it to the host
+复制失败：请长按链接手动复制	Copy failed: long-press the link to copy it by hand
+复制分享链接	Copy share link
+其他玩家的名字，多个用逗号分开	Other players' names, separated by commas
+其他玩家的名字	Other players' names
+录入玩家名字	Add player names
+录入玩家名字：	~
+守夜卡从这份名单里抽人：你自己的名字加上其他玩家的名字。每张普通卡必定守夜的人数是总人数的三分之一，向上取整。	Watch cards draw from this list: your own name plus the other players'. Each regular card names one third of the total, rounded up, as guaranteed watchers.
+我：	Me: 
+还没填姓名	No name yet
+在「行动与身份」修改	Edit in “Action & identity”
+移除玩家名字	Remove player name
+移除玩家名字：	~
+还没有录入其他玩家。	No other players added yet.
+ 人 → 每张普通卡 	 players → each regular card names 
+ 人必定守夜。	 guaranteed watchers.
+也可以导入主持人的规则包，自动填好名单。	You can also import the host's rules pack to fill in the list automatically.
+只更新规则、自定义物品与玩家名单（以及包里附带的搜刮模板），不碰你的库存和状态。	Updates only the rules, custom items and player list (plus any scavenging template in the pack); your inventory and status stay untouched.
+删除这个浏览器里的玩家数据：正式存档、演示存档、自动备份和页面设置，然后重新载入最新页面。页面出错或想从头开始时用。删除后无法恢复。	Deletes the player data in this browser—main save, demo save, automatic backups and page settings—then reloads the latest page. Use it when the page misbehaves or you want a fresh start. It cannot be undone.
+会删除这个浏览器里的所有玩家数据（正式存档、演示存档、自动备份、页面设置），然后重新载入页面。删除后无法恢复。	This deletes all player data in this browser (main save, demo save, automatic backups, page settings) and reloads the page. It cannot be undone.
+主持人页的数据和语言选择不受影响。需要保留的话先导出：	Host page data and your language choice stay untouched. To keep a copy, export first:
