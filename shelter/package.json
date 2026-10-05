@@ -1,0 +1,14 @@
+{
+  "name": "shelter-playtest",
+  "private": true,
+  "description": "避难所 Playtest：主持人与玩家两个离线网页（构建与测试脚本，部署时不上传）",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "test": "node --test tests/core.test.mjs",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>避难所 Playtest</title>
+<meta name="description" content="避难所 Playtest：主持人面板与玩家面板，两个离线网页，用于桌面社交生存游戏的规则测试。">
+<meta name="theme-color" content="#faf6ee">
+<style>
+  :root {
+    --bg: #faf6ee; --surface: #fffdf8; --surface-2: #f4efe4; --ink: #2a2620; --ink-2: #57504a; --muted: #847b70;
+    --line: #e3dacb; --teal: #0f6e66; --teal-strong: #0b5a53; --teal-soft: #dcefe9; --orange: #b4540e; --orange-soft: #fbe9d6;
+    --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.65; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; }
+  .eyebrow { color: var(--muted); font-size: 14px; letter-spacing: 1px; }
+  h1 { font-size: 40px; line-height: 1.2; margin: 6px 0 10px; font-weight: 750; }
+  .lead { color: var(--ink-2); font-size: 17px; max-width: 640px; margin: 0; }
+  .quote { margin: 18px 0 0; padding: 10px 14px; border-left: 3px solid var(--orange); background: var(--orange-soft); color: #6a3205; border-radius: 0 8px 8px 0; font-size: 15px; max-width: 640px; }
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 32px 0; }
+  .card { display: flex; flex-direction: column; gap: 8px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; text-decoration: none; color: inherit; box-shadow: 0 1px 2px rgba(60, 40, 10, 0.06); transition: border-color 0.15s, transform 0.15s; }
+  .card:hover, .card:focus-visible { border-color: var(--teal); transform: translateY(-1px); outline: none; }
+  .card h2 { margin: 0; font-size: 22px; }
+  .card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+  .card .go { margin-top: auto; padding-top: 8px; color: var(--teal-strong); font-weight: 650; }
+  .tag { display: inline-block; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--teal-soft); color: var(--teal-strong); font-weight: 600; }
+  ul { padding-left: 20px; color: var(--ink-2); font-size: 15px; }
+  li { margin: 4px 0; }
+  h3 { font-size: 17px; margin: 28px 0 6px; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13.5px; display: flex; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--teal); }
+  @media (max-width: 640px) {
+    main { padding-top: 32px; }
+    h1 { font-size: 32px; }
+    .cards { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">PLAYTEST · 规则测试工具</div>
+  <h1>避难所 Playtest</h1>
+  <p class="lead">末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。</p>
+  <p class="quote">军方热线目前忙音。请保持冷静，并清点你的面包。</p>
+
+  <div class="cards">
+    <a class="card" href="host.html" data-page="host.html">
+      <span class="tag">桌面 · 屏幕共享</span>
+      <h2>主持人面板</h2>
+      <p>公开展示天数、阶段、营救、座次与公共事件；库存、抽取、未公布名单放在需要确认后才显示的隐藏区，并提供「一键隐藏所有秘密」。</p>
+      <span class="go">进入主持人面板 →</span>
+    </a>
+    <a class="card" href="player.html" data-page="player.html">
+      <span class="tag">手机 · 个人记录</span>
+      <h2>玩家面板</h2>
+      <p>记录物品（含能量棒次数、地图笔记、水壶水量、背心状态）、生命与状态、携带装备、搜刮、身份与分数。</p>
+      <span class="go">进入玩家面板 →</span>
+    </a>
+  </div>
+
+  <h3>开始之前</h3>
+  <ul>
+    <li>两个页面互不联网、互不同步：主持人通过 Discord 共享屏幕与私信，玩家在自己的设备上手动记录。</li>
+    <li>数据只保存在当前浏览器里。换设备或清缓存前，请在页面里导出 JSON 存档。</li>
+    <li>规则里还没确定的数值一律显示「待配置／主持人裁定」，页面不会替你补值。</li>
+    <li>想先熟悉流程：两个页面都有独立的「演示存档」，不会碰到正式数据。</li>
+  </ul>
+
+  <footer>
+    <span>第一版 · 规则快照 2026-10-04</span>
+    <a href="/" id="home-link" hidden>← 返回 xxxmnalx.com</a>
+  </footer>
+</main>
+<script>
+  (function () {
+    // 经 www.xxxmnalx.com/game/shelter 反代访问时路径没有结尾斜杠，
+    // 相对链接会落到上一级目录：这里补成当前路径下的绝对地址。
+    var path = location.pathname;
+    if (location.protocol !== 'file:' && !/\/$/.test(path) && !/\.html?$/.test(path)) {
+      var links = document.querySelectorAll('a[data-page]');
+      for (var i = 0; i < links.length; i++) links[i].href = path + '/' + links[i].getAttribute('data-page');
+    }
+    if (/(^|\.)xxxmnalx\.com$/.test(location.hostname)) document.getElementById('home-link').hidden = false;
+  })();
+</script>
+</body>
+</html>

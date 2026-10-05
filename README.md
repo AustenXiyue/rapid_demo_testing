@@ -1,3 +1,14 @@
+# rapid_demo_testing · 玩法测试原型
+
+本仓库按原样作为静态站点部署到 Vercel（无构建步骤），线上入口挂在 `www.xxxmnalx.com/game` 下：
+
+| 原型 | 目录 | 线上入口 |
+| --- | --- | --- |
+| 骰迹 · 玩法测试原型 | 根目录（`index.html`） | `www.xxxmnalx.com/game/demo` |
+| 避难所 Playtest · 主持人／玩家双网页 | [`shelter/`](./shelter/README.md) | `www.xxxmnalx.com/game/shelter` |
+
+---
+
 # 骰迹 · 玩法测试原型
 
 根据《骰迹 · 完整玩家规则 v2》制作的纯静态网页原型,用于快速测试玩法可行性与游玩性。

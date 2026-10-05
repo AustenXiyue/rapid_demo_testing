@@ -1,0 +1,71 @@
+/* 玩家端：手机优先 */
+
+body.player { min-width: 300px; }
+
+.topbar { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
+.p-top { padding: 8px 12px 8px; display: flex; flex-direction: column; gap: 6px; max-width: 760px; margin: 0 auto; }
+.p-top-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.p-name { font-size: 16px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-day { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; white-space: nowrap; }
+.p-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.pchip { font-size: 13px; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); white-space: nowrap; }
+.pchip.ok { background: var(--teal-soft); border-color: #b4dbd2; color: var(--teal-strong); }
+.pchip.risk { background: var(--orange-soft); border-color: #eccaa6; color: var(--orange); }
+.pchip.danger { background: var(--red-soft); border-color: #f0b4ab; color: var(--red); }
+
+.tabs { position: sticky; top: var(--top-h, 0px); z-index: 15; }
+
+.p-main { max-width: 760px; margin: 0 auto; padding: 14px 12px 90px; }
+
+.chip { display: inline-flex; align-items: center; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); color: var(--ink-2); margin-left: 4px; font-weight: 600; white-space: nowrap; }
+.chip.ok { background: var(--teal-soft); color: var(--teal-strong); }
+.chip.danger { background: var(--red-soft); color: var(--red); }
+.chip.demo { background: #fff0c2; color: #6b5100; }
+
+.big-row { display: flex; align-items: center; gap: 16px; margin: 6px 0 10px; }
+.big-num { font-size: 52px; font-weight: 750; line-height: 1; min-width: 70px; text-align: center; color: var(--teal-strong); }
+.big-num.small-big { font-size: 38px; text-align: left; }
+.danger-text { color: var(--red) !important; }
+.risk-text { color: var(--orange); }
+.ok-text { color: var(--teal-strong); }
+.big-check { font-size: 18px; font-weight: 650; }
+.big-check input { width: 24px; height: 24px; }
+
+.filters { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; scrollbar-width: thin; }
+.filter { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 4px 12px; white-space: nowrap; cursor: pointer; font-size: 14px; }
+.filter.on { background: var(--teal); border-color: var(--teal); color: #fff; }
+
+.item-card .item-name { font-size: 17px; font-weight: 650; }
+.item-card .qty { margin-left: 6px; color: var(--teal-strong); }
+.item-effect { color: var(--ink-2); margin: 6px 0 4px; }
+.notes { margin: 4px 0 0; font-size: 14.5px; }
+.qty { display: inline-block; min-width: 22px; text-align: center; font-weight: 700; }
+.cap { font-size: 15px; }
+
+.scav-clock { font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--orange); }
+.scav-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 12px; }
+.scav-option { text-align: left; border: 2px solid var(--line-strong); border-radius: 12px; background: var(--surface); padding: 12px; cursor: pointer; min-height: 120px; }
+.scav-option:hover, .scav-option:focus-visible { border-color: var(--teal); outline: none; }
+.scav-option.default { border-color: #e7c55c; }
+.scav-option-head { font-size: 20px; font-weight: 750; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.scav-option ul { margin: 0 0 4px; padding-left: 18px; }
+
+.weights { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.weight { display: inline-flex; gap: 6px; align-items: center; background: var(--surface-2); padding: 4px 8px; border-radius: 8px; font-size: 14px; }
+.weight input.num { width: 64px; }
+
+.rules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 10px 0; }
+.rule-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+.rule-label { font-size: 14px; font-weight: 600; }
+
+.log-list { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.log-list li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.log-meta { color: var(--muted); font-size: 12.5px; margin-right: 6px; }
+
+details.card > summary { cursor: pointer; }
+
+@media (max-width: 420px) {
+  .btn { padding: 6px 11px; }
+  .big-num { font-size: 44px; }
+  .tabs .tab { padding: 10px 8px 8px; font-size: 14.5px; }
+}
