@@ -291,3 +291,9 @@ pre.code { background: var(--surface-2); padding: 10px; border-radius: 8px; over
 @media (prefers-reduced-motion: reduce) {
   .flash { animation: none; }
 }
+
+/* 随机抽取事件（公共事件页的秘密区） */
+.event-draw-box .card-head h3 { margin: 0; }
+.event-draw { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.event-draw-name { font-size: 24px; font-weight: 750; line-height: 1.25; min-height: 1.25em; overflow-wrap: anywhere; }
+.event-draw-body p { margin: 4px 0; }

@@ -747,6 +747,7 @@
       watchDecision: null,
       finalWatch: null,
       eventCheck: null,
+      eventDraw: null,
       eventFlow: null,
       nightPublished: false,
       batchIds: []
@@ -756,7 +757,7 @@
   /** 今天是否已经记录了需要提醒的数据（跨日回退前确认用）。 */
   function todayHasData(today) {
     return !!(today.rotationDone || today.actedIds.length || today.plannerIds.length || today.skillUserIds.length ||
-      today.watchCandidates.length || today.finalWatch || today.randomWatch || today.eventCheck || today.eventFlow ||
+      today.watchCandidates.length || today.finalWatch || today.randomWatch || today.eventCheck || today.eventDraw || today.eventFlow ||
       today.nightPublished || today.batchIds.length || today.swapRequests.length);
   }
 
@@ -1396,6 +1397,54 @@
   function rollEventTrigger(chance, rng) {
     var roll = Math.floor((rng || Math.random)() * 100);
     return { roll: roll, chance: chance, triggered: roll < chance };
+  }
+
+  /** 本局已经用过的事件：以前各天的事件流程、今天已开始的流程、已确认的结算。 */
+  function usedEventIds(state) {
+    var ids = [];
+    function add(id) { if (id && ids.indexOf(id) < 0) ids.push(id); }
+    (state.history || []).forEach(function (h) { var f = h && h.today && h.today.eventFlow; if (f && f.event) add(f.event.id); });
+    if (state.today && state.today.eventFlow && state.today.eventFlow.event) add(state.today.eventFlow.event.id);
+    (state.resolutions || []).forEach(function (r) { if (!r.undone) add(r.sourceId); });
+    return ids;
+  }
+
+  /**
+   * 随机抽事件的候选（等概率）。只算至少有一个投票选项的事件。
+   * opts.includeDrafts：草案也参与（默认只抽正式与演示事件）；opts.tag：只抽带这个标签或在这个地点的事件；
+   * opts.noRepeat（默认开）：跳过 opts.usedIds 里本局用过的事件，全都用过时退回全部候选（fallback）；
+   * opts.excludeId：重抽时尽量不再抽到刚才那件。
+   */
+  function eventDrawPool(events, opts) {
+    opts = opts || {};
+    var base = (events || []).filter(function (e) {
+      if (!e || !e.options || !e.options.length) return false;
+      if (e.isDraft && !opts.includeDrafts) return false;
+      return !opts.tag || (e.tags || []).indexOf(opts.tag) >= 0 || e.location === opts.tag;
+    });
+    var used = opts.noRepeat === false ? [] : (opts.usedIds || []);
+    var fresh = base.filter(function (e) { return used.indexOf(e.id) < 0; });
+    var fallback = !fresh.length && base.length > 0;
+    var pool = fallback ? base : fresh;
+    if (opts.excludeId && pool.length > 1) pool = pool.filter(function (e) { return e.id !== opts.excludeId; });
+    return { pool: pool, total: base.length, fallback: fallback };
+  }
+
+  /** 抽一件；没有候选时返回 null。 */
+  function drawEvent(events, opts, rng) {
+    var p = eventDrawPool(events, opts);
+    if (!p.pool.length) return null;
+    var i = Math.min(p.pool.length - 1, Math.floor((rng || Math.random)() * p.pool.length));
+    return { event: p.pool[i], poolIds: p.pool.map(function (e) { return e.id; }), fallback: p.fallback };
+  }
+
+  /** 事件库里出现过的标签与地点（抽取时筛选用）。 */
+  function eventTags(events) {
+    var out = [];
+    (events || []).forEach(function (e) {
+      (e.tags || []).concat(e.location ? [e.location] : []).forEach(function (t) { if (t && out.indexOf(t) < 0) out.push(t); });
+    });
+    return out;
   }
 
   /** 事件效果需要从公共池扣除、但池里不够的物品。收益（正数）不算执行前必需物资。 */
@@ -2180,6 +2229,10 @@
     probabilityStatus: probabilityStatus,
     drawOutcome: drawOutcome,
     rollEventTrigger: rollEventTrigger,
+    usedEventIds: usedEventIds,
+    eventDrawPool: eventDrawPool,
+    drawEvent: drawEvent,
+    eventTags: eventTags,
     poolShortages: poolShortages,
     applyPoolDelta: applyPoolDelta,
     revertPoolChanges: revertPoolChanges,

@@ -266,6 +266,29 @@
     });
   }
 
+  /** 抽签：名字在候选之间越翻越慢，最后停在抽中的那件（结果早已存档，动画只是表演）。不出声。 */
+  function roulette(el, names, after) {
+    note('roulette');
+    var m = motion();
+    var final = el ? el.textContent : '';
+    var others = (names || []).filter(function (n) { return n && n !== final; });
+    if (!el || m === 'off' || !others.length) { if (after) after(); return; }
+    if (m === 'reduce') { anim(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 }); if (after) after(); return; }
+    var steps = [0, 60, 125, 195, 275, 365, 470, 590, 730];
+    steps.forEach(function (t, i) {
+      later(t, function () {
+        if (!el.isConnected) return;
+        if (i === steps.length - 1) {
+          el.textContent = final;
+          pulse(el, 1.08);
+          if (after) after();
+        } else {
+          el.textContent = others[(i + Math.floor(Math.random() * others.length)) % others.length];
+        }
+      });
+    });
+  }
+
   function pickCard(el) {
     note('select');
     play('select');
@@ -456,6 +479,26 @@
           { opacity: 1, transform: 'perspective(900px) rotateX(0deg)', transformOrigin: 'top center' }
         ], { duration: 650 });
         $$('.stage-event .vote-option').forEach(function (el, i) { slideIn(el, 450 + i * 110, 0, 8); });
+      });
+    }
+
+    // 主持人随机抽取事件（秘密区）：名字翻动后停下，细节再淡入；不出声
+    var da = a.today && a.today.eventDraw;
+    var db = b.today && b.today.eventDraw;
+    if (db && (!da || da.at !== db.at)) {
+      var names = (db.poolIds || []).map(function (id) {
+        var e = (b.events || []).filter(function (x) { return x.id === id; })[0];
+        return e ? e.name : '';
+      });
+      fx.push(function () {
+        var body = $('.event-draw-body');
+        if (body && motion() !== 'off') body.style.visibility = 'hidden';
+        roulette($('.event-draw-name'), names, function () {
+          if (!body) return;
+          body.style.visibility = '';
+          slideIn(body, 0, 0, 8);
+          glow($('.event-draw'), 'rgba(15,110,102,.4)');
+        });
       });
     }
 

@@ -43,7 +43,7 @@
   var notices = [];
   var wiping = false;
   var undo = new U.UndoStack(40);
-  var ui = { tab: 'flow', revealed: {}, drafts: {}, showAllNight: false, present: false, presentFs: false };
+  var ui = { tab: 'flow', revealed: {}, drafts: {}, showAllNight: false, present: false, presentFs: false, eventDrawOpts: { includeDrafts: false, noRepeat: true, tag: '' } };
 
   // ================================================================ 演示内容（明确标记）
 
@@ -2299,7 +2299,7 @@
             });
           }
         }, '主持人裁定：改为' + (check.triggered ? '无事件' : '触发')) : null,
-        inPhasePanel ? goSecret('events', '选择与结算事件（秘密）') : null));
+        inPhasePanel ? goSecret('events', '随机抽取或选择事件（秘密）') : null));
     if (inPhasePanel) return body;
     return h('section', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', null, '今日事件判定')), body);
   }
@@ -2342,23 +2342,18 @@
     var flow = state.today.eventFlow;
     var check = state.today.eventCheck;
     if (!flow) {
-      var formal = state.events.filter(function (e) { return !e.isDraft; });
       var pickSel = U.select([['', '手动选择事件…']].concat(state.events.map(function (e) { return [e.id, e.name + (e.isDraft ? '（草案）' : '') + (e.isDemo ? '（演示）' : '')]; })), '', function () {});
       return h('section', { class: 'card' },
         h('div', { class: 'card-head' }, h('h2', null, '今日事件结算')),
         !check ? h('div', { class: 'callout info' }, '今天还没做事件判定。也可以由主持人手动触发（记入日志）。') :
           !check.triggered ? h('div', { class: 'callout info' }, '今日判定为无事件。主持人仍可手动触发（记入日志）。') : null,
-        h('div', { class: 'row' },
-          h('button', {
-            type: 'button', class: 'btn primary', disabled: !formal.length, onclick: function () {
-              var ev = formal[Math.floor(Math.random() * formal.length)];
-              startFlow(ev, '从事件库随机（非草案）');
-            }
-          }, '从事件库随机一件（不含草案）'),
-          pickSel,
-          h('button', { type: 'button', class: 'btn', onclick: function () { var ev = state.events.find(function (e) { return e.id === pickSel.value; }); if (!ev) { U.toast('请先选择事件', 'warn'); return; } startFlow(ev, '主持人手动选择'); } }, '使用所选事件'),
-          h('button', { type: 'button', class: 'btn', onclick: adHocEvent }, '临时录入事件')),
-        formal.length ? null : h('p', { class: 'muted small' }, '正式事件库为空（约20个公共事件的内容待设计）：请手动选择草案、临时录入，或在下方新建／导入。'));
+        eventDrawBox(),
+        h('div', { class: 'card inset' },
+          h('h3', null, '或者手动选择'),
+          h('div', { class: 'row' },
+            pickSel,
+            h('button', { type: 'button', class: 'btn', onclick: function () { var ev = state.events.find(function (e) { return e.id === pickSel.value; }); if (!ev) { U.toast('请先选择事件', 'warn'); return; } startFlow(ev, '主持人手动选择'); } }, '使用所选事件'),
+            h('button', { type: 'button', class: 'btn', onclick: adHocEvent }, '临时录入事件'))));
     }
     var ev = flow.event;
     var op = findOption(flow);
@@ -2398,6 +2393,11 @@
   function eventSummary(ev) {
     return h('div', { class: 'card inset' },
       h('h3', null, ev.name, ev.isDemo ? chip('演示', 'demo') : null, ev.isDraft ? chip('草案', '') : null),
+      eventDetails(ev));
+  }
+
+  function eventDetails(ev) {
+    return h('div', null,
       h('p', { class: 'muted small' }, [ev.location ? '地点：' + ev.location : '', ev.tags.length ? '标签：' + ev.tags.join('、') : '', ev.participants ? '参与：' + ev.participants : '',
         ev.carryTicks != null ? '携带容量：' + C.fmtUnits(ev.carryTicks) + ' 单位' : ''].filter(Boolean).join('　')),
       ev.body ? h('p', null, ev.body) : null,
@@ -2406,11 +2406,83 @@
       h('p', { class: 'small' }, '选项：' + ev.options.map(function (o, i) { return String.fromCharCode(65 + i) + '. ' + o.label; }).join('　')));
   }
 
+  // ---------------------------------------------------------------- 随机抽取事件（秘密）
+  //
+  // 抽出来先存档（刷新不变），主持人看过再决定「使用这件」或「重抽」；重抽、清除都记入日志。
+
+  function drawOptions() {
+    var o = ui.eventDrawOpts;
+    return { includeDrafts: o.includeDrafts, noRepeat: o.noRepeat, tag: o.tag, usedIds: C.usedEventIds(state) };
+  }
+
+  function eventDrawBox() {
+    var o = ui.eventDrawOpts;
+    var draw = state.today.eventDraw;
+    var used = C.usedEventIds(state);
+    var p = C.eventDrawPool(state.events, drawOptions());
+    var tags = C.eventTags(state.events);
+    if (o.tag && tags.indexOf(o.tag) < 0) o.tag = '';
+    function toggle(key, label) {
+      return h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!o[key], onchange: function (e) { o[key] = e.target.checked; render(); } }), label);
+    }
+    var drawn = draw ? state.events.find(function (e) { return e.id === draw.eventId; }) : null;
+    var head = h('div', { class: 'card-head' }, h('h3', null, '随机抽取事件'),
+      h('span', { class: 'muted small' }, '可抽：' + p.pool.length + ' · 事件库：' + state.events.length + ' · 本局已用：' + used.length));
+    var filters = h('div', { class: 'row' },
+      toggle('noRepeat', '不重复（跳过本局用过的事件）'),
+      toggle('includeDrafts', '草案也参与'),
+      tags.length ? U.select([['', '全部标签与地点']].concat(tags.map(function (t) { return [t, t]; })), o.tag, function (v) { o.tag = v; render(); }) : null);
+    if (!draw) {
+      return h('div', { class: 'card inset event-draw-box' }, head, filters,
+        p.fallback ? h('div', { class: 'callout info' }, '符合条件的事件本局都用过了：这次会从全部符合条件的事件里抽。') : null,
+        p.pool.length ? null : h('p', { class: 'muted small' }, state.events.length ? '没有符合条件的事件（需要至少一个投票选项）：可以勾选「草案也参与」、换个标签，或手动选择。' : '事件库为空：先在下方新建、导入，或复制演示模板。'),
+        h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn primary', disabled: !p.pool.length, onclick: function () { drawRandomEvent(false); } }, U.icon('dice'), '随机抽取一件')),
+        h('p', { class: 'muted small' }, '每件等概率。抽到后先存档（刷新不变），看过再决定使用还是重抽；公开页不会显示，直到你在结算流程里公布。'));
+    }
+    return h('div', { class: 'card inset event-draw-box' }, head,
+      h('div', { class: 'event-draw' },
+        h('div', { class: 'muted small' }, '抽到的事件' + (draw.count > 1 ? '（已重抽：' + (draw.count - 1) + '）' : '')),
+        h('div', { class: 'event-draw-name' }, drawn ? drawn.name : '（这件事件已从事件库删除）'),
+        drawn ? h('div', { class: 'event-draw-body' }, h('div', { class: 'row tight' }, drawn.isDemo ? chip('演示', 'demo') : null, drawn.isDraft ? chip('草案', '') : null), eventDetails(drawn)) : null,
+        h('p', { class: 'muted small' }, '共 ' + draw.poolIds.length + ' 件候选，每件等概率' + (draw.fallback ? '（没用过的已抽完，这次从全部候选里抽）' : '') + '。')),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn primary', disabled: !drawn, onclick: function () { useDrawnEvent(); } }, '使用这件（开始今日事件流程）'),
+        h('button', { type: 'button', class: 'btn', onclick: function () { drawRandomEvent(true); } }, '重抽（记入日志）'),
+        h('button', { type: 'button', class: 'btn small', onclick: function () {
+          commit('清除事件抽取', function (s) { s.today.eventDraw = null; log(s, '清除随机抽取的事件', true); });
+        } }, '清除')),
+      filters);
+  }
+
+  function drawRandomEvent(again) {
+    commit(again ? '重抽事件' : '随机抽取事件', function (s) {
+      if (s.today.eventFlow) throw new Error('今日已有事件流程');
+      var prev = s.today.eventDraw;
+      var o = drawOptions();
+      if (again && prev) o.excludeId = prev.eventId;
+      var r = C.drawEvent(s.events, o, Math.random);
+      if (!r) throw new Error('没有符合条件的事件');
+      s.today.eventDraw = {
+        eventId: r.event.id, poolIds: r.poolIds, fallback: r.fallback, count: again && prev ? prev.count + 1 : 1,
+        at: Date.now(), opts: { includeDrafts: o.includeDrafts, noRepeat: o.noRepeat, tag: o.tag || '' }
+      };
+      log(s, (again ? '重抽事件（第 ' + s.today.eventDraw.count + ' 次）：' : '随机抽取事件：') + r.event.name + '（' + r.poolIds.length + ' 件候选）', true);
+    });
+  }
+
+  function useDrawnEvent() {
+    var draw = state.today.eventDraw;
+    var ev = draw && state.events.find(function (e) { return e.id === draw.eventId; });
+    if (!ev) { U.toast('这件事件已从事件库删除，请重抽', 'warn'); return; }
+    startFlow(ev, '随机抽取（' + draw.poolIds.length + ' 件候选' + (draw.count > 1 ? '，已重抽：' + (draw.count - 1) : '') + '）');
+  }
+
   function startFlow(ev, source) {
     commit('选择今日事件', function (s) {
       if (s.today.eventFlow) throw new Error('今日已有事件流程');
       var check = s.today.eventCheck;
       s.today.eventFlow = { id: C.uid('flow'), event: C.clone(ev), source: source, published: false, vote: null, preview: null, override: null, resolutionId: null, startedAt: Date.now() };
+      s.today.eventDraw = null;
       if (!check || !check.triggered) log(s, '主持人手动触发公共事件');
       log(s, '选择今日事件：' + ev.name + '（' + source + '）', true);
     });

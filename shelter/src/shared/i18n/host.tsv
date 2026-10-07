@@ -1197,3 +1197,36 @@ Discord 投票	Discord vote
 删除并重新载入	Delete and reload
 只包含规则配置、自定义物品与玩家名单，不含任何秘密。玩家在自己页面的「存档」里粘贴导入，就会自动填好玩家名单（守夜卡上的名字从这里来）。	Contains only rules, custom items and the player list—no secrets. Players paste it under “Save” on their own page and the player list fills in automatically (names on watch cards come from it).
 另一个标签页更新了存档：本页已重新载入	Another tab updated the save: this page has reloaded it
+随机抽取或选择事件（秘密）	Draw or pick an event (secret)
+或者手动选择	Or pick one yourself
+随机抽取事件	Random event draw
+可抽：	~
+ · 事件库：	~
+ · 本局已用：	~
+不重复（跳过本局用过的事件）	Don't repeat (skip events used this game)
+草案也参与	Include drafts
+全部标签与地点	All tags & places
+符合条件的事件本局都用过了：这次会从全部符合条件的事件里抽。	Every matching event has been used this game: this draw picks from all matching events.
+没有符合条件的事件（需要至少一个投票选项）：可以勾选「草案也参与」、换个标签，或手动选择。	No matching events (each needs at least one vote option): tick “Include drafts”, choose another tag, or pick one yourself.
+事件库为空：先在下方新建、导入，或复制演示模板。	The event library is empty: create, import, or copy a demo template below first.
+随机抽取一件	Draw one at random
+每件等概率。抽到后先存档（刷新不变），看过再决定使用还是重抽；公开页不会显示，直到你在结算流程里公布。	Every event is equally likely. The result is saved right away (refreshing won't change it); look it over, then use it or reroll. Nothing shows on the public page until you publish it in the resolution steps.
+抽到的事件	Drawn event
+（这件事件已从事件库删除）	(this event has been deleted from the library)
+ 件候选，每件等概率	 candidates, each equally likely
+（没用过的已抽完，这次从全部候选里抽）	 (every unused event was drawn already, so this draw used all candidates)
+使用这件（开始今日事件流程）	Use this one (start today's event flow)
+重抽（记入日志）	Reroll (logged)
+清除事件抽取	Clear event draw
+清除随机抽取的事件	Cleared the random event draw
+重抽事件	Reroll event
+没有符合条件的事件	No matching events
+重抽事件（第 	~
+ 次）：	~
+随机抽取事件：	Random event draw: 
+ 件候选）	 candidates)
+这件事件已从事件库删除，请重抽	This event has been deleted from the library; please reroll
+随机抽取（	Random draw (
+ 件候选	 candidates
+（已重抽：	~
+，已重抽：	~

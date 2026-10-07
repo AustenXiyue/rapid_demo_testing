@@ -465,6 +465,53 @@ test('主持人：用演示存档完整走一回合（发放、轮换、换位�
   await context.close();
 });
 
+test('主持人随机抽取事件：抽到先存档（刷新不变）、重抽换一件并记日志、使用后进入结算流程；公开页不提前显示', async () => {
+  const { context } = await newContext();
+  const { page, errors } = await open(context, HOST);
+  await hostDemo(page);
+  await startDay1(page);
+  await tab(page, 'events');
+  await reveal(page, 'events');
+  let s = await read(page, HOST_DEMO);
+  const names = s.events.map((e) => e.name);
+  const box = page.locator('.event-draw-box');
+  assert.match(await box.innerText(), /可抽：2 · 事件库：2 · 本局已用：0/);
+  await btn(page, '随机抽取一件').click();
+  await page.waitForFunction(() => window.ShelterFX.log.includes('roulette'));
+  s = await read(page, HOST_DEMO);
+  const first = s.today.eventDraw;
+  assert.ok(s.events.some((e) => e.id === first.eventId), '抽到的是事件库里的事件');
+  assert.equal(first.poolIds.length, 2);
+  assert.equal(first.count, 1);
+  // 名字翻动结束后停在抽中的那件
+  const drawnName = s.events.find((e) => e.id === first.eventId).name;
+  await page.waitForFunction((n) => document.querySelector('.event-draw-name').textContent === n, drawnName, { timeout: 3000 });
+  assert.ok(names.includes(drawnName));
+  assert.ok(!s.stage.event, '抽到不等于公布：公开页没有事件');
+  assert.ok(s.log.some((l) => l.secret && l.text.startsWith('随机抽取事件：' + drawnName)), '抽取记入日志（秘密）');
+
+  await page.reload();
+  assert.deepEqual((await read(page, HOST_DEMO)).today.eventDraw, first, '刷新不重抽');
+  await tab(page, 'events');
+  await reveal(page, 'events');
+  await btn(page, '重抽（记入日志）').click();
+  s = await read(page, HOST_DEMO);
+  assert.notEqual(s.today.eventDraw.eventId, first.eventId, '重抽换了一件');
+  assert.equal(s.today.eventDraw.count, 2);
+  assert.match(await page.locator('.event-draw').innerText(), /已重抽：1/);
+  assert.ok(s.log.some((l) => l.text.startsWith('重抽事件（第 2 次）')));
+
+  await btn(page, '使用这件（开始今日事件流程）').click();
+  s = await read(page, HOST_DEMO);
+  assert.equal(s.today.eventFlow.event.id, s.events.find((e) => e.name === s.today.eventFlow.event.name).id);
+  assert.notEqual(s.today.eventFlow.event.id, first.eventId);
+  assert.equal(s.today.eventDraw, null, '开始流程后抽取结果清掉');
+  assert.equal(s.today.eventFlow.source, '随机抽取（1 件候选，已重抽：1）', '重抽时刚才那件不在候选里');
+  assert.equal(await page.locator('.event-draw-box').count(), 0, '开始流程后抽取框收起');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
 test('事件抽签结果存档：刷新不会重抽；概率不全时只能手动录入', async () => {
   const { context } = await newContext();
   const { page } = await open(context, HOST);

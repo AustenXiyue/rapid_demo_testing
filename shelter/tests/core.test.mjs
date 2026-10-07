@@ -446,6 +446,50 @@ test('玩家名单：存档里录入其他玩家；旧存档从导入过的名�
   assert.deepEqual(C.normalizeSave(kept, 'shelter-player').otherNames, ['戊'], '已录入的名字原样保留');
 });
 
+test('随机抽取事件：默认只抽正式事件、跳过本局用过的、可按标签筛选；都用过时退回全部；重抽尽量换一件', () => {
+  const ev = (id, extra = {}) => Object.assign(C.normalizeEvent({ id, name: id, isDraft: false, options: [{ label: '参与' }] }), extra);
+  const events = [
+    ev('a', { tags: ['售货机'] }), ev('b', { location: '天台' }), ev('c'),
+    ev('draft', { isDraft: true }), ev('novote', { options: [] })
+  ];
+  const ids = (r) => r.pool.map((e) => e.id);
+  assert.deepEqual(ids(C.eventDrawPool(events, {})), ['a', 'b', 'c'], '草案、没有投票选项的不参与');
+  assert.deepEqual(ids(C.eventDrawPool(events, { includeDrafts: true })), ['a', 'b', 'c', 'draft']);
+  assert.deepEqual(ids(C.eventDrawPool(events, { tag: '售货机' })), ['a'], '按标签');
+  assert.deepEqual(ids(C.eventDrawPool(events, { tag: '天台' })), ['b'], '按地点');
+  assert.deepEqual(ids(C.eventDrawPool(events, { usedIds: ['a', 'c'] })), ['b'], '不重复：跳过用过的');
+  assert.deepEqual(ids(C.eventDrawPool(events, { usedIds: ['a', 'c'], noRepeat: false })), ['a', 'b', 'c'], '关掉不重复');
+  const all = C.eventDrawPool(events, { usedIds: ['a', 'b', 'c'] });
+  assert.equal(all.fallback, true, '都用过了：退回全部候选');
+  assert.deepEqual(ids(all), ['a', 'b', 'c']);
+  assert.deepEqual(ids(C.eventDrawPool(events, { excludeId: 'a' })), ['b', 'c'], '重抽时不再抽到刚才那件');
+  assert.deepEqual(ids(C.eventDrawPool([events[0]], { excludeId: 'a' })), ['a'], '只剩一件时照样能抽');
+  assert.equal(C.drawEvent([], {}, Math.random), null);
+  assert.deepEqual(C.eventTags(events), ['售货机', '天台']);
+
+  // 等概率：3 件各约三分之一
+  const rng = C.seededRng(9);
+  const count = { a: 0, b: 0, c: 0 };
+  for (let i = 0; i < 9000; i++) count[C.drawEvent(events, {}, rng).event.id] += 1;
+  Object.values(count).forEach((n) => assert.ok(Math.abs(n / 9000 - 1 / 3) < 0.03, JSON.stringify(count)));
+  const r = C.drawEvent(events, {}, () => 0.99);
+  assert.equal(r.event.id, 'c');
+  assert.deepEqual(r.poolIds, ['a', 'b', 'c']);
+});
+
+test('本局用过的事件：以前各天的流程、今天的流程、未撤销的结算', () => {
+  const s = C.newHostState();
+  assert.equal(s.today.eventDraw, null);
+  s.history = [{ day: 1, today: Object.assign(C.newToday(), { eventFlow: { event: { id: 'e1' } } }) }, { day: 2, today: C.newToday() }];
+  s.today.eventFlow = { event: { id: 'e2' } };
+  s.resolutions = [{ sourceId: 'e3', undone: false }, { sourceId: 'e4', undone: true }];
+  assert.deepEqual(C.usedEventIds(s), ['e1', 'e2', 'e3']);
+  const t = C.newToday();
+  assert.equal(C.todayHasData(t), false);
+  t.eventDraw = { eventId: 'e1' };
+  assert.equal(C.todayHasData(t), true, '抽过事件也算今天有记录');
+});
+
 test('公共事件：80% 只控制触发；分支概率单独计算，合计100%才允许自动抽签', () => {
   let triggered = 0;
   const rng = C.seededRng(99);
