@@ -3,7 +3,9 @@
 | 原型 | 目录 | 线上入口 |
 | --- | --- | --- |
 | 骰迹 · 玩法测试原型 | 根目录（`index.html`） | — |
-| 避难所 Playtest · 主持人／玩家双网页 | [`shelter/`](./shelter/README.md) | `https://xiyueym.com/Misc/ShelterPT/`（计划，尚未部署） |
+| 避难所 Playtest · 联机版（改造中） | [`shelter/`](./shelter/README.md) | `https://xiyueym.com/Misc/ShelterPT/`（计划，尚未部署） |
+
+避难所的服务端用 Docker 部署：在仓库根目录执行 `docker compose up -d --build`，详见 [`shelter/README.md`](./shelter/README.md)。
 
 ---
 

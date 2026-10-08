@@ -1,0 +1,15 @@
+# 部署：在仓库根目录执行 docker compose up -d --build
+# 端口只绑定到本机，由 Caddy 把 https://xiyueym.com/Misc/ShelterPT/* 去掉前缀后转发到这里。
+services:
+  shelter:
+    build: ./shelter
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      PUBLIC_BASE_PATH: /Misc/ShelterPT/
+    volumes:
+      - shelter-data:/data
+
+volumes:
+  shelter-data:

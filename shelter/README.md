@@ -9,7 +9,8 @@
 - 离线使用：直接双击 `host.html` 或 `player.html`。每个文件都内含全部 CSS、JavaScript 与道具数据，
   不加载 CDN、远程字体，不发任何网络请求。
 
-> 当前线上版本仍是同样的两个静态文件，不引入账号、服务器、实时同步或远程数据库。
+> 本 fork 正在改造成联机版：Node 服务端（`server/`）负责账户、对局存储与实时同步。目前完成了服务端骨架与账户（注册、登录、多设备会话）；
+> 主持人／玩家页面还是原来的单机版，会在「大厅」阶段接入服务端。
 
 ## 目录
 
@@ -24,7 +25,10 @@
 | `tools/` | 词典维护脚本（提取界面中文、列出缺译词条），不部署 |
 | `src/host/`、`src/player/` | 两个页面各自的模板、脚本与样式 |
 | `build.mjs` | 把 `src/` 内联成两个单文件页面 |
-| `tests/` | 单元测试（`core.test.mjs`）与浏览器端到端验收（`e2e.test.mjs`） |
+| `server/` | 联机服务端：`index.js` 入口（HTTP + Socket.IO）、`db.js` SQLite 与表结构升级、`auth.js` 账户与会话、`admin.js` 管理员命令 |
+| `account.html` | 账户页：注册、登录、查看账户 ID 与实时连接状态 |
+| `Dockerfile` | 服务端镜像；仓库根目录的 `docker-compose.yml` 调用它 |
+| `tests/` | 单元测试（`core.test.mjs`）、服务端测试（`server.test.mjs`）与浏览器端到端验收（`e2e.test.mjs`） |
 
 ## 动画与音效
 
@@ -258,7 +262,23 @@ node build.mjs --check    # 检查产物是否与源码一致
 python3 tools/i18n.py missing             # 列出还没有英文的界面文字
 node --test tests/core.test.mjs          # 单元测试（无依赖）
 npm install && npm run test:e2e          # 浏览器验收（需要 Playwright 的 Chromium）
+npm start                                # 本地启动服务端：http://localhost:3000/account.html
+npm run test:server                      # 服务端测试（内存数据库，真实 HTTP 与 Socket.IO）
 ```
 
-部署：计划挂在 `https://xiyueym.com/Misc/ShelterPT/` 子路径下（不是域名根目录），上线的只有 `index.html`、`host.html`、`player.html`。
+服务端环境变量：`PORT`（默认 3000）、`DB_PATH`（默认 `shelter/data/shelter.db`，已被 git 忽略）、
+`PUBLIC_BASE_PATH`（cookie 的 Path，线上为 `/Misc/ShelterPT/`）、`TRUST_PROXY`（默认 `loopback, uniquelocal`）。
+数据库用 Node 24 自带的 `node:sqlite`（实验特性，启动参数里关掉了警告）。
+
+账户：开放注册，用户名 3～20 个字符（中英文、数字、下划线，不分大小写），密码至少 8 位；登录会话 30 天，存在 httpOnly cookie `shelterpt_sid` 里，
+每台设备各一个会话。注册和登录按 IP 限流。忘记密码由管理员重置：
+
+```bash
+node server/admin.js reset-password <用户名>   # 打印临时密码，并让该账户所有设备下线
+node server/admin.js list-users
+# 线上：docker compose exec shelter node server/admin.js reset-password <用户名>
+```
+
+部署：计划挂在 `https://xiyueym.com/Misc/ShelterPT/` 子路径下（不是域名根目录）。在仓库根目录执行 `docker compose up -d --build`，
+容器端口只绑定 `127.0.0.1:3000`，由 Caddy 去掉前缀后反代；数据库在命名卷 `shelter-data` 里。服务端只对外提供页面文件、`/api/*`、`/socket.io/` 与 `/healthz`。
 因此页面与资源一律用相对路径，localStorage 键名统一以 `shelterpt_` 开头，避免和同域名下的其他项目冲突。

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>避难所 · 账户</title>
+<meta name="theme-color" content="#faf6ee">
+<style>
+  :root {
+    --bg: #faf6ee; --surface: #fffdf8; --surface-2: #f4efe4; --ink: #2a2620; --ink-2: #57504a; --muted: #847b70;
+    --line: #e3dacb; --teal: #0f6e66; --teal-strong: #0b5a53; --teal-soft: #dcefe9; --red: #a8321f; --red-soft: #f8e1dc;
+    --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.65; }
+  main { max-width: 440px; margin: 0 auto; padding: 48px 16px 64px; }
+  .topline { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .eyebrow { color: var(--muted); font-size: 14px; letter-spacing: 1px; }
+  .lang-btn { font: inherit; font-size: 14px; font-weight: 650; min-width: 52px; padding: 5px 12px; border: 1px solid #cfc4b1; border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+  h1 { font-size: 32px; line-height: 1.2; margin: 6px 0 20px; font-weight: 750; }
+  .panel { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 2px rgba(60, 40, 10, 0.06); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; padding: 4px; background: var(--surface-2); border-radius: 10px; }
+  .tabs button { flex: 1; font: inherit; font-weight: 650; padding: 6px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(60, 40, 10, 0.1); }
+  label { display: block; margin: 12px 0 4px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+  input { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid #cfc4b1; border-radius: 8px; background: #fff; color: var(--ink); }
+  input:focus-visible, button:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+  .hint { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+  .primary { width: 100%; margin-top: 18px; font: inherit; font-weight: 650; padding: 9px; border: 0; border-radius: 8px; background: var(--teal); color: #fff; cursor: pointer; }
+  .primary:hover { background: var(--teal-strong); }
+  .primary:disabled { opacity: 0.6; cursor: default; }
+  .error { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--red-soft); color: var(--red); font-size: 14px; }
+  dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; }
+  dt { color: var(--muted); font-size: 14px; }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  code { font-size: 13px; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+  .dot.on { background: var(--teal); }
+  .secondary { margin-top: 18px; font: inherit; padding: 7px 14px; border: 1px solid #cfc4b1; border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <div class="topline"><div class="eyebrow" data-en="SHELTER PLAYTEST · ONLINE">避难所 PLAYTEST · 联机</div><button type="button" class="lang-btn" id="lang-btn" aria-label="Switch to English">EN</button></div>
+  <h1 data-en="Account">账户</h1>
+
+  <section class="panel" id="guest" hidden>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-login" aria-selected="true" data-en="Log in">登录</button>
+      <button type="button" role="tab" id="tab-register" aria-selected="false" data-en="Register">注册</button>
+    </div>
+    <form id="auth-form" novalidate>
+      <label for="username" data-en="Username">用户名</label>
+      <input id="username" name="username" autocomplete="username" required maxlength="20">
+      <p class="hint" id="username-hint" hidden data-en="3–20 characters: letters, digits, underscore; Chinese is fine.">3～20 个字符：中英文、数字、下划线。</p>
+      <label for="password" data-en="Password">密码</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="200">
+      <p class="hint" id="password-hint" hidden data-en="At least 8 characters. Forgot it? Ask the admin to reset it.">至少 8 位。忘记密码请找管理员重置。</p>
+      <p class="error" id="error" hidden></p>
+      <button type="submit" class="primary" id="submit" data-en="Log in">登录</button>
+    </form>
+  </section>
+
+  <section class="panel" id="member" hidden>
+    <dl>
+      <dt data-en="Username">用户名</dt><dd id="me-name"></dd>
+      <dt data-en="Account ID">账户 ID</dt><dd><code id="me-id"></code></dd>
+      <dt data-en="Live link">实时连接</dt><dd><span class="dot" id="sock-dot"></span><span id="sock-text" data-en="Connecting…">连接中…</span></dd>
+    </dl>
+    <button type="button" class="secondary" id="logout" data-en="Log out">退出登录</button>
+  </section>
+</main>
+<script src="socket.io/socket.io.js"></script>
+<script>
+  (function () {
+    // 中文／English：与其他页面共用同一个选择（本机记住）
+    var KEY = 'shelterpt_lang';
+    var btn = document.getElementById('lang-btn');
+    function lang() { try { return localStorage.getItem(KEY) === 'en' ? 'en' : 'zh'; } catch (e) { return 'zh'; } }
+    function text(el, zh, en) { el.setAttribute('data-zh', zh); el.setAttribute('data-en', en); el.textContent = lang() === 'en' ? en : zh; }
+    function apply() {
+      var en = lang() === 'en';
+      var els = document.querySelectorAll('[data-en]');
+      for (var i = 0; i < els.length; i++) {
+        if (!els[i].hasAttribute('data-zh')) els[i].setAttribute('data-zh', els[i].textContent);
+        els[i].textContent = els[i].getAttribute(en ? 'data-en' : 'data-zh');
+      }
+      document.documentElement.lang = en ? 'en' : 'zh-CN';
+      document.title = en ? 'Shelter · Account' : '避难所 · 账户';
+      btn.textContent = en ? '中文' : 'EN';
+      btn.setAttribute('aria-label', en ? '切换到中文' : 'Switch to English');
+    }
+    btn.addEventListener('click', function () {
+      try { localStorage.setItem(KEY, lang() === 'en' ? 'zh' : 'en'); } catch (e) { /* 只在本页生效 */ }
+      apply();
+    });
+    apply();
+
+    // 接口与 Socket.IO 都按当前页面所在目录拼路径：本地是 /socket.io，线上自动是 /Misc/ShelterPT/socket.io
+    var BASE = location.pathname.replace(/[^/]*$/, '');
+    var ERRORS = {
+      bad_username: ['用户名需要 3～20 个字符：中英文、数字、下划线。', 'Username must be 3–20 letters, digits or underscores.'],
+      bad_password: ['密码至少 8 位。', 'Password must be at least 8 characters.'],
+      username_taken: ['这个用户名已经被注册了。', 'That username is already taken.'],
+      wrong_credentials: ['用户名或密码不对。', 'Wrong username or password.'],
+      rate_limited: ['尝试次数太多，请过几分钟再试。', 'Too many attempts. Try again in a few minutes.'],
+      network: ['连不上服务器，请稍后再试。', 'Cannot reach the server. Try again later.']
+    };
+    var mode = 'login';
+    var socket = null;
+    var $ = function (id) { return document.getElementById(id); };
+
+    function api(path, body) {
+      return fetch(BASE + 'api/' + path, {
+        method: body ? 'POST' : 'GET',
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined,
+        credentials: 'same-origin'
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (data) { return { ok: r.ok, data: data }; });
+      });
+    }
+
+    function setMode(next) {
+      mode = next;
+      var reg = mode === 'register';
+      $('tab-login').setAttribute('aria-selected', String(!reg));
+      $('tab-register').setAttribute('aria-selected', String(reg));
+      $('username-hint').hidden = !reg;
+      $('password-hint').hidden = !reg;
+      $('password').autocomplete = reg ? 'new-password' : 'current-password';
+      text($('submit'), reg ? '注册并登录' : '登录', reg ? 'Register and log in' : 'Log in');
+      $('error').hidden = true;
+    }
+
+    function showError(code) {
+      var msg = ERRORS[code] || ['出错了（' + code + '）。', 'Something went wrong (' + code + ').'];
+      text($('error'), msg[0], msg[1]);
+      $('error').hidden = false;
+    }
+
+    function show(user) {
+      $('guest').hidden = !!user;
+      $('member').hidden = !user;
+      if (socket) { socket.disconnect(); socket = null; }
+      if (!user) return;
+      $('me-name').textContent = user.username;
+      $('me-id').textContent = user.id;
+      if (!window.io) return text($('sock-text'), '实时连接脚本没有载入', 'Live-link script failed to load');
+      socket = window.io({ path: BASE + 'socket.io' });
+      socket.on('hello', function () { $('sock-dot').className = 'dot on'; text($('sock-text'), '已连接', 'Connected'); });
+      socket.on('disconnect', function () { $('sock-dot').className = 'dot'; text($('sock-text'), '已断开，正在重连…', 'Disconnected, reconnecting…'); });
+      socket.on('connect_error', function (e) { $('sock-dot').className = 'dot'; text($('sock-text'), '连接失败：' + e.message, 'Connection failed: ' + e.message); });
+    }
+
+    $('tab-login').addEventListener('click', function () { setMode('login'); });
+    $('tab-register').addEventListener('click', function () { setMode('register'); });
+    $('auth-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      $('submit').disabled = true;
+      api(mode, { username: $('username').value.trim(), password: $('password').value })
+        .then(function (r) {
+          if (!r.ok) return showError(r.data.error || 'unknown');
+          $('password').value = '';
+          show(r.data.user);
+        }, function () { showError('network'); })
+        .then(function () { $('submit').disabled = false; });
+    });
+    $('logout').addEventListener('click', function () {
+      api('logout', {}).then(function () { setMode('login'); show(null); }, function () { showError('network'); });
+    });
+
+    api('me').then(function (r) { show(r.data.user); }, function () { show(null); showError('network'); });
+  })();
+</script>
+</body>
+</html>
