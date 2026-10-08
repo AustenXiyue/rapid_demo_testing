@@ -90,3 +90,8 @@ tab-short|存档	Save
 可抽	Drawable
 本局已用	Used this game
 已重抽	rerolls
+# 联机大厅里与面板译法不同的词（lobby.js 用 U.TC('lobby', …) 取）
+lobby|加入	Join
+lobby|进入	Enter
+lobby|继续	Resume
+lobby|已结束	Ended

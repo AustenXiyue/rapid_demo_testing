@@ -2119,6 +2119,26 @@
     return { ok: true, errors: [] };
   }
 
+  /**
+   * 把主持人的规则包套到玩家存档上：规则、自定义物品（按 id 覆盖）、附带的搜刮模板、玩家名单。
+   * 不碰库存和状态。玩家页导入与服务端联机同步共用。
+   */
+  function applyRulesPack(s, pack) {
+    s.rules = normalizeRules(pack.rules);
+    (pack.customItems || []).forEach(function (d) {
+      if (!d || !d.id || !d.name) return;
+      var idx = s.customItems.findIndex(function (x) { return x.id === d.id; });
+      if (idx >= 0) s.customItems[idx] = d;
+      else s.customItems.push(d);
+    });
+    if (pack.scavengeTemplate && Array.isArray(pack.scavengeTemplate.items)) s.scavengeTemplate = pack.scavengeTemplate;
+    if (pack.roster && Array.isArray(pack.roster.players)) {
+      s.roster = pack.roster;
+      s.otherNames = pack.roster.players.filter(function (p) { return p && p.name && p.alive !== false && p.name !== s.name; }).map(function (p) { return p.name; });
+    }
+    return s;
+  }
+
   return {
     SCHEMA_VERSION: SCHEMA_VERSION,
     PENDING_TEXT: PENDING_TEXT,
@@ -2263,6 +2283,7 @@
     validateSave: validateSave,
     normalizeSave: normalizeSave,
     makeRulesPack: makeRulesPack,
-    validateRulesPack: validateRulesPack
+    validateRulesPack: validateRulesPack,
+    applyRulesPack: applyRulesPack
   };
 });

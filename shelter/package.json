@@ -8,6 +8,7 @@
     "check": "node build.mjs --check",
     "test": "node --test tests/core.test.mjs",
     "test:server": "node --disable-warning=ExperimentalWarning --test tests/server.test.mjs",
+    "test:lobby": "node --disable-warning=ExperimentalWarning --test tests/lobby.test.mjs",
     "test:e2e": "node --test --test-concurrency=1 tests/e2e.test.mjs"
   },
   "devDependencies": {

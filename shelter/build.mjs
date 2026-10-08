@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 把 src/ 下共用的数据与代码内联成两个自包含页面：host.html、player.html。
+// 把 src/ 下共用的数据与代码内联成自包含页面：host.html、player.html，以及联机大厅 index.html。
 // 产物不依赖任何外部资源，双击即可离线打开；部署时也是这两个文件原样上线。
 //
 //   node build.mjs          生成
@@ -13,6 +13,7 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 const PAGES = [
   { template: 'src/host/host.html', out: 'host.html' },
   { template: 'src/player/player.html', out: 'player.html' },
+  { template: 'src/lobby/lobby.html', out: 'index.html' },
 ];
 const BANNER = '<!-- 此文件由 shelter/build.mjs 从 shelter/src/ 生成，请勿直接修改。 -->';
 

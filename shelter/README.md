@@ -9,15 +9,15 @@
 - 离线使用：直接双击 `host.html` 或 `player.html`。每个文件都内含全部 CSS、JavaScript 与道具数据，
   不加载 CDN、远程字体，不发任何网络请求。
 
-> 本 fork 正在改造成联机版：Node 服务端（`server/`）负责账户、对局存储与实时同步。目前完成了服务端骨架与账户（注册、登录、多设备会话）；
-> 主持人／玩家页面还是原来的单机版，会在「大厅」阶段接入服务端。
+> 本 fork 正在改造成联机版：Node 服务端（`server/`）负责账户、对局存储与实时同步。目前完成了服务端骨架、账户、联机大厅，以及面板存档上云（多设备同步、暂停只读、规则自动同步）；
+> 主持人与玩家之间的实时互通（公开展示、站内交接、守夜卡片）是下一步。不带 `?game=` 打开面板时仍是原来的本机模式（自动化测试用，大厅不链接）。
 
 ## 目录
 
 | 路径 | 说明 |
 | --- | --- |
 | `host.html` / `player.html` | 交付物：由构建脚本生成的单文件页面，**不要直接修改** |
-| `index.html` | 线上入口页（选择主持人／玩家） |
+| `index.html` | 联机大厅（构建产物，源码在 `src/lobby/`）：登录注册、创建／加入对局、我的对局、房间 |
 | `src/fx/` | 动画与音效（`fx.js`、`fx.css`），内联在两个页面最后；词条在 `src/shared/i18n/fx.tsv` |
 | `src/shared/core.js` | 两端共用：道具字典、职业／任务草案、规则配置、纯逻辑（座次、发放、守夜、事件、计分、搜刮、存档校验） |
 | `src/shared/ui.js`、`base.css` | 两端共用的界面工具与样式 |
@@ -25,8 +25,8 @@
 | `tools/` | 词典维护脚本（提取界面中文、列出缺译词条），不部署 |
 | `src/host/`、`src/player/` | 两个页面各自的模板、脚本与样式 |
 | `build.mjs` | 把 `src/` 内联成两个单文件页面 |
-| `server/` | 联机服务端：`index.js` 入口（HTTP + Socket.IO）、`db.js` SQLite 与表结构升级、`auth.js` 账户与会话、`admin.js` 管理员命令 |
-| `account.html` | 账户页：注册、登录、查看账户 ID 与实时连接状态 |
+| `server/` | 联机服务端：`index.js` 入口（HTTP + Socket.IO）、`db.js` SQLite 与表结构升级、`auth.js` 账户与会话、`games.js` 对局与大厅、`admin.js` 管理员命令 |
+| `src/lobby/` | 大厅页面的模板、脚本与样式；共用 `base.css`、`ui.js`、`i18n.js`，词条在 `src/shared/i18n/lobby.tsv` |
 | `Dockerfile` | 服务端镜像；仓库根目录的 `docker-compose.yml` 调用它 |
 | `tests/` | 单元测试（`core.test.mjs`）、服务端测试（`server.test.mjs`）与浏览器端到端验收（`e2e.test.mjs`） |
 
@@ -262,13 +262,24 @@ node build.mjs --check    # 检查产物是否与源码一致
 python3 tools/i18n.py missing             # 列出还没有英文的界面文字
 node --test tests/core.test.mjs          # 单元测试（无依赖）
 npm install && npm run test:e2e          # 浏览器验收（需要 Playwright 的 Chromium）
-npm start                                # 本地启动服务端：http://localhost:3000/account.html
+npm start                                # 本地启动服务端：http://localhost:3000/
 npm run test:server                      # 服务端测试（内存数据库，真实 HTTP 与 Socket.IO）
+npm run test:lobby                       # 大厅浏览器验收（真实服务端 + 两个浏览器）
 ```
 
 服务端环境变量：`PORT`（默认 3000）、`DB_PATH`（默认 `shelter/data/shelter.db`，已被 git 忽略）、
 `PUBLIC_BASE_PATH`（cookie 的 Path，线上为 `/Misc/ShelterPT/`）、`TRUST_PROXY`（默认 `loopback, uniquelocal`）。
 数据库用 Node 24 自带的 `node:sqlite`（实验特性，启动参数里关掉了警告）。
+
+大厅与对局：任何账户都能创建对局并成为主导，可以选择只主持或同时扮演角色（占一个座位）。玩家凭 6 位邀请码，或在「加入对局」的公开列表里加入。
+对局状态：招募中 → 进行中 ⇄ 已暂停 → 已结束。招募中可以加入到人满，主导可以移除玩家、切换自己是否占座位，玩家可以退出；
+开局后默认原班人马，主导可以「释放座位」：座位和上面的数据保留，只解除和原账户的绑定，空座位出现在公开列表里由新玩家接手。
+删除：开局前直接删除；开局后只是对主导隐藏并记为已结束，记录保留在服务器上，玩家仍能查看。
+房间通过 Socket.IO 实时推送座位、在线状态和对局状态（`game:watch` 订阅，服务端推 `game:update`、`games:changed`、`lobby:changed`、`game:gone`）。
+面板存档：开局时服务端用 `src/shared/core.js` 生成——主持人存档的玩家名单按座位生成（玩家 ID＝座位 ID），每个座位一份玩家存档并套用规则包。
+从房间进入 `host.html?game=<id>`／`player.html?game=<id>`，存档读写 `/api/games/:id/state/host|seat`（带版本号，两台设备同时改时后到的载入最新版）；
+保存后推给同一账户的其他设备（`state:update`）。只有进行中可写，暂停或结束后面板只读。主持人改了规则、自定义物品或玩家名单，服务端自动套到所有玩家存档上，
+在线的玩家面板弹出提示。座位被释放后存档留在座位上，接手的人直接用。
 
 账户：开放注册，用户名 3～20 个字符（中英文、数字、下划线，不分大小写），密码至少 8 位；登录会话 30 天，存在 httpOnly cookie `shelterpt_sid` 里，
 每台设备各一个会话。注册和登录按 IP 限流。忘记密码由管理员重置：

@@ -1229,3 +1229,8 @@ Discord 投票	Discord vote
  件候选	 candidates
 （已重抽：	~
 ，已重抽：	~
+自动保存到服务器	Auto-saved to the server
+存档保存在服务器上，换设备登录同一账户就能继续。导出 JSON 可以留一份手动备份；导入会替换服务器上的存档。	The save lives on the server: log in with the same account on any device to carry on. Export JSON to keep a manual backup; importing replaces the save on the server.
+正在从服务器载入存档…	Loading the save from the server…
+网络断开：恢复连接后会自动保存	Connection lost: changes will save automatically once it's back
+保存到服务器失败（	Saving to the server failed (

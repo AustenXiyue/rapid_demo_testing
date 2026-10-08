@@ -3,8 +3,7 @@
 // 需要 Playwright 的 Chromium（npx playwright install chromium）。
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
-import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -94,12 +93,12 @@ async function recordAction(page, pid, typeLabel) {
 
 // ---------------------------------------------------------------- 文件与网络
 
-test('两个文件断网后可单独打开；核心功能没有网络依赖', async () => {
+// 面板里有联机模式的代码（网址带 ?game= 时才连服务器），这里检查不带 ?game= 的本机模式：运行时不发任何请求
+test('两个文件断网后可单独打开；本机模式没有网络依赖', async () => {
   for (const file of ['host.html', 'player.html']) {
     const html = readFileSync(join(ROOT, file), 'utf8');
     assert.ok(!/\b(src|href)\s*=\s*["']https?:/i.test(html), file + ' 不引用外部资源');
     assert.ok(!/@import|url\(\s*["']?https?:/i.test(html), file + ' 不加载远程样式或字体');
-    assert.ok(!/\bfetch\(|XMLHttpRequest|WebSocket|sendBeacon|EventSource/.test(html), file + ' 不发网络请求');
   }
   const { context, external } = await newContext();
   for (const url of [HOST, PLAYER]) {
@@ -897,44 +896,6 @@ test('玩家页在 375px 宽度下没有横向溢出', async () => {
   await context.close();
 });
 
-test('入口页：经主站反代的 /game/shelter（无结尾斜杠）与直连路径下链接都正确', async () => {
-  // 模拟线上：主站把 /game/shelter → 上游 /shelter/index.html，/game/shelter/* → 上游 /shelter/*
-  const server = createServer((req, res) => {
-    const path = decodeURI(req.url.split('?')[0]);
-    const map = { '/game/shelter': 'index.html', '/shelter': 'index.html', '/shelter/': 'index.html' };
-    let file = map[path];
-    if (!file) {
-      const m = path.match(/^\/(?:game\/)?shelter\/([\w.-]+)$/);
-      file = m ? m[1] : null;
-    }
-    if (!file || !existsSync(join(ROOT, file))) { res.writeHead(404); res.end('not found'); return; }
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(readFileSync(join(ROOT, file)));
-  });
-  await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  const origin = 'http://127.0.0.1:' + server.address().port;
-  const { context, external } = await newContext({ allowLocal: origin });
-  try {
-    for (const [entry, expected] of [['/game/shelter', '/game/shelter/'], ['/shelter/', '/shelter/'], ['/shelter', '/shelter/']]) {
-      const { page, errors } = await open(context, origin + entry);
-      const hrefs = await page.locator('a[data-page]').evaluateAll((as) => as.map((a) => new URL(a.href).pathname));
-      assert.deepEqual(hrefs, [expected + 'host.html', expected + 'player.html'], entry);
-      await page.locator('a[data-page="player.html"]').click();
-      await page.waitForSelector('#tabs .tab');
-      assert.equal(new URL(page.url()).pathname, expected + 'player.html');
-      assert.deepEqual(errors, []);
-      await page.close();
-    }
-    const { page } = await open(context, 'file://' + join(ROOT, 'index.html'));
-    const local = await page.locator('a[data-page]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-    assert.deepEqual(local, ['host.html', 'player.html'], '双击打开时保持相对链接');
-    assert.deepEqual(external, []);
-  } finally {
-    await context.close();
-    server.close();
-  }
-});
-
 test('玩家总览：汇总生命、状态、库存、财富与提醒，并能跳到对应页', async () => {
   const { context } = await newContext({ viewport: { width: 390, height: 844 } });
   const { page, errors } = await open(context, PLAYER);
@@ -1139,20 +1100,6 @@ test('英文界面：主持人与玩家每一页都没有残留中文（演示�
   await context.close();
 });
 
-test('入口页：中英文切换，与两个面板共用同一个选择', async () => {
-  const { context } = await newContext();
-  const { page } = await open(context, 'file://' + join(ROOT, 'index.html'));
-  await page.locator('#lang-btn').click();
-  assert.equal(await page.locator('h1').innerText(), 'Shelter Playtest');
-  assert.equal(await page.title(), 'Shelter Playtest');
-  assert.ok(!HAN.test(await page.locator('main').innerText().then((t) => t.replace('中文', ''))), '入口页没有残留中文');
-  const { page: player } = await open(context, PLAYER);
-  assert.equal(await player.title(), 'Shelter Playtest · Player', '玩家页跟随入口页的选择');
-  await page.locator('#lang-btn').click();
-  assert.equal(await page.locator('h1').innerText(), '避难所 Playtest');
-  await context.close();
-});
-
 // ---------------------------------------------------------------- 守夜名单：玩家抽卡 → 分享链接 → 主持人打开即入池 → 末位拍板
 
 test('守夜名单：只在点亮「计划守夜名单」时出现；抽两张、选一张、复制链接；主持人打开链接看到同一张卡，不重新随机', async () => {
@@ -1285,7 +1232,7 @@ test('守夜名单：只在点亮「计划守夜名单」时出现；抽两张�
   await hc.close();
 });
 
-test('一键重置：玩家页、主持人页只删自己的本机数据并重新载入；入口页可清空全部（语言选择保留）', async () => {
+test('一键重置：玩家页、主持人页只删自己的本机数据并重新载入', async () => {
   const { context } = await newContext();
   const { page: player, errors } = await open(context, PLAYER);
   await tab(player, 'action');
@@ -1322,13 +1269,6 @@ test('一键重置：玩家页、主持人页只删自己的本机数据并重�
   assert.equal(await host.evaluate((k) => localStorage.getItem(k), HOST_DEMO), null, '主持人演示存档已删除');
   assert.notEqual(await host.evaluate((k) => localStorage.getItem(k), PLAYER_KEY), null, '玩家数据不受影响');
 
-  // 入口页：清空两页的全部数据，语言选择保留
-  const landing = await context.newPage();
-  await landing.goto('file://' + join(ROOT, 'index.html'));
-  landing.on('dialog', (d) => d.accept());
-  await Promise.all([landing.waitForURL(/[?&]fresh=\d+/), landing.locator('#reset-btn').click()]);
-  const left = await landing.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('shelterpt_')));
-  assert.deepEqual(left, ['shelterpt_lang']);
   assert.deepEqual([...errors, ...hostErrors], []);
   await context.close();
 });

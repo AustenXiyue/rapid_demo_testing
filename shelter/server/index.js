@@ -13,10 +13,11 @@ const express = require('express');
 const { Server } = require('socket.io');
 const { openDb } = require('./db');
 const auth = require('./auth');
+const { createGames } = require('./games');
 
 const ROOT = join(__dirname, '..');
 // 只公开这些页面；src/、tests/、server/、data/ 等一律不对外
-const PAGES = ['index.html', 'host.html', 'player.html', 'account.html'];
+const PAGES = ['index.html', 'host.html', 'player.html'];
 
 function createServer({
   dbPath = join(ROOT, 'data', 'shelter.db'),
@@ -29,17 +30,21 @@ function createServer({
   app.set('trust proxy', trustProxy);
   app.disable('x-powered-by');
 
+  const server = http.createServer(app);
+  const io = new Server(server, { path: '/socket.io' });
+  const games = createGames(db, io);
+
   app.get('/healthz', (req, res) => res.json({ ok: true }));
+  app.use('/api/games', games.router);
   app.use('/api', auth.router(db, { basePath, rateLimit }));
   app.get('/', (req, res) => res.sendFile(join(ROOT, 'index.html')));
   for (const page of PAGES) app.get('/' + page, (req, res) => res.sendFile(join(ROOT, page)));
 
-  const server = http.createServer(app);
-  const io = new Server(server, { path: '/socket.io' });
   io.use(auth.socketAuth(db));
   io.on('connection', (socket) => {
     const user = socket.data.user;
     socket.join('user:' + user.id);
+    games.attach(socket);
     socket.emit('hello', { user });
   });
 

@@ -739,3 +739,9 @@
 删除这个浏览器里的玩家数据：正式存档、演示存档、自动备份和页面设置，然后重新载入最新页面。页面出错或想从头开始时用。删除后无法恢复。	Deletes the player data in this browser—main save, demo save, automatic backups and page settings—then reloads the latest page. Use it when the page misbehaves or you want a fresh start. It cannot be undone.
 会删除这个浏览器里的所有玩家数据（正式存档、演示存档、自动备份、页面设置），然后重新载入页面。删除后无法恢复。	This deletes all player data in this browser (main save, demo save, automatic backups, page settings) and reloads the page. It cannot be undone.
 主持人页的数据和语言选择不受影响。需要保留的话先导出：	Host page data and your language choice stay untouched. To keep a copy, export first:
+联机对局：主持人修改规则后会自动同步到这里。	Online game: rule changes by the host sync here automatically.
+存档保存在服务器上，跟着你的座位；换设备登录同一账户就能继续。导出 JSON 可以留一份手动备份。	The save lives on the server with your seat: log in with the same account on any device to carry on. Export JSON to keep a manual backup.
+主持人更新了规则和玩家名单	The host updated the rules and player list
+主持人更新了玩家名单	The host updated the player list
+主持人更新了规则	The host updated the rules
+你的页面已经自动同步，库存和状态没有变化。	Your page has synced automatically; your inventory and status are unchanged.

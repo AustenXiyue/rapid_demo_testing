@@ -19,3 +19,18 @@
 浏览器不允许读取剪贴板：请长按或右键粘贴到框里	The browser won't let the page read the clipboard: long-press or right-click to paste into the box
 从剪贴板粘贴	Paste from clipboard
 已选这张	Picked
+对局已暂停，现在只能查看	The game is paused; view only for now
+对局不在进行中，现在只能查看	The game isn't in progress; view only for now
+另一台设备更新了存档：已载入最新	Another device updated the save: latest version loaded
+服务器上的存档刚被更新：已载入最新，你最后一步操作没有保存，请重做	The save on the server was just updated: latest version loaded. Your last action wasn't saved, please redo it
+对局现在不能修改：已恢复为服务器上的存档	The game can't be changed right now: restored the server's save
+连不上服务器，请稍后刷新重试。	Cannot reach the server. Refresh and try again later.
+登录已失效：请回到大厅重新登录。	Your session has expired: go back to the lobby and log in again.
+你在这局里没有座位。	You don't have a seat in this game.
+对局还没开始：主导在大厅点「开始对局」后才能进入面板。	The game hasn't started: panels open once the lead presses “Start game” in the lobby.
+存档已更新	Save updated
+联机对局：	Online game: 
+对局已暂停，现在只能查看：	Game paused, view only: 
+对局不在进行中，现在只能查看：	Game not in progress, view only: 
+返回大厅	Back to lobby
+载入失败：	Failed to load: 

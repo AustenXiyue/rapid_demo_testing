@@ -139,4 +139,14 @@ function socketAuth(db) {
   };
 }
 
-module.exports = { router, socketAuth, setPassword };
+// Express 中间件：需要登录的接口用，认出的账户放在 req.user
+function requireUser(db) {
+  return (req, res, next) => {
+    const me = userFromCookie(db, req.headers.cookie);
+    if (!me) return res.status(401).json({ error: 'unauthorized' });
+    req.user = { id: me.id, username: me.username };
+    next();
+  };
+}
+
+module.exports = { router, socketAuth, requireUser, setPassword };

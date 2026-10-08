@@ -35,7 +35,10 @@
   var THIRST = ['不渴', '口渴', '脱水'];
   var HUNGER_ZONES = ['充盈', '普通', '饥饿', '饥荒'];
 
-  var slot = U.readKey(KEY_SLOT) === 'demo' ? 'demo' : 'main';
+  // 联机模式：网址带 ?game=<id> 时存档放在服务器上（见 U.connectOnline）；不带时仍是本机存档
+  var GAME = new URLSearchParams(location.search).get('game');
+  var online = null;
+  var slot = !GAME && U.readKey(KEY_SLOT) === 'demo' ? 'demo' : 'main';
   var store = null;
   var state = null;
   var notices = [];
@@ -102,6 +105,7 @@
   }
 
   function commit(label, fn, opts) {
+    if (online && online.blocked()) return false;
     opts = opts || {};
     var before = C.clone(state);
     try {
@@ -122,6 +126,7 @@
   }
 
   function undoLast() {
+    if (online && online.blocked()) return;
     var item = undo.pop();
     if (!item) return;
     state = item.snapshot;
@@ -220,6 +225,7 @@
 
   function renderBanner() {
     var el = U.clear(document.getElementById('banner'));
+    if (online) el.appendChild(U.onlineBanner(online));
     if (slot === 'demo') {
       el.appendChild(h('div', { class: 'banner demo' }, h('b', null, '演示存档'), h('span', null, '仅供试用，与正式存档完全分开。'),
         h('button', { type: 'button', class: 'btn small', onclick: exitDemo }, '返回正式存档'),
@@ -1683,6 +1689,7 @@
   }
 
   function scavTick() {
+    if (online && online.readOnly()) return;
     var sc = state.scavenge;
     if (!sc || sc.status !== 'running') return;
     var round = C.currentScavengeRound(sc);
@@ -1906,8 +1913,9 @@
   /** 主持人页的地址：与玩家页同一目录下的 host.html。 */
   function hostPageUrl() {
     var u = location.href.replace(/[#?].*$/, '');
-    if (/player(\.html)?$/.test(u)) return u.replace(/player(\.html)?$/, 'host.html');
-    try { return new URL('host.html', u).href; } catch (e) { return 'host.html'; }
+    var q = GAME ? '?game=' + encodeURIComponent(GAME) : ''; // 联机模式下打开的是同一局的主持人面板
+    if (/player(\.html)?$/.test(u)) return u.replace(/player(\.html)?$/, 'host.html') + q;
+    try { return new URL('host.html', u).href + q; } catch (e) { return 'host.html' + q; }
   }
 
   /** 分享链接带着已选卡片的完整结果，主持人打开后看到同一张卡，不重新随机。 */
@@ -1975,7 +1983,7 @@
       })) : h('p', { class: 'muted small' }, '还没有录入其他玩家。'),
       h('div', { class: 'row' }, input, h('button', { type: 'button', class: 'btn', onclick: add }, '添加')),
       roster.length >= 2 ? h('p', { class: 'muted small' }, '共 ' + roster.length + ' 人 → 每张普通卡 ' + C.watchCount(roster.length, state.rules) + ' 人必定守夜。') : null,
-      h('p', { class: 'muted small' }, '也可以导入主持人的规则包，自动填好名单。'));
+      online ? null : h('p', { class: 'muted small' }, '也可以导入主持人的规则包，自动填好名单。'));
   }
 
   function renderAction() {
@@ -2218,7 +2226,7 @@
         intField('hpMax', '生命上限（待定）'),
         intField('hungerFullAt', '充盈阈值 ≥（待定）'),
         intField('hungerHungryAt', '饥饿阈值 ≤（待定）')),
-      h('details', null, h('summary', null, '导入主持人规则包'),
+      online ? h('p', { class: 'muted small' }, '联机对局：主持人修改规则后会自动同步到这里。') : h('details', null, h('summary', null, '导入主持人规则包'),
         h('div', { class: 'stack' }, pack, h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn', onclick: function () { importRulesPack(pack.value); } }, '校验并导入'),
           U.pasteButton(function (text) { pack.value = text; importRulesPack(text); })),
@@ -2231,18 +2239,7 @@
     var v = C.validateRulesPack(data);
     if (!v.ok) { U.modal({ title: '导入失败：规则未改动', body: h('p', null, v.errors[0]) }); return; }
     commit('导入规则包', function (s) {
-      s.rules = C.normalizeRules(data.rules);
-      (data.customItems || []).forEach(function (d) {
-        if (!d || !d.id || !d.name) return;
-        var idx = s.customItems.findIndex(function (x) { return x.id === d.id; });
-        if (idx >= 0) s.customItems[idx] = d;
-        else s.customItems.push(d);
-      });
-      if (data.scavengeTemplate && Array.isArray(data.scavengeTemplate.items)) s.scavengeTemplate = data.scavengeTemplate;
-      if (data.roster && Array.isArray(data.roster.players)) {
-        s.roster = data.roster;
-        s.otherNames = data.roster.players.filter(function (p) { return p && p.name && p.alive !== false && p.name !== s.name; }).map(function (p) { return p.name; });
-      }
+      C.applyRulesPack(s, data);
       log(s, '导入主持人规则包');
     });
     U.toast('规则包已导入', 'ok');
@@ -2258,24 +2255,28 @@
     });
     var backups = store.backups();
     return h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, '存档'), store.available ? chip('自动保存到本机', 'ok') : chip('本地保存不可用：仅内存', 'danger')),
-      h('p', { class: 'section-note' }, '玩家存档与主持人存档使用不同的命名空间。导入前会校验并备份旧存档，导入失败不会覆盖当前存档。'),
+      h('div', { class: 'card-head' }, h('h2', null, '存档'),
+        online ? chip('自动保存到服务器', 'ok') : store.available ? chip('自动保存到本机', 'ok') : chip('本地保存不可用：仅内存', 'danger')),
+      h('p', { class: 'section-note' }, online
+        ? '存档保存在服务器上，跟着你的座位；换设备登录同一账户就能继续。导出 JSON 可以留一份手动备份。'
+        : '玩家存档与主持人存档使用不同的命名空间。导入前会校验并备份旧存档，导入失败不会覆盖当前存档。'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn primary', onclick: function () { U.downloadJSON('shelter-player-' + (state.name || 'me') + '-' + U.stamp() + '.json', state); } }, '导出 JSON'),
         h('button', { type: 'button', class: 'btn', onclick: function () { U.copyText(JSON.stringify(state)).then(function (ok) { U.toast(ok ? '已复制存档 JSON' : '复制失败', ok ? 'ok' : 'warn'); }); } }, '复制 JSON'),
         h('button', { type: 'button', class: 'btn', onclick: function () { fileInput.click(); } }, '导入文件'),
         h('button', { type: 'button', class: 'btn', onclick: pasteImport }, '粘贴导入'),
         h('button', { type: 'button', class: 'btn', onclick: undoLast, disabled: !undo.peek() }, U.icon('undo'), '撤销最近操作'),
-        h('button', { type: 'button', class: 'btn danger', onclick: resetSave }, '重置'),
+        // 联机模式下不提供重置：座位上的数据是这局的记录
+        online ? null : h('button', { type: 'button', class: 'btn danger', onclick: resetSave }, '重置'),
         fileInput),
-      h('div', { class: 'card inset reset-box' },
+      online ? null : h('div', { class: 'card inset reset-box' },
         h('h3', null, '一键重置（删除本机缓存）'),
         h('p', { class: 'muted small' }, '删除这个浏览器里的玩家数据：正式存档、演示存档、自动备份和页面设置，然后重新载入最新页面。页面出错或想从头开始时用。删除后无法恢复。'),
         h('button', { type: 'button', class: 'btn danger', onclick: wipeAll }, '一键重置')),
       backups.length ? h('details', null, h('summary', null, '备份（' + backups.length + '）'), h('ul', { class: 'list-plain' }, backups.map(function (b, i) {
         return h('li', { class: 'row between' }, h('span', null, U.fmtTime(b.at) + ' · ' + (b.reason || '')), h('button', { type: 'button', class: 'btn small', onclick: function () { importSave(store.backups()[i].raw); } }, '恢复'));
       }))) : null,
-      h('div', { class: 'card inset' },
+      online ? null : h('div', { class: 'card inset' },
         h('h3', null, '演示存档'),
         h('p', { class: 'muted small' }, '独立的存储位置：载入、修改、清空都不会碰到你的正式存档。'),
         slot === 'demo'
@@ -2300,6 +2301,7 @@
   }
 
   function importSave(text) {
+    if (online && online.blocked()) return;
     var data;
     try { data = JSON.parse(text); } catch (e) {
       U.modal({ title: '导入失败', body: h('p', null, '不是有效的 JSON（' + e.message + '）。当前存档未改动。') });
@@ -2329,6 +2331,7 @@
   }
 
   function resetSave() {
+    if (online && online.blocked()) return;
     U.confirmBox('重置存档？', '会清空当前' + (slot === 'demo' ? '演示' : '正式') + '存档（先自动备份）。', '重置', 'danger').then(function (ok) {
       if (!ok) return;
       store.backup(JSON.stringify(state), '重置前自动备份');
@@ -2387,24 +2390,61 @@
     U.i18n.setLang(U.i18n.getLang());
     document.title = U.T(PAGE_TITLE);
     if (tab && TABS.some(function (t) { return t.id === tab; })) ui.tab = tab;
-    state = loadState();
     // 点击「更多」面板以外的地方时收起
     document.addEventListener('click', function (e) {
       // 点击后被重绘掉的按钮已脱离文档，不能据此判断是「点在外面」
       if (ui.moreOpen && e.target.isConnected && !e.target.closest('#tabs')) { ui.moreOpen = false; renderTabs(); }
     });
+    if (GAME) return bootOnline();
+    state = loadState();
     if (state.scavenge && state.scavenge.status === 'running') {
       if (C.settleScavenge(state.scavenge, Date.now(), state.customItems, Math.random)) log(state, '搜刮：离开期间已超时的回合按默认项记录');
     }
     save();
-    render();
-    scavTimer = setInterval(scavTick, 100);
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) scavTick(); });
+    start();
     window.addEventListener('storage', function (e) {
       if (e.key === (slot === 'demo' ? KEY_DEMO : KEY_MAIN)) {
         notices.push({ kind: 'risk', text: '另一个标签页修改了同一份玩家存档。请只保留一个标签页，然后刷新本页。' });
         render();
       }
+    });
+  }
+
+  // 存档就绪后开始运行（本机与联机共用）：渲染与搜刮计时
+  function start() {
+    render();
+    scavTimer = setInterval(scavTick, 100);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) scavTick(); });
+  }
+
+  // ================================================================ 联机模式
+
+  function bootOnline() {
+    U.clear(document.getElementById('main')).appendChild(h('p', { class: 'empty' }, '正在从服务器载入存档…'));
+    U.connectOnline(GAME, 'seat', {
+      onState: function (s, reason, detail) {
+        state = C.normalizeSave(s, 'shelter-player');
+        undo.clear();
+        render();
+        if (reason === 'rules') {
+          var title = detail && detail.rules && detail.roster ? '主持人更新了规则和玩家名单' : detail && detail.roster ? '主持人更新了玩家名单' : '主持人更新了规则';
+          U.modal({ title: title, body: h('p', null, '你的页面已经自动同步，库存和状态没有变化。') });
+          return;
+        }
+        U.toast(U.onlineReloadedText(reason), reason === 'device' ? 'ok' : 'warn');
+      },
+      onGame: function () { render(); },
+      onGone: function () { location.href = 'index.html'; },
+      onError: function (code) {
+        U.toast(code === 'network' ? '网络断开：恢复连接后会自动保存' : '保存到服务器失败（' + code + '）', 'warn');
+      }
+    }).then(function (ctx) {
+      online = ctx;
+      store = ctx.store;
+      state = C.normalizeSave(ctx.state, 'shelter-player');
+      start();
+    }, function (e) {
+      U.clear(document.getElementById('main')).appendChild(U.onlineFailCard(e.code));
     });
   }
 

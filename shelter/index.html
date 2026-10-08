@@ -1,140 +1,1792 @@
 <!doctype html>
+<!-- 此文件由 shelter/build.mjs 从 shelter/src/ 生成，请勿直接修改。 -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>避难所 Playtest</title>
-<meta name="description" content="避难所 Playtest：主持人面板与玩家面板，两个离线网页，用于桌面社交生存游戏的规则测试。">
+<meta name="description" content="避难所 Playtest 联机大厅：登录账户，创建或加入对局，随时换设备继续。">
 <meta name="theme-color" content="#faf6ee">
 <style>
-  :root {
-    --bg: #faf6ee; --surface: #fffdf8; --surface-2: #f4efe4; --ink: #2a2620; --ink-2: #57504a; --muted: #847b70;
-    --line: #e3dacb; --teal: #0f6e66; --teal-strong: #0b5a53; --teal-soft: #dcefe9; --orange: #b4540e; --orange-soft: #fbe9d6;
-    --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.65; }
-  main { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; }
-  .topline { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .eyebrow { color: var(--muted); font-size: 14px; letter-spacing: 1px; }
-  .lang-btn { font: inherit; font-size: 14px; font-weight: 650; min-width: 52px; padding: 5px 12px; border: 1px solid #cfc4b1; border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
-  .lang-btn:hover { border-color: var(--teal); }
-  .lang-btn:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
-  h1 { font-size: 40px; line-height: 1.2; margin: 6px 0 10px; font-weight: 750; }
-  .lead { color: var(--ink-2); font-size: 17px; max-width: 640px; margin: 0; }
-  .quote { margin: 18px 0 0; padding: 10px 14px; border-left: 3px solid var(--orange); background: var(--orange-soft); color: #6a3205; border-radius: 0 8px 8px 0; font-size: 15px; max-width: 640px; }
-  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 32px 0; }
-  .card { display: flex; flex-direction: column; gap: 8px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; text-decoration: none; color: inherit; box-shadow: 0 1px 2px rgba(60, 40, 10, 0.06); transition: border-color 0.15s, transform 0.15s; }
-  .card:hover, .card:focus-visible { border-color: var(--teal); transform: translateY(-1px); outline: none; }
-  .card h2 { margin: 0; font-size: 22px; }
-  .card p { margin: 0; color: var(--ink-2); font-size: 15px; }
-  .card .go { margin-top: auto; padding-top: 8px; color: var(--teal-strong); font-weight: 650; }
-  .tag { align-self: flex-start; display: inline-block; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--teal-soft); color: var(--teal-strong); font-weight: 600; }
-  ul { padding-left: 20px; color: var(--ink-2); font-size: 15px; }
-  li { margin: 4px 0; }
-  h3 { font-size: 17px; margin: 28px 0 6px; }
-  footer { margin-top: 36px; color: var(--muted); font-size: 13.5px; display: flex; gap: 16px; flex-wrap: wrap; }
-  footer a { color: var(--teal); }
-  .reset-link { font: inherit; padding: 0; border: 0; background: none; color: #a8321f; text-decoration: underline; cursor: pointer; }
-  .reset-link:focus-visible { outline: 3px solid rgba(168, 50, 31, 0.3); outline-offset: 2px; }
-  @media (max-width: 640px) {
-    main { padding-top: 32px; }
-    h1 { font-size: 32px; }
-    .cards { grid-template-columns: minmax(0, 1fr); }
-  }
+/* src/shared/base.css */
+/* 避难所 Playtest · 共享样式
+ * 暖白底；青绿＝资源与进程；橙＝风险；红只用于严重警告。
+ * 状态一律同时显示文字与数值，不只靠颜色。字体只用系统字体，不加载远程资源。 */
+
+:root {
+  --bg: #faf6ee;
+  --surface: #fffdf8;
+  --surface-2: #f4efe4;
+  --surface-3: #ece5d6;
+  --ink: #2a2620;
+  --ink-2: #57504a;
+  --muted: #847b70;
+  --line: #e3dacb;
+  --line-strong: #cfc4b1;
+  --teal: #0f6e66;
+  --teal-strong: #0b5a53;
+  --teal-soft: #dcefe9;
+  --orange: #b4540e;
+  --orange-soft: #fbe9d6;
+  --red: #b42318;
+  --red-soft: #fde5e1;
+  --violet: #5b4a8a;
+  --violet-soft: #ebe6f6;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 4px 14px rgba(60, 40, 10, 0.05);
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4 { margin: 0; line-height: 1.3; font-weight: 650; }
+h2 { font-size: 20px; }
+h3 { font-size: 17px; }
+h4 { font-size: 15px; }
+p { margin: 0 0 8px; }
+ul, ol { margin: 0; padding-left: 20px; }
+a { color: var(--teal); }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.mono { font-family: var(--mono); }
+.nowrap { white-space: nowrap; }
+.offscreen { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; }
+.hidden { display: none !important; }
+.grow { flex: 1 1 auto; min-width: 0; }
+
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row.tight { gap: 4px; }
+.row.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+
+.icon { display: inline-flex; vertical-align: -2px; }
+.icon svg { display: block; }
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.card + .card { margin-top: 14px; }
+.grid2 > .card, .grid3 > .card, .stack > .card { margin-top: 0; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.card-head h2, .card-head h3 { display: flex; align-items: center; gap: 8px; }
+.card.inset { background: var(--surface-2); box-shadow: none; }
+.section-note { color: var(--muted); font-size: 13px; margin-top: -4px; margin-bottom: 10px; }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--surface-2); }
+.btn:focus-visible, .seg:focus-visible, .tab:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+.btn.primary:hover { background: var(--teal-strong); }
+.btn.risk { background: var(--orange-soft); border-color: #e7b88d; color: var(--orange); }
+.btn.danger { background: var(--red-soft); border-color: #f0b4ab; color: var(--red); }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.ghost:hover { background: var(--surface-2); }
+.btn.small { min-height: 30px; padding: 3px 10px; font-size: 14px; }
+.btn.big { min-height: 48px; padding: 10px 20px; font-size: 17px; }
+.btn.icon-btn { padding: 4px 8px; min-width: 34px; }
+.btn-link { background: none; border: 0; padding: 0; color: var(--teal); cursor: pointer; text-decoration: underline; font-size: inherit; }
+
+/* ---------- 表单 ---------- */
+input[type="text"], input[type="number"], input:not([type]), select, textarea {
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #fff;
+  padding: 7px 10px;
+  min-height: 36px;
+  max-width: 100%;
+}
+textarea { width: 100%; resize: vertical; line-height: 1.5; }
+input.num { width: 84px; text-align: center; }
+input:focus, select:focus, textarea:focus { outline: 2px solid rgba(15, 110, 102, 0.35); border-color: var(--teal); }
+input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; accent-color: var(--teal); vertical-align: -3px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field-label { font-size: 14px; color: var(--ink-2); font-weight: 600; }
+.field-hint { font-size: 12.5px; color: var(--muted); }
+.check { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.stepper { display: inline-flex; gap: 4px; align-items: center; }
+
+.segmented { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+.seg { border: 0; border-right: 1px solid var(--line); background: var(--surface); padding: 6px 12px; min-height: 36px; cursor: pointer; }
+.seg:last-child { border-right: 0; }
+.seg.on { background: var(--teal); color: #fff; font-weight: 600; }
+
+/* ---------- 标签 ---------- */
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 1; padding: 4px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); white-space: nowrap; font-weight: 600; }
+.badge.rule-confirmed { background: var(--teal-soft); border-color: #b4dbd2; color: var(--teal-strong); }
+.badge.rule-tentative { background: #fff5d6; border-color: #ecd68f; color: #7a5c00; }
+.badge.rule-pending { background: var(--orange-soft); border-color: #eccaa6; color: var(--orange); }
+.badge.rule-impl { background: #e7eef8; border-color: #c4d4ea; color: #2c4f7c; }
+.badge.rule-draft { background: var(--violet-soft); border-color: #d2c8ec; color: var(--violet); }
+.badge.rule-custom { background: var(--surface-3); }
+.badge.rule-demo, .badge.demo { background: #fff0c2; border-color: #e7c55c; color: #6b5100; }
+.badge.risk { background: var(--orange-soft); border-color: #eccaa6; color: var(--orange); }
+.badge.danger { background: var(--red-soft); border-color: #f0b4ab; color: var(--red); }
+.badge.ok { background: var(--teal-soft); border-color: #b4dbd2; color: var(--teal-strong); }
+.pending-tag { display: inline-block; font-size: 13px; color: var(--orange); background: var(--orange-soft); border: 1px dashed #e2b585; border-radius: 6px; padding: 1px 7px; }
+
+.callout { border-radius: 8px; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface-2); font-size: 14px; }
+.callout.risk { background: var(--orange-soft); border-color: #eccaa6; color: #6a3205; }
+.callout.danger { background: var(--red-soft); border-color: #f0b4ab; color: #7a1610; }
+.callout.ok { background: var(--teal-soft); border-color: #b4dbd2; color: #0b4a44; }
+.callout.info { background: #eef3f8; border-color: #cfdcea; color: #2c4058; }
+
+/* ---------- 进度条（文字＋数值） ---------- */
+.meter { position: relative; height: 10px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.meter > span { position: absolute; inset: 0 auto 0 0; background: var(--teal); border-radius: 999px; }
+.meter.over > span { background: var(--orange); }
+
+/* ---------- 表格 ---------- */
+.table-wrap { overflow-x: auto; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.tbl th, .tbl td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl th { color: var(--ink-2); font-weight: 600; background: var(--surface-2); white-space: nowrap; }
+.tbl tr.current td { background: var(--teal-soft); }
+.tbl tr.done td { color: var(--muted); }
+
+.list-plain { list-style: none; padding: 0; margin: 0; }
+.list-plain > li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.list-plain > li:last-child { border-bottom: 0; }
+
+/* ---------- 复制交接文本 ---------- */
+.copy-block { display: flex; flex-direction: column; gap: 6px; }
+.copy-text { font-size: 14px; background: #fffef9; font-family: var(--font); }
+.copy-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ---------- 弹窗与提示 ---------- */
+.overlay { position: fixed; inset: 0; background: rgba(42, 32, 20, 0.45); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 12px 12px; z-index: 50; overflow-y: auto; }
+.modal { background: var(--surface); border-radius: 12px; width: min(520px, 100%); box-shadow: 0 18px 50px rgba(30, 20, 0, 0.25); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.modal.wide { width: min(760px, 100%); }
+.modal-title { font-size: 18px; }
+.modal-body { display: flex; flex-direction: column; gap: 10px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+#toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 60; width: min(92vw, 420px); pointer-events: none; }
+.toast { background: #2f2a24; color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 14.5px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); transition: opacity 0.4s, transform 0.4s; }
+.toast.ok { background: var(--teal-strong); }
+.toast.warn { background: #8a4210; }
+.toast.out { opacity: 0; transform: translateY(6px); }
+
+/* ---------- 横幅 ---------- */
+.banner { padding: 8px 16px; font-size: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.banner.demo { background: #fff0c2; color: #5a4300; }
+.banner.danger { background: var(--red-soft); color: #7a1610; }
+.banner.risk { background: var(--orange-soft); color: #6a3205; }
+.banner.info { background: #eef3f8; color: #2c4058; }
+
+/* ---------- 标签页 ---------- */
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin; border-bottom: 1px solid var(--line); background: var(--surface); padding: 0 8px; }
+.tab { border: 0; background: none; padding: 11px 13px 9px; cursor: pointer; color: var(--ink-2); border-bottom: 3px solid transparent; white-space: nowrap; font-size: 15px; display: inline-flex; align-items: center; gap: 5px; }
+.tab.on { color: var(--teal-strong); border-bottom-color: var(--teal); font-weight: 650; }
+
+.empty { color: var(--muted); font-size: 14px; padding: 10px 0; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 14.5px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }
+
+/* ---------- 秘密遮挡：内容根本不渲染，只显示这张卡 ---------- */
+.gate { text-align: center; padding: 26px 16px; border-style: dashed; background: var(--surface-2); }
+.gate h3 { margin: 6px 0; justify-content: center; }
+.gate .gate-icon { color: var(--muted); }
+.gate .gate-icon .icon svg { width: 28px; height: 28px; }
+.reveal-bar { display: flex; align-items: center; gap: 8px; justify-content: space-between; flex-wrap: wrap; background: var(--orange-soft); border: 1px solid #eccaa6; color: #6a3205; padding: 6px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+
+@media (max-width: 640px) {
+  /* 英文按钮文字较长：窄屏上允许换行，而不是把页面撑宽 */
+  .btn { white-space: normal; max-width: 100%; text-align: center; }
+  .btn.small, .btn.icon-btn, .lang-btn { white-space: nowrap; }
+  .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
+  .card { padding: 13px; }
+}
+
+/* ---------- 仪表盘部件：指标卡、状态徽章（图标＋文字＋颜色）、同色相进度条 ---------- */
+.tile {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow);
+  font: inherit; color: inherit;
+}
+.tile:hover { border-color: var(--line-strong); }
+.tile:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+.tile-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+.tile-label { font-size: 13.5px; color: var(--ink-2); }
+.tile-value { font-size: 24px; font-weight: 650; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+.tile-unit { font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+.tile-sub { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+/* 状态徽章：图标形状 + 文字 + 颜色 */
+.sev { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; line-height: 1; padding: 4px 8px 4px 6px; border-radius: 999px; white-space: nowrap; }
+.sev .icon svg { width: 14px; height: 14px; }
+.sev-ok { background: var(--teal-soft); color: var(--teal-strong); }
+.sev-info { background: var(--surface-2); color: var(--ink-2); }
+.sev-warn { background: var(--orange-soft); color: #8a3f08; }
+.sev-crit { background: var(--red-soft); color: var(--red); }
+
+/* 进度条：同一色相，轨道取浅色阶 */
+.meter2 { display: block; height: 8px; border-radius: 4px; overflow: hidden; }
+.meter2-fill { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.m-ok { background: var(--teal-soft); } .m-ok .meter2-fill { background: var(--teal); }
+.m-warn { background: var(--orange-soft); } .m-warn .meter2-fill { background: var(--orange); }
+.m-crit { background: var(--red-soft); } .m-crit .meter2-fill { background: var(--red); }
+.m-info { background: var(--surface-3); } .m-info .meter2-fill { background: var(--muted); }
+
+/* ---------- 语言切换 ---------- */
+.lang-btn { min-width: 44px; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap; flex: 0 0 auto; }
+
+/* ---------- 守夜候选卡（两端共用） ---------- */
+.watch-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 8px 0; }
+.watch-card {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; padding: 12px 14px;
+  border-radius: 12px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit;
+}
+button.watch-card { cursor: pointer; }
+button.watch-card:hover { border-color: var(--teal); }
+button.watch-card:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+.watch-card.on { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); background: #f6fbf9; }
+.watch-card-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.watch-card-label { display: inline-flex; min-width: 26px; height: 26px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface-3); color: var(--ink); font-weight: 700; }
+.watch-card.on .watch-card-label { background: var(--teal); color: #fff; }
+.watch-card-title { flex: 1 1 auto; min-width: 0; }
+.watch-card-picked { display: inline-flex; align-items: center; gap: 3px; color: var(--teal-strong); font-weight: 650; }
+.watch-card-picked .icon svg { width: 14px; height: 14px; }
+.watch-card-who { font-size: 17px; font-weight: 700; line-height: 1.35; }
+.watch-card-tend { font-size: 14px; padding-left: 8px; border-left: 3px solid var(--line-strong); }
+.watch-card-tend.tend-rescue { border-left-color: var(--teal); color: var(--teal-strong); }
+.watch-card-tend.tend-danger { border-left-color: var(--orange); color: #8a3f08; }
+.watch-card-fx { display: flex; flex-wrap: wrap; gap: 4px; }
+.watch-card-fx .fx { font-size: 13px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.code-reader { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--surface-2); margin-bottom: 10px; }
+
+/* ---------- 守夜卡（第2版）：竖版卡面，四个位置固定 ---------- */
+.wcards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 8px 0; max-width: 560px; }
+.wcard-slot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; container-type: inline-size; }
+.wcard {
+  position: relative; display: grid; grid-template-rows: auto 1fr auto; align-items: center; gap: 6px;
+  aspect-ratio: 3 / 4; width: 100%; padding: 12px 10px 10px; text-align: center;
+  border-radius: 14px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit;
+  box-shadow: var(--shadow);
+}
+button.wcard { cursor: pointer; }
+button.wcard:hover { border-color: var(--teal); }
+button.wcard:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 2px; }
+.wcard.on { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft), var(--shadow); }
+.wcard-line { align-self: start; min-height: 2.6em; font-size: 13px; font-size: clamp(12px, 6cqi, 16px); line-height: 1.3; color: var(--ink-2); font-style: italic; text-wrap: balance; }
+.wcard-names { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.wcard-name { font-size: 20px; font-size: clamp(16px, 12cqi, 28px); font-weight: 750; line-height: 1.2; overflow-wrap: anywhere; }
+.wcard-corners { align-self: end; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; font-size: clamp(10.5px, 5cqi, 14px); line-height: 1.25; color: var(--ink-2); text-wrap: balance; }
+/* 图标贴在左下／右下角，文字在图标上方，各占半张卡宽 */
+.wcard-corner { display: flex; gap: 3px; min-height: 30px; min-width: 0; }
+.wcard-corner.left { flex-direction: column-reverse; align-items: flex-start; text-align: left; }
+.wcard-corner.right { flex-direction: column; align-items: flex-end; text-align: right; }
+.wcard-corner .icon { flex: 0 0 auto; color: var(--teal-strong); }
+.wcard-corner .icon svg { width: 22px; height: 22px; }
+.wcard.is-all { grid-template-rows: 1fr; background: var(--ink); border-color: var(--ink); color: #fff; }
+.wcard.is-all.on { box-shadow: 0 0 0 3px var(--teal), var(--shadow); }
+.wcard-all { font-size: 22px; font-size: clamp(18px, 13cqi, 34px); font-weight: 750; line-height: 1.35; padding: 0 6px; text-wrap: balance; }
+.wcard-picked, .wcard-caption { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 13px; }
+.wcard-picked { color: var(--teal-strong); font-weight: 650; }
+.wcard-picked .icon svg { width: 14px; height: 14px; }
+.wcard-caption { color: var(--muted); }
+.share-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.share-row input { flex: 1 1 220px; min-width: 0; font-size: 13px; }
+
+/* 一键重置（主持人页、玩家页的存档卡里） */
+.reset-box { margin-top: 12px; border-color: #f0b4ab; }
+</style>
+<style>
+/* src/lobby/lobby.css */
+/* 联机大厅：沿用主持人／玩家面板的配色、卡片、按钮与徽章（base.css），这里只放版面。
+ * 首页＝标题区 + 两张入口卡（创建／加入）+ 我的对局；加入页＝邀请码 + 公开对局；房间＝座位与主导操作。 */
+
+body.lobby { min-width: 300px; }
+
+/* ---------- 顶栏 ---------- */
+.topbar { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
+.l-top { max-width: 960px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.l-brand { display: flex; align-items: center; gap: 8px; font-size: 16px; white-space: nowrap; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit; }
+.l-brand b { font-weight: 700; }
+.l-top-tools { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.l-user { font-size: 14px; color: var(--ink-2); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.l-main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; display: flex; flex-direction: column; gap: 16px; }
+.l-main > .card + .card { margin-top: 0; }
+
+/* ---------- 标题区（与旧入口页同一套文案风格） ---------- */
+.eyebrow { color: var(--muted); font-size: 14px; letter-spacing: 1px; }
+.l-hero h1 { font-size: 36px; line-height: 1.2; margin: 4px 0 8px; font-weight: 750; }
+.l-hero .lead { color: var(--ink-2); font-size: 16.5px; max-width: 640px; margin: 0; }
+.quote { margin: 14px 0 0; padding: 10px 14px; border-left: 3px solid var(--orange); background: var(--orange-soft); color: #6a3205; border-radius: 0 8px 8px 0; font-size: 15px; max-width: 640px; }
+
+/* ---------- 入口卡：创建／加入 ---------- */
+.l-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.entry {
+  display: flex; flex-direction: column; gap: 8px; padding: 20px; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  font: inherit; color: inherit; transition: border-color 0.15s, transform 0.15s;
+}
+.entry:hover, .entry:focus-visible { border-color: var(--teal); transform: translateY(-1px); outline: none; }
+.entry h2 { font-size: 22px; }
+.entry p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.entry .go { margin-top: auto; padding-top: 6px; color: var(--teal-strong); font-weight: 650; display: inline-flex; align-items: center; gap: 4px; }
+.tag { align-self: flex-start; display: inline-block; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--teal-soft); color: var(--teal-strong); font-weight: 600; }
+
+/* ---------- 对局列表 ---------- */
+.game-list { list-style: none; margin: 0; padding: 0; }
+.game-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.game-row:first-child { border-top: 0; padding-top: 2px; }
+.game-title { font-size: 16.5px; font-weight: 650; overflow-wrap: anywhere; }
+.game-meta { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); }
+.game-row.closed .game-title { color: var(--ink-2); }
+
+/* ---------- 加入页 ---------- */
+.code-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.code-input { font-family: var(--mono); font-size: 20px; letter-spacing: 0.2em; text-transform: uppercase; width: 9.5em; text-align: center; }
+
+/* ---------- 房间 ---------- */
+.room-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px 20px; flex-wrap: wrap; }
+.room-head h1 { font-size: 26px; overflow-wrap: anywhere; }
+.room-sub { display: flex; gap: 6px 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 14px; color: var(--muted); }
+.invite { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.invite-code { font-family: var(--mono); font-size: 26px; font-weight: 700; letter-spacing: 0.18em; color: var(--teal-strong); }
+.room-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.seat-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.seat { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); min-width: 0; }
+.seat.me { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+.seat.open { border-style: dashed; background: var(--surface-2); }
+.seat-head { display: flex; align-items: center; gap: 8px; }
+.seat-no { display: inline-flex; min-width: 26px; height: 26px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface-3); font-weight: 700; font-size: 13px; }
+.seat.me .seat-no { background: var(--teal); color: #fff; }
+.seat-name { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
+.seat-foot { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* 在线：圆点＋文字，不只靠颜色 */
+.presence { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.presence::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.presence.on { color: var(--teal-strong); }
+.presence.on::before { background: var(--teal); }
+
+/* ---------- 登录 ---------- */
+.auth { max-width: 420px; width: 100%; margin: 0 auto; }
+.auth .segmented { display: flex; margin-bottom: 14px; }
+.auth .seg { flex: 1 1 0; }
+.auth form { display: flex; flex-direction: column; gap: 12px; }
+.auth input { width: 100%; }
+.auth input[type="password"] { border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; padding: 7px 10px; min-height: 36px; }
+
+@media (max-width: 640px) {
+  .l-main { padding-top: 16px; }
+  .l-hero h1 { font-size: 30px; }
+  .l-actions { grid-template-columns: minmax(0, 1fr); }
+  .invite { align-items: flex-start; }
+  .l-user { display: none; }
+}
+
+/* 表单里的单选组按内容宽度，不撑满整行 */
+.field > .segmented { align-self: flex-start; }
+.auth .card { margin-top: 14px; }
 </style>
 </head>
-<body>
-<main>
-  <div class="topline"><div class="eyebrow" data-en="PLAYTEST · RULES TESTING TOOL">PLAYTEST · 规则测试工具</div><button type="button" class="lang-btn" id="lang-btn" aria-label="Switch to English">EN</button></div>
-  <h1 data-en="Shelter Playtest">避难所 Playtest</h1>
-  <p class="lead" data-en="At the end of the world, the army houses strangers in a shelter in an abandoned city, promises evacuation, then breaks the promise. You fight to survive and to get rescued, while love, hate, wealth and your own secret goals pull you in different directions.">末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。</p>
-  <p class="quote" data-en="The military hotline is busy. Please stay calm and count your bread.">军方热线目前忙音。请保持冷静，并清点你的面包。</p>
-
-  <div class="cards">
-    <a class="card" href="host.html" data-page="host.html">
-      <span class="tag" data-en="Desktop · screen sharing">桌面 · 屏幕共享</span>
-      <h2 data-en="Host panel">主持人面板</h2>
-      <p data-en="The console sums up the current phase and to-dos; the public display shows the day, phase, whose turn it is, rescue and public events, full-screen for Discord; inventory, draws and unannounced rosters sit in hidden areas that open only after you confirm, with one-click “Hide all secrets”.">主持台汇总当前阶段与待办；公开展示天数、阶段、轮到谁、营救与公共事件，可全屏给 Discord 看；库存、抽取、未公布名单放在需要确认后才显示的隐藏区，并提供「一键隐藏所有秘密」。</p>
-      <span class="go" data-en="Open host panel →">进入主持人面板 →</span>
-    </a>
-    <a class="card" href="player.html" data-page="player.html">
-      <span class="tag" data-en="Phone · personal records">手机 · 个人记录</span>
-      <h2 data-en="Player panel">玩家面板</h2>
-      <p data-en="Track items (energy bar uses, map notes, canteen water, vest condition), HP and status, carried gear, scavenging, identity and score.">记录物品（含能量棒次数、地图笔记、水壶水量、背心状态）、生命与状态、携带装备、搜刮、身份与分数。</p>
-      <span class="go" data-en="Open player panel →">进入玩家面板 →</span>
-    </a>
-  </div>
-
-  <h3 data-en="Before you start">开始之前</h3>
-  <ul>
-    <li data-en="The two pages never go online or sync with each other: the host shares the screen and DMs on Discord, and players record things by hand on their own devices.">两个页面互不联网、互不同步：主持人通过 Discord 共享屏幕与私信，玩家在自己的设备上手动记录。</li>
-    <li data-en="Data lives only in this browser. Export a JSON save from the page before switching devices or clearing your cache.">数据只保存在当前浏览器里。换设备或清缓存前，请在页面里导出 JSON 存档。</li>
-    <li data-en="Numbers the rules haven't settled yet always show “to configure / host decides”; the page never fills them in for you.">规则里还没确定的数值一律显示「待配置／主持人裁定」，页面不会替你补值。</li>
-    <li data-en="To learn the flow first, both pages have a separate “demo save” that never touches real data.">想先熟悉流程：两个页面都有独立的「演示存档」，不会碰到正式数据。</li>
-  </ul>
-
-  <footer>
-    <span data-en="First version · rules snapshot 2026-10-04">第一版 · 规则快照 2026-10-04</span>
-    <button type="button" class="reset-link" id="reset-btn" data-en="Reset everything on this device">一键重置本机数据</button>
-    <a href="https://xiyueym.com/" id="home-link" hidden data-en="← Back to xiyueym.com">← 返回 xiyueym.com</a>
-  </footer>
-</main>
+<body class="lobby">
+<noscript><p style="padding:16px">本页面需要启用 JavaScript。This page needs JavaScript.</p></noscript>
+<header id="topbar" class="topbar"></header>
+<main id="main" class="l-main"></main>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal-root"></div>
+<script src="socket.io/socket.io.js"></script>
 <script>
-  (function () {
-    // 经反向代理以子路径访问（如 /Misc/ShelterPT）时路径可能没有结尾斜杠，
-    // 相对链接会落到上一级目录：这里补成当前路径下的绝对地址。
-    var path = location.pathname;
-    if (location.protocol !== 'file:' && !/\/$/.test(path) && !/\.html?$/.test(path)) {
-      var links = document.querySelectorAll('a[data-page]');
-      for (var i = 0; i < links.length; i++) links[i].href = path + '/' + links[i].getAttribute('data-page');
-    }
-    if (/(^|\.)xiyueym\.com$/.test(location.hostname)) document.getElementById('home-link').hidden = false;
+/* src/shared/i18n/*.tsv（323 条） */
+window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host decides","待配置":"To configure","已确认":"Confirmed","暂定":"Tentative","待定":"TBD","实现建议":"Implementation note","草案":"Draft","自定义":"Custom","财富":"Wealth","面包":"Bread","事件":"Event","营救":"Rescue","饥饿":"Hungry","普通":"Normal","次）":" uses left)","全员":"Everyone","参与":"Join","拒绝":"Decline","口渴":"Thirsty","守夜":"Watch","主持人存档":"Host save","玩家存档":"Player save","玩家":"Player"," 守夜":" watch","选中":"Pick","撤销：":"Undo: ","隐藏":"Hide","显示":"Show","空":"Empty","演示存档":"Demo save","避难所 Playtest":"Shelter Playtest","主持人":"Host","撤销":"Undo","设置":"Settings","公开":"Public","已暂停":"Paused","暂停":"Pause","开始":"Start","重置":"Reset","设定":"Set","跳转":"Jump","继续":"Continue","状态":"Status","操作":"Actions","记录":"Record","加入":"Add","保存":"Save","删除":"Delete","已结束":"Closed","开局":"Opening","选择":"Pick","交接文本":"Handoff text","给 ":"DM text for ","覆盖":"Overwrite","名称":"Name","倾向":"Tendency","主持人裁定":"Host ruling","修改":"Edit","无":"None","秘密":"Secret","单位":"units","件":"pcs","存档":"Save","复制失败":"Copy failed","名单":"Roster","稍后":"Later","一键重置":"One-click reset","连不上服务器，请稍后再试。":"Cannot reach the server. Try again later.","登录已失效，请重新登录。":"Your session has expired. Please log in again.","尝试次数太多，请过几分钟再试。":"Too many attempts. Try again in a few minutes.","用户名需要 3～20 个字符：中英文、数字、下划线。":"Username must be 3–20 characters: letters, digits or underscores.","密码至少 8 位。":"Password must be at least 8 characters.","这个用户名已经被注册了。":"That username is already taken.","用户名或密码不对。":"Wrong username or password.","对局名称需要 1～40 个字。":"Game name must be 1–40 characters.","人数上限需要在 1～12 之间。":"Player limit must be between 1 and 12.","没有找到这个邀请码。":"No game found with that invite code.","这局已经满员了。":"This game is full.","这局已经开始，目前没有空出来的座位。":"This game has started and has no open seats right now.","这局已经结束了。":"This game has ended.","找不到这局对局，或者你已经不在其中。":"Game not found, or you are no longer in it.","只有主导能这样做。":"Only the lead can do that.","当前状态下不能这样做。":"You can't do that in the current state.","至少要有一名玩家才能开始。":"At least one player is needed to start.","对局已经开始，不能这样做了。":"The game has started; this is no longer possible.","对局还没开始。":"The game hasn't started yet.","主导自己的座位请用「参与扮演／只主持」切换。":"Use the “Play a character / Host only” switch for the lead's own seat.","主导不能退出，可以删除对局。":"The lead can't leave, but can delete the game.","这个座位已经是空的。":"This seat is already open.","招募中":"Recruiting","主导":"Lead","主导兼角色":"Lead & character","在线":"Online","离线":"Offline","出错了：":"Something went wrong: ","你已经不在这局对局里了。":"You are no longer in this game.","避难所":"Shelter","联机大厅":"Online lobby","退出登录":"Log out","注册并登录":"Register and log in","登录":"Log in","用户名":"Username","3～20 个字符：中英文、数字、下划线。":"3–20 characters: letters, digits, underscore; Chinese is fine.","密码":"Password","至少 8 位。忘记密码请找管理员重置。":"At least 8 characters. Forgot it? Ask the admin to reset it.","PLAYTEST · 联机":"PLAYTEST · ONLINE","注册":"Register","PLAYTEST · 规则测试工具":"PLAYTEST · RULES TESTING TOOL","末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。":"At the end of the world, the army houses strangers in a shelter in an abandoned city, promises evacuation, then breaks the promise. You fight to survive and to get rescued, while love, hate, wealth and your own secret goals pull you in different directions.","军方热线目前忙音。请保持冷静，并清点你的面包。":"The military hotline is busy. Please stay calm and count your bread.","创建对局":"Create a game","开一局新的游戏：设定人数，选择自己只主持还是也扮演角色，然后把邀请码发给朋友。":"Start a new game: set the player limit, choose whether you only host or also play a character, then send the invite code to your friends.","加入对局":"Join a game","输入朋友给的邀请码，或者在公开列表里挑一局还有空位的。":"Enter an invite code from a friend, or pick a game with open seats from the public list.","去加入":"Find a game","我的对局":"My games"," 局":" games","载入中…":"Loading…","还没有对局。创建一局，或者加入朋友的对局。":"No games yet. Create one, or join a friend's game.","主导：":"Lead: ","主导已删除这局":"Deleted by the lead","更新于 ":"Updated ","邀请码":"Invite code","← 返回大厅":"← Back to lobby","用邀请码加入":"Join with an invite code","6 位，不分大小写":"6 characters, not case-sensitive","公开对局":"Public games","刷新":"Refresh","招募中的对局有空位就能加入；已经开始的对局只有被主导空出来的座位可以接手。":"Recruiting games can be joined while seats remain; in games that have started you can only take over seats the lead has opened up.","现在没有可以加入的对局。":"No games to join right now.","空位 ":"Open: ","接手空座位":"Take open seat","邀请码已复制":"Invite code copied","复制失败，请手动抄写":"Copy failed. Please copy it by hand.","主导已经删除了这局；记录保留，状态为已结束。":"The lead deleted this game; the record is kept and the game is marked ended.","招募中：把邀请码发给朋友，或者让他们在「加入对局」的公开列表里找到这局。人齐后由主导开始。":"Recruiting: send the invite code to friends, or have them find this game in the public list under “Join a game”. The lead starts once everyone is in.","座位":"Seats","空座位 ":"Open seats ","还没有人入座。":"No one has taken a seat yet.","空座位":"Open seat","你":"You","座位上的数据保留，等新玩家接手":"Seat data is kept until a new player takes over","移除玩家":"Remove player","移出这局后，对方还可以用邀请码再加入。":"Once removed, they can still rejoin with the invite code.","释放座位":"Release seat","座位上的资源、状态等数据都会保留，但这名玩家会失去这局的访问，座位开放给新玩家接手。":"The seat's resources, status and other data are kept, but this player loses access to the game and the seat opens up for a new player.","主导操作":"Lead controls","退出对局":"Leave game","退出后你的座位会空出来，之后还可以用邀请码再加入。":"Your seat will be freed. You can rejoin later with the invite code.","退出":"Leave","这局已经结束，记录会一直保留。":"This game has ended; its record is kept.","开局后如果要离开，请联系主导释放你的座位。":"Once the game has started, ask the lead to release your seat if you need to leave.","开始对局":"Start game","结束对局":"End game","结束后不能再继续，记录会一直保留。":"An ended game can't be resumed. Its record is kept.","对局和所有座位都会被删除，无法恢复。":"The game and all its seats will be deleted. This cannot be undone.","这局会从你的列表里移除并记为已结束。记录仍保存在服务器上，玩家还能查看。":"The game is removed from your list and marked ended. The record stays on the server and players can still view it.","删除对局":"Delete game","我在这局里":"My part in this game","参与扮演":"Play a character","只主持":"Host only","开局后不能再切换。":"Can't be changed after the game starts.","对局名称":"Game name","人数上限":"Player limit","包括主导自己（如果参与扮演）。1～12，规则建议约 6 人。":"Includes the lead if playing a character. 1–12; the rules suggest about 6.","创建":"Create","请填写对局名称":"Please enter a game name","对局进行中：从下面进入面板。存档保存在服务器上，换设备登录也能接着玩。":"Game in progress: open your panel below. Saves live on the server, so you can carry on from any device.","已暂停：数据都保存在服务器上，面板现在只能查看。主导点「继续」后，大家回到原来的座位接着玩。":"Paused: everything is saved on the server and panels are view-only. When the lead presses “Resume”, everyone returns to their seats and carries on.","这局已经结束，面板只能查看。":"This game has ended; panels are view-only.","进入主持人面板":"Open host panel","进入玩家面板":"Open player panel","我":"Me","意识":"Consciousness","自动":"Auto","手动":"Manual","查看":"View","进行中":"In progress","移除":"Remove","说明":"Description","带 ":"Carry ","带上":"Take"," 之间":" ","可选":"Optional","修改：":"Edit: ","已删除":"Deleted","不改":"No change","自己":"Self"," 秒":"s","技能":"skill","恢复":"Restore","主持人更新了规则":"The host updated the rules","知道了":"OK","对话框":"Dialog","取消":"Cancel","确定":"Confirm","已复制，请粘贴到 Discord":"Copied — paste it into Discord","复制失败，请手动全选复制":"Copy failed; select all and copy by hand","复制":"Copy","读取文件失败":"Couldn't read the file","演示":"Demo","数值":"Value","请输入数字":"Please enter a number","减少":"Decrease","增加":"Increase","正常":"OK","提示":"Info","注意":"Caution","危险":"Danger","已选":"Picked","浏览器不允许读取剪贴板：请长按或右键粘贴到框里":"The browser won't let the page read the clipboard: long-press or right-click to paste into the box","从剪贴板粘贴":"Paste from clipboard","已选这张":"Picked","对局已暂停，现在只能查看":"The game is paused; view only for now","对局不在进行中，现在只能查看":"The game isn't in progress; view only for now","另一台设备更新了存档：已载入最新":"Another device updated the save: latest version loaded","服务器上的存档刚被更新：已载入最新，你最后一步操作没有保存，请重做":"The save on the server was just updated: latest version loaded. Your last action wasn't saved, please redo it","对局现在不能修改：已恢复为服务器上的存档":"The game can't be changed right now: restored the server's save","连不上服务器，请稍后刷新重试。":"Cannot reach the server. Refresh and try again later.","登录已失效：请回到大厅重新登录。":"Your session has expired: go back to the lobby and log in again.","你在这局里没有座位。":"You don't have a seat in this game.","对局还没开始：主导在大厅点「开始对局」后才能进入面板。":"The game hasn't started: panels open once the lead presses “Start game” in the lobby.","存档已更新":"Save updated","联机对局：":"Online game: ","对局已暂停，现在只能查看：":"Game paused, view only: ","对局不在进行中，现在只能查看：":"Game not in progress, view only: ","返回大厅":"Back to lobby","载入失败：":"Failed to load: ","到期：先与主持人确认是否扣1生命":"is due: check with the host whether to lose 1 HP","的个人行动未标记为已使用":"— personal action not marked as used","label|口渴":"Thirst","label|饥饿":"Hunger","中文":"中文","切换到中文":"切换到中文","记录当前天数：":"Current day recorded:","获得 · ":"acquired ·","提醒":"reminder","到期（获得于":"is due (acquired","）。每两个回合失去1生命——请先与主持人确认，避免两端重复扣血。":"). You lose 1 HP every two turns — check with the host first so it isn't deducted twice.","；下次提醒":"; next reminder","流血伤口：主持人裁定本次不扣血；下次提醒":"Bleeding wound: host ruled no HP loss this time; next reminder","获得于":"Acquired","（主持人确认后扣血）":" (HP lost after the host confirms)","添加流血伤口：":"Added bleeding wound:","获得，":"acquired,","【演示】":"[Demo] ","在超市割伤":"cut at the supermarket","修改流血日期：":"Bleeding dates changed:","获得，下次":"acquired, next","【赠予／交易·":"[Gift/trade ·","【交公·":"[To pool ·","【治疗·":"[Treatment ·","开始搜刮（":"Started scavenging (","选择 ":"picked ","超时，按默认项记录":"timed out; default recorded","选 ":"picked ","【搜刮交公·":"[Scavenge to pool ·","的行动":"action","【分数上报·":"[Score report ·","进入":"Go to","phase-no|开":"S","phase-no|事":"E","switch|开":"On","switch|关":"Off","已记录的当日数据会被丢弃。":"— recorded data will be discarded. ","已记录的数据（行动、名单、事件判定、公开结果等）将被丢弃。":"— recorded data (actions, rosters, event rolls, public results, etc.) will be discarded. ","将恢复":"Will restore","的当日记录与当天结束时的座次。":"records and its end-of-day seating. ","回退到":"Go back to","跨日回退：":"Cross-day rollback:","结束今天，进入":"End today, go to","有一条待公布的守夜结果（":"A watch result is waiting to be announced (","）。内容可在「守夜」页预览（需先暂停共享）。":"). Preview it on the Watch page (pause sharing first).","公布昨夜结果（":"Announced last night's result (","：固定指定":": fixed assignment","【开局领取":"[Opening pickup","·固定指定】\n":" · fixed assignment]\n","（固定指定）：":" (fixed assignment): ","完成（固定指定）":"done (fixed assignment)","【守夜候选·":"[Watch options ·","【守夜拍板·":"[Watch decision ·"," 名单":" ","末位选":"Last seat picks","已于":"announced on"," 公布":" ","的结果尚未公布，保存会覆盖它。确定吗？":"— its result isn't announced yet; saving overwrites it. Continue?","结果草稿：":"result draft:","已按权重抽取（":"Drawn by weight (","已手动选择":"Chosen by hand","【事件结果·":"[Event result ·","避难所 Playtest · 主持人":"Shelter Playtest · Host","避难所 Playtest · 玩家":"Shelter Playtest · Player","主持人面板":"Host panel","玩家面板":"Player panel","条":" entries","第 ":"Day "," 天":" "," 份":" ","tab-short|总览":"Home","tab-short|状态":"Status","tab-short|库存":"Items","tab-short|搜刮":"Loot","tab-short|行动":"Action","tab-short|分数":"Score","tab-short|存档":"Save","代码是":"The code was drawn on","抽的，现在是":"; it is now","【守夜提交·":"[Watch submission ·","收到":"Received","的守夜名单码：":"watch list code:","导入）":"imported)","卡片是":"This card was drawn on","卡片上有不在玩家名单里的名字":"The card has names that aren't on the player list","确认名单时不会自动算进去，可手动勾选":"not counted automatically when confirming; tick them by hand","玩家发来了一张守夜卡片":"A player sent you a watch card","卡片内容是秘密：请先停止或切换屏幕共享，再查看。":"The card is secret: stop or switch your screen share before viewing it.","可抽":"Drawable","本局已用":"Used this game","已重抽":"rerolls","lobby|加入":"Join","lobby|进入":"Enter","lobby|继续":"Resume","lobby|已结束":"Ended"};
+</script>
+<script>
+/* src/shared/i18n.js */
+/*
+ * 避难所 Playtest · 界面语言（中文／English）
+ *
+ * 只翻译「显示出来的文字」：ui.js 的 h() 在生成文本节点和提示属性时调用 T()。
+ * 游戏数据（存档里的状态值、日志、名字）保持原样，所以中英文切换不影响存档，也不影响规则判断。
+ *
+ * 翻译顺序：整句精确匹配 → 固定句式（如「第 2 天」）→ 按词条从长到短逐段替换（拼接出来的句子也能翻）→ 全角标点换成半角。
+ * 词典来自 src/shared/i18n/*.tsv，由 build.mjs 内联为 SHELTER_I18N_EN。
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(root);
+  else root.ShelterI18n = factory(root);
+})(typeof self !== 'undefined' ? self : this, function (root) {
+  'use strict';
 
-    // 中文／English：与主持人、玩家页面共用同一个选择（本机记住）
-    var KEY = 'shelterpt_lang';
-    var TITLE = { zh: document.title, en: 'Shelter Playtest' };
-    var btn = document.getElementById('lang-btn');
-    function read() { try { return localStorage.getItem(KEY) === 'en' ? 'en' : 'zh'; } catch (e) { return 'zh'; } }
-    function apply(lang) {
-      var els = document.querySelectorAll('[data-en]');
-      for (var i = 0; i < els.length; i++) {
-        var el = els[i];
-        if (!el.hasAttribute('data-zh')) el.setAttribute('data-zh', el.textContent);
-        el.textContent = el.getAttribute(lang === 'en' ? 'data-en' : 'data-zh');
+  var KEY_LANG = 'shelterpt_lang';
+  var HAN = /[一-鿿]/;
+  var dict = root.SHELTER_I18N_EN || {};
+  var lang = readLang();
+  var cache = {};
+  var index = null;
+
+  function readLang() {
+    try { return root.localStorage && root.localStorage.getItem(KEY_LANG) === 'en' ? 'en' : 'zh'; } catch (e) { return 'zh'; }
+  }
+
+  function setLang(next) {
+    lang = next === 'en' ? 'en' : 'zh';
+    try { root.localStorage.setItem(KEY_LANG, lang); } catch (e) { /* 本地存储不可用时只在本页生效 */ }
+    if (root.document) root.document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+  }
+
+  /* 固定句式：语序与中文不同、靠逐段替换拼不出来的（先于词条替换） */
+  var PRE = [
+    [/第\s*(\d+)\s*天夜间/g, ' Night of Day $1 '],
+    [/第\s*(\d+)\s*天/g, ' Day $1 '],
+    [/第\s*(\d+)\s*夜/g, ' Night $1 '],
+    [/第\s*(\d+)\s*轮/g, ' Round $1 '],
+    [/第\s*(\d+)\s*座/g, ' Seat $1 '],
+    [/第\s*(\d+)\s*次/g, ' #$1 '],
+    [/第\s*(\d+)\s*份/g, ' List $1 '],
+    [/第\s*(\d+)\s*件/g, ' Item $1 '],
+    [/第\s*(\d+)\s*张/g, ' Card $1 ']
+  ];
+  /* 量词兜底：词条替换后还剩下的「数字＋量词」 */
+  var POST = [
+    [/(\d+(?:\.\d+)?)\s*单位/g, '$1 units'],
+    [/(\d+)\s*件/g, '$1 pcs'],
+    [/(\d+(?:\.\d+)?)\s*秒/g, '$1s'],
+    [/(\d+)\s*分钟/g, '$1 min'],
+    [/(\d+)\s*人/g, '$1 players'],
+    [/(\d+)\s*条/g, '$1'],
+    [/(\d+)\s*项/g, '$1 items'],
+    [/(\d+)\s*次/g, '$1×'],
+    [/(\d+)\s*份/g, '$1'],
+    [/(\d+)\s*个/g, '$1'],
+    [/(\d+)\s*轮/g, '$1 rounds'],
+    [/(\d+)\s*回合/g, '$1 turns'],
+    [/(\d+)\s*分/g, '$1 pts']
+  ];
+
+  var PUNCT = [
+    [/：/g, ': '], [/，/g, ', '], [/。/g, '. '], [/；/g, '; '], [/、/g, ', '], [/！/g, '! '], [/？/g, '? '],
+    [/（/g, ' ('], [/）/g, ') '], [/「/g, '“'], [/」/g, '”'], [/『/g, '“'], [/』/g, '”'], [/／/g, '/'], [/～/g, '–'],
+    [/【/g, '['], [/】/g, '] '], [/ {2,}/g, ' '], [/ ([,.;:!?)\]])/g, '$1'], [/\( /g, '('], [/\[ /g, '['], [/“ /g, '“'], [/ ”/g, '”']
+  ];
+
+  /* 按首字符分桶、桶内从长到短，逐位置找最长词条 */
+  function buildIndex() {
+    index = {};
+    Object.keys(dict).forEach(function (k) {
+      if (!k) return;
+      (index[k[0]] = index[k[0]] || []).push(k);
+    });
+    Object.keys(index).forEach(function (c) { index[c].sort(function (a, b) { return b.length - a.length; }); });
+  }
+
+  function replacePhrases(s) {
+    if (!index) buildIndex();
+    var out = '';
+    var i = 0;
+    while (i < s.length) {
+      var bucket = index[s[i]];
+      var hit = null;
+      if (bucket) {
+        for (var j = 0; j < bucket.length; j++) {
+          if (s.startsWith(bucket[j], i)) { hit = bucket[j]; break; }
+        }
       }
-      document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
-      document.title = TITLE[lang];
-      btn.textContent = lang === 'en' ? '中文' : 'EN';
-      btn.setAttribute('aria-label', lang === 'en' ? '切换到中文' : 'Switch to English');
-      btn.setAttribute('lang', lang === 'en' ? 'zh-CN' : 'en');
+      if (hit) { out += dict[hit]; i += hit.length; } else { out += s[i]; i += 1; }
     }
-    btn.addEventListener('click', function () {
-      var next = read() === 'en' ? 'zh' : 'en';
-      try { localStorage.setItem(KEY, next); } catch (e) { /* 只在本页生效 */ }
-      apply(next);
-    });
-    apply(read());
+    return out;
+  }
 
-    // 一键重置：删除本机上主持人、玩家两页的全部存档、备份和页面设置（保留语言），再重新载入
-    document.getElementById('reset-btn').addEventListener('click', function () {
-      var en = read() === 'en';
-      var ask = en
-        ? 'Delete every Shelter Playtest save on this device (host and player, demo saves, backups and page settings)? This cannot be undone. Export JSON from each page first if you need it.'
-        : '删除这台设备上避难所 Playtest 的全部数据（主持人与玩家的存档、演示存档、备份和页面设置）？删除后无法恢复，需要的话先在各页面导出 JSON。';
-      if (!window.confirm(ask)) return;
-      var n = 0;
-      try {
-        var keys = [];
-        for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
-        keys.forEach(function (k) { if (k && k.indexOf('shelterpt_') === 0 && k !== KEY) { localStorage.removeItem(k); n++; } });
-      } catch (e) { /* 存储不可用时没有可删的 */ }
-      try { sessionStorage.clear(); } catch (e) { /* 忽略 */ }
-      try { if (window.caches && caches.keys) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }); } catch (e) { /* 忽略 */ }
-      window.alert(en ? 'Deleted ' + n + ' saved item(s). The page will reload.' : '已删除 ' + n + ' 项本机数据，页面将重新载入。');
-      location.replace(location.href.replace(/[?#].*$/, '') + '?fresh=' + Date.now());
+  function translate(s) {
+    if (Object.prototype.hasOwnProperty.call(dict, s)) return dict[s];
+    var lead = s.match(/^\s*/)[0];
+    var trail = s.match(/\s*$/)[0];
+    var core = s.trim();
+    if (Object.prototype.hasOwnProperty.call(dict, core)) return lead + dict[core] + trail;
+    // 词条可能带首尾空格（拼接片段），所以在未去空格的原文上替换，最后再还原首尾空白
+    var out = s;
+    PRE.forEach(function (r) { out = out.replace(r[0], r[1]); });
+    out = replacePhrases(out);
+    POST.forEach(function (r) { out = out.replace(r[0], r[1]); });
+    PUNCT.forEach(function (r) { out = out.replace(r[0], r[1]); });
+    return lead + out.trim() + trail;
+  }
+
+  /** 把一段要显示的中文换成当前语言。不是字符串、没有中文或当前是中文时原样返回。 */
+  function T(s) {
+    if (lang !== 'en' || typeof s !== 'string' || !HAN.test(s)) return s;
+    if (Object.prototype.hasOwnProperty.call(cache, s)) return cache[s];
+    var out = translate(s);
+    cache[s] = out;
+    return out;
+  }
+
+  /** 同一个中文词在不同位置意思不同时（如「口渴」既是栏目名又是状态值），按语境取词：词典里写成「语境|中文」。 */
+  function TC(context, s) {
+    if (lang !== 'en') return s;
+    var k = context + '|' + s;
+    return Object.prototype.hasOwnProperty.call(dict, k) ? dict[k] : T(s);
+  }
+
+  return {
+    T: T,
+    TC: TC,
+    setLang: setLang,
+    getLang: function () { return lang; },
+    isEn: function () { return lang === 'en'; },
+    _setDict: function (d) { dict = d || {}; index = null; cache = {}; },
+    KEY_LANG: KEY_LANG
+  };
+});
+</script>
+<script>
+/* src/shared/ui.js */
+/*
+ * 避难所 Playtest · 共享界面工具
+ * DOM 构建、弹窗、提示、复制、导出，以及带降级提示的本地存档。
+ * 用户输入一律以文本节点写入，不拼 innerHTML。
+ */
+(function (root) {
+  'use strict';
+
+  // ---------------------------------------------------------------- 语言
+
+  /* 所有界面文字都经过 h() 写入，因此只在这里翻译一次（存档里的数据保持原样）。 */
+  var I18N = root.ShelterI18n || { T: function (s) { return s; }, TC: function (c, s) { return s; }, isEn: function () { return false; }, getLang: function () { return 'zh'; }, setLang: function () {} };
+  var T = I18N.T;
+  var TRANSLATED_ATTRS = { placeholder: 1, title: 1, 'aria-label': 1, alt: 1 };
+
+  // ---------------------------------------------------------------- DOM
+
+  var PROPS = { value: 1, checked: 1, disabled: 1, selected: 1, htmlFor: 1, indeterminate: 1 };
+
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        var v = attrs[k];
+        if (v == null || v === false) return;
+        if (k === 'class') el.className = v;
+        else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+        else if (PROPS[k]) el[k] = v;
+        else el.setAttribute(k, v === true ? '' : TRANSLATED_ATTRS[k] ? T(String(v)) : String(v));
+      });
+    }
+    appendKids(el, Array.prototype.slice.call(arguments, 2));
+    return el;
+  }
+
+  function appendKids(el, kids) {
+    kids.forEach(function (c) {
+      if (c == null || c === false || c === true) return;
+      if (Array.isArray(c)) appendKids(el, c);
+      else if (c instanceof Node) el.appendChild(c);
+      else el.appendChild(document.createTextNode(T(String(c))));
     });
-  })();
+  }
+
+  function clear(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+    return el;
+  }
+
+  /* 常量 SVG 图标（不含任何用户数据，可安全写入）。 */
+  var ICONS = {
+    lock: '<path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="14" height="10" rx="2"/>',
+    unlock: '<path d="M7 10V7a5 5 0 0 1 9.6-1.9"/><rect x="5" y="10" width="14" height="10" rx="2"/>',
+    eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3.2 3.7M6.6 7.6C4.4 9.1 3 12 3 12s4 6 9 6a8.6 8.6 0 0 0 4-1"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+    undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+    warn: '<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/>',
+    stop: '<path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3z"/><path d="M12 7.5v5.5M12 16.5v.5"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    exitFull: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+    skill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    plan: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 11h6M9 15h4"/>',
+    timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
+    dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="9" cy="15" r="1"/>'
+  };
+
+  function icon(name) {
+    var span = document.createElement('span');
+    span.className = 'icon';
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[name] || '') + '</svg>';
+    return span;
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    function p(n) { return n < 10 ? '0' + n : String(n); }
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
+  function fmtClock(ms) {
+    var total = Math.max(0, Math.ceil(ms / 1000));
+    var m = Math.floor(total / 60);
+    var s = total % 60;
+    return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+  }
+
+  /** 数字输入：空字符串 → null（表示待配置），否则取整数／小数。 */
+  function parseNumber(text, allowDecimal) {
+    var t = String(text == null ? '' : text).trim();
+    if (t === '') return null;
+    var n = allowDecimal ? parseFloat(t) : parseInt(t, 10);
+    return isFinite(n) ? n : NaN;
+  }
+
+  // ---------------------------------------------------------------- 提示与弹窗
+
+  /* 提示里只放不含秘密的通用文字：隐藏时也不能通过通知泄露。 */
+  function toast(message, kind) {
+    var host = document.getElementById('toast');
+    if (!host) return;
+    var el = h('div', { class: 'toast ' + (kind || '') }, message);
+    host.appendChild(el);
+    setTimeout(function () { el.classList.add('out'); }, 3200);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3700);
+  }
+
+  var modalStack = [];
+
+  /**
+   * 弹窗。body 可以是节点或文字；actions: [{label, value, kind}]。
+   * 返回 Promise：点按钮得到 value，取消（Esc／点遮罩）得到 undefined。
+   */
+  function modal(opts) {
+    return new Promise(function (resolve) {
+      var rootEl = document.getElementById('modal-root') || document.body;
+      var done = false;
+      function close(value) {
+        if (done) return;
+        done = true;
+        document.removeEventListener('keydown', onKey, true);
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        modalStack.pop();
+        resolve(value);
+      }
+      function onKey(e) {
+        if (modalStack[modalStack.length - 1] !== overlay) return;
+        if (e.key === 'Escape') { e.preventDefault(); close(undefined); }
+      }
+      var actions = (opts.actions || [{ label: '知道了', value: true, kind: 'primary' }]).map(function (a) {
+        return h('button', {
+          type: 'button',
+          class: 'btn ' + (a.kind || ''),
+          onclick: function () {
+            if (a.validate) {
+              var msg = a.validate();
+              if (msg) { toast(msg, 'warn'); return; }
+            }
+            close(typeof a.value === 'function' ? a.value() : a.value);
+          }
+        }, a.label);
+      });
+      var dialog = h('div', { class: 'modal ' + (opts.wide ? 'wide' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': opts.title || '对话框' },
+        opts.title ? h('h3', { class: 'modal-title' }, opts.title) : null,
+        h('div', { class: 'modal-body' }, opts.body || null),
+        h('div', { class: 'modal-actions' }, actions));
+      var overlay = h('div', { class: 'overlay', onclick: function (e) { if (e.target === overlay && !opts.sticky) close(undefined); } }, dialog);
+      modalStack.push(overlay);
+      rootEl.appendChild(overlay);
+      document.addEventListener('keydown', onKey, true);
+      var focusTarget = dialog.querySelector('[autofocus]') || dialog.querySelector('input, textarea, select') || actions[actions.length - 1];
+      if (focusTarget) setTimeout(function () { focusTarget.focus(); }, 0);
+    });
+  }
+
+  function confirmBox(title, text, okLabel, kind) {
+    return modal({
+      title: title,
+      body: h('p', null, text),
+      actions: [{ label: '取消', value: false }, { label: okLabel || '确定', value: true, kind: kind || 'primary' }]
+    });
+  }
+
+  // ---------------------------------------------------------------- 复制与导出
+
+  function fallbackCopy(text) {
+    var ta = h('textarea', { class: 'offscreen', readonly: true });
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && root.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return fallbackCopy(text); });
+    }
+    return Promise.resolve(fallbackCopy(text));
+  }
+
+  /** 可复制的交接文本框：一律提醒「需要对方手动修改」，不假装跨端同步。 */
+  function copyBlock(text, opts) {
+    opts = opts || {};
+    text = T(text); // 交接文本按当前语言生成，复制出去的就是看到的
+    var ta = h('textarea', { class: 'copy-text', readonly: true, rows: opts.rows || Math.min(8, Math.max(2, text.split('\n').length + 1)) });
+    ta.value = text;
+    var btn = h('button', {
+      type: 'button',
+      class: 'btn small',
+      onclick: function () {
+        copyText(text).then(function (ok) {
+          toast(ok ? '已复制，请粘贴到 Discord' : '复制失败，请手动全选复制', ok ? 'ok' : 'warn');
+        });
+      }
+    }, icon('copy'), opts.label || '复制');
+    return h('div', { class: 'copy-block' }, ta, h('div', { class: 'copy-row' }, btn, opts.note ? h('span', { class: 'muted small' }, opts.note) : null));
+  }
+
+  function downloadJSON(filename, obj) {
+    var blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = h('a', { href: url, download: filename, class: 'offscreen' });
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 1500);
+  }
+
+  function readFileText(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || '')); };
+      reader.onerror = function () { reject(reader.error || new Error('读取文件失败')); };
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+
+  function stamp() {
+    var d = new Date();
+    function p(n) { return n < 10 ? '0' + n : String(n); }
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  // ---------------------------------------------------------------- 本地存档
+
+  function probeStorage() {
+    try {
+      var k = '__shelter_probe__';
+      root.localStorage.setItem(k, '1');
+      root.localStorage.removeItem(k);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * 一个命名空间下的存档。浏览器本地保存不可用时 available=false，
+   * 页面仍可在内存中运行，并提示用户导出文件。
+   */
+  function Store(key) {
+    this.key = key;
+    this.available = probeStorage();
+    this.lastError = null;
+  }
+
+  Store.prototype.read = function () {
+    if (!this.available) return { status: 'unavailable' };
+    var raw;
+    try {
+      raw = root.localStorage.getItem(this.key);
+    } catch (e) {
+      this.lastError = e;
+      return { status: 'error', error: e };
+    }
+    if (raw == null) return { status: 'empty' };
+    try {
+      return { status: 'ok', data: JSON.parse(raw), raw: raw };
+    } catch (e2) {
+      return { status: 'corrupt', raw: raw, error: e2 };
+    }
+  };
+
+  Store.prototype.write = function (obj) {
+    if (!this.available) return false;
+    try {
+      root.localStorage.setItem(this.key, JSON.stringify(obj));
+      this.lastError = null;
+      return true;
+    } catch (e) {
+      this.lastError = e;
+      return false;
+    }
+  };
+
+  Store.prototype.remove = function () {
+    if (!this.available) return;
+    try { root.localStorage.removeItem(this.key); } catch (e) { this.lastError = e; }
+  };
+
+  /** 覆盖前把旧存档留一份（最多保留 5 份）。 */
+  Store.prototype.backup = function (raw, reason) {
+    if (!this.available || raw == null) return false;
+    var key = this.key + ':backups';
+    try {
+      var list = JSON.parse(root.localStorage.getItem(key) || '[]');
+      if (!Array.isArray(list)) list = [];
+      list.unshift({ at: Date.now(), reason: reason || '', raw: typeof raw === 'string' ? raw : JSON.stringify(raw) });
+      root.localStorage.setItem(key, JSON.stringify(list.slice(0, 5)));
+      return true;
+    } catch (e) {
+      this.lastError = e;
+      return false;
+    }
+  };
+
+  Store.prototype.backups = function () {
+    if (!this.available) return [];
+    try {
+      var list = JSON.parse(root.localStorage.getItem(this.key + ':backups') || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  function readKey(key) {
+    try { return root.localStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  function writeKey(key, value) {
+    try { root.localStorage.setItem(key, value); return true; } catch (e) { return false; }
+  }
+
+  function removeKey(key) {
+    try { root.localStorage.removeItem(key); } catch (e) { /* 忽略 */ }
+  }
+
+  // ---------------------------------------------------------------- 联机存档
+
+  /**
+   * 联机模式（网址带 ?game=<id>）：面板存档放在服务器上，主持人存档跟着对局，玩家存档跟着自己的座位。
+   * kind：'host' | 'seat'。返回 Promise<ctx>：ctx.state 是载入的存档，ctx.store 与本地 Store 同接口（write 即保存），
+   * ctx.game 是对局信息（随推送更新）。之后服务器那边的变化通过回调告诉页面：
+   *   onState(state, reason, detail)  reason：device 另一台设备保存了｜conflict 本机保存时撞上了更新的版本｜
+   *                                   rules 主持人更新了规则或名单（detail＝{rules, roster}）｜reload 服务器拒绝写入后重新载入
+   *   onGame(game)   对局状态或座位变化（如暂停）
+   *   onGone()       自己已经不在这局（座位被释放、对局被删除）
+   *   onError(code)  保存失败（网络断开会自动重试）
+   * 同一时间只有一个保存请求在路上，期间的修改合并成最新一份再发。
+   */
+  function connectOnline(gameId, kind, handlers) {
+    var base = location.pathname.replace(/[^/]*$/, '');
+    var url = base + 'api/games/' + encodeURIComponent(gameId) + '/state/' + kind;
+    var socket = null;
+    var toastAt = 0;
+    var store = { available: true, lastError: null, version: 0, pending: null, busy: false };
+    var ctx = {
+      store: store, game: null, state: null,
+      readOnly: function () { return !ctx.game || ctx.game.status !== 'active'; },
+      /** 只读时拦下修改并提示（提示最多 5 秒一次）。 */
+      blocked: function () {
+        if (!ctx.readOnly()) return false;
+        if (Date.now() - toastAt > 5000) {
+          toastAt = Date.now();
+          toast(ctx.game && ctx.game.status === 'paused' ? '对局已暂停，现在只能查看' : '对局不在进行中，现在只能查看', 'warn');
+        }
+        return true;
+      }
+    };
+
+    function getJSON(r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
+    }
+    function load() {
+      return fetch(url, { credentials: 'same-origin' }).then(getJSON, function () { throw { code: 'network' }; }).then(function (res) {
+        if (!res.ok) throw { code: res.d.error || 'unknown' };
+        store.version = res.d.version;
+        ctx.game = res.d.game;
+        return res.d.state;
+      });
+    }
+
+    store.write = function (obj) {
+      store.pending = JSON.stringify(obj);
+      flush();
+      return true;
+    };
+    store.backup = function () { return false; };
+    store.backups = function () { return []; };
+
+    function flush() {
+      if (store.busy || store.pending == null) return;
+      var body = store.pending;
+      store.pending = null;
+      store.busy = true;
+      fetch(url, {
+        method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: '{"version":' + store.version + ',"from":' + JSON.stringify(socket ? socket.id : null) + ',"state":' + body + '}'
+      }).then(getJSON).then(function (res) {
+        store.busy = false;
+        if (res.ok) { store.version = res.d.version; store.lastError = null; return flush(); }
+        var code = res.d.error || 'unknown';
+        store.pending = null;
+        if (code === 'version_conflict') {
+          store.version = res.d.version;
+          handlers.onState(res.d.state, 'conflict');
+        } else if (code === 'read_only') {
+          load().then(function (s) { handlers.onState(s, 'reload'); handlers.onGame(ctx.game); }, function (e) { handlers.onError(e.code); });
+        } else {
+          store.lastError = { name: code };
+          handlers.onError(code);
+        }
+      }, function () {
+        // 网络断开：留着这份（若期间没有更新的）稍后重试
+        store.busy = false;
+        if (store.pending == null) store.pending = body;
+        if (!store.lastError || store.lastError.name !== 'network') handlers.onError('network'); // 重试期间只提示一次
+        store.lastError = { name: 'network' };
+        setTimeout(flush, 3000);
+      });
+    }
+
+    // 实时连接：订阅房间（状态、座位变化）和自己的存档推送。Socket.IO 客户端由服务端提供，按需加载
+    function connectSocket() {
+      var script = document.createElement('script');
+      script.src = base + 'socket.io/socket.io.js';
+      script.onload = function () {
+        socket = root.io({ path: base + 'socket.io' });
+        socket.on('connect', function () { socket.emit('game:watch', gameId); });
+        socket.on('game:update', function (g) {
+          if (g.id !== gameId) return;
+          ctx.game = g;
+          handlers.onGame(g);
+        });
+        socket.on('game:gone', function (m) { if (m.id === gameId) handlers.onGone(); });
+        socket.on('state:update', function (m) {
+          if (m.gameId !== gameId || m.kind !== kind || m.from === socket.id || m.version <= store.version) return;
+          store.version = m.version;
+          store.pending = null;
+          handlers.onState(m.state, m.reason ? 'rules' : 'device', m.reason);
+        });
+      };
+      document.head.appendChild(script);
+    }
+
+    root.addEventListener('beforeunload', function (e) {
+      if (store.busy || store.pending != null) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    return load().then(function (s) {
+      ctx.state = s;
+      connectSocket();
+      return ctx;
+    });
+  }
+
+  var ONLINE_RELOADED = {
+    device: '另一台设备更新了存档：已载入最新',
+    conflict: '服务器上的存档刚被更新：已载入最新，你最后一步操作没有保存，请重做',
+    reload: '对局现在不能修改：已恢复为服务器上的存档'
+  };
+  var ONLINE_FAIL = {
+    network: '连不上服务器，请稍后刷新重试。',
+    unauthorized: '登录已失效：请回到大厅重新登录。',
+    not_found: '找不到这局对局，或者你已经不在其中。',
+    no_seat: '你在这局里没有座位。',
+    not_started: '对局还没开始：主导在大厅点「开始对局」后才能进入面板。'
+  };
+
+  function onlineReloadedText(reason) { return ONLINE_RELOADED[reason] || '存档已更新'; }
+
+  /** 联机面板顶部：对局名（玩家输入，原样显示）、是否只读、返回大厅。 */
+  function onlineBanner(ctx) {
+    var g = ctx.game;
+    return h('div', { class: 'banner ' + (g.status === 'active' ? 'info' : 'risk') },
+      h('span', { class: 'grow' },
+        g.status === 'active' ? '联机对局：' : g.status === 'paused' ? '对局已暂停，现在只能查看：' : '对局不在进行中，现在只能查看：',
+        document.createTextNode(g.title)),
+      h('a', { class: 'btn small', href: 'index.html#game=' + g.id }, '返回大厅'));
+  }
+
+  function onlineFailCard(code) {
+    return h('section', { class: 'card' },
+      h('p', null, ONLINE_FAIL[code] || '载入失败：' + code),
+      h('a', { class: 'btn primary', href: 'index.html' }, '返回大厅'));
+  }
+
+  // ---------------------------------------------------------------- 撤销
+
+  /** 最近操作撤销：保存操作前的完整快照（内存中，最多 limit 步）。 */
+  function UndoStack(limit) {
+    this.items = [];
+    this.limit = limit || 30;
+  }
+
+  UndoStack.prototype.push = function (label, snapshot) {
+    this.items.push({ label: label, snapshot: snapshot, at: Date.now() });
+    if (this.items.length > this.limit) this.items.shift();
+  };
+
+  UndoStack.prototype.pop = function () {
+    return this.items.pop() || null;
+  };
+
+  UndoStack.prototype.peek = function () {
+    return this.items.length ? this.items[this.items.length - 1] : null;
+  };
+
+  UndoStack.prototype.clear = function () {
+    this.items = [];
+  };
+
+  // ---------------------------------------------------------------- 小组件
+
+  /** 规则标记徽章：已确认／暂定／待定／实现建议／草案。 */
+  function ruleBadge(status) {
+    var names = { confirmed: '已确认', tentative: '暂定', pending: '待定', impl: '实现建议', draft: '草案', custom: '自定义', demo: '演示' };
+    return h('span', { class: 'badge rule-' + status }, names[status] || status);
+  }
+
+  function pendingTag(text) {
+    return h('span', { class: 'pending-tag' }, text || '待配置／主持人裁定');
+  }
+
+  /**
+   * 只有单个输入框／下拉框才用 <label> 包裹。按钮组、步进器等放进 <label> 时，
+   * 点击会被浏览器转发给 label 里的第一个按钮（重绘后尤其明显），所以改用带 aria-label 的分组。
+   */
+  function field(label, control, hint) {
+    var single = control && control.nodeType === 1 && /^(INPUT|SELECT|TEXTAREA)$/.test(control.tagName);
+    return h(single ? 'label' : 'div', { class: 'field', role: single ? null : 'group', 'aria-label': single ? null : label },
+      h('span', { class: 'field-label' }, label), control, hint ? h('span', { class: 'field-hint' }, hint) : null);
+  }
+
+  function select(options, value, onchange, attrs) {
+    var el = h('select', Object.assign({ onchange: function () { onchange(el.value); } }, attrs || {}),
+      options.map(function (o) {
+        var v = Array.isArray(o) ? o[0] : o.value;
+        var t = Array.isArray(o) ? o[1] : o.label;
+        return h('option', { value: v, selected: String(v) === String(value) }, t);
+      }));
+    return el;
+  }
+
+  /** 由 n 个按钮组成的单选组（状态同时显示文字）。 */
+  function segmented(options, value, onchange, attrs) {
+    return h('div', Object.assign({ class: 'segmented', role: 'group' }, attrs || {}), options.map(function (o) {
+      var v = Array.isArray(o) ? o[0] : o;
+      var t = Array.isArray(o) ? o[1] : o;
+      return h('button', {
+        type: 'button',
+        class: 'seg ' + (v === value ? 'on' : ''),
+        'aria-pressed': v === value ? 'true' : 'false',
+        onclick: function () { onchange(v); }
+      }, t);
+    }));
+  }
+
+  function stepper(value, onchange, opts) {
+    opts = opts || {};
+    var input = h('input', { type: 'number', class: 'num', value: value == null ? '' : value, placeholder: opts.placeholder || '待配置', step: opts.step || 1, 'aria-label': opts.label || '数值' });
+    input.addEventListener('change', function () {
+      var n = parseNumber(input.value, opts.decimal);
+      if (Number.isNaN(n)) { toast('请输入数字', 'warn'); input.value = value == null ? '' : value; return; }
+      onchange(n);
+    });
+    return h('span', { class: 'stepper' },
+      h('button', { type: 'button', class: 'btn icon-btn', 'aria-label': '减少', onclick: function () { onchange((value || 0) - (opts.delta || 1)); } }, icon('minus')),
+      input,
+      h('button', { type: 'button', class: 'btn icon-btn', 'aria-label': '增加', onclick: function () { onchange((value || 0) + (opts.delta || 1)); } }, icon('plus')));
+  }
+
+  // ---------------------------------------------------------------- 仪表盘部件（主持人与玩家共用）
+
+  /* 状态一律「图标形状＋文字＋颜色」三重编码：橙与红在色觉差异下难以区分，颜色从不单独表达含义。 */
+  var SEV = {
+    ok: { cls: 'ok', icon: 'check', word: '正常' },
+    info: { cls: 'info', icon: 'info', word: '提示' },
+    warning: { cls: 'warn', icon: 'warn', word: '注意' },
+    critical: { cls: 'crit', icon: 'stop', word: '危险' }
+  };
+
+  function sevBadge(level, word) {
+    var sv = SEV[level] || SEV.info;
+    return h('span', { class: 'sev sev-' + sv.cls }, icon(sv.icon), word || sv.word);
+  }
+
+  /** 进度条：填充色表示严重度，轨道是同一色相的浅色阶。 */
+  function meter(value, max, level, label) {
+    var pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+    return h('span', {
+      class: 'meter2 m-' + (SEV[level] || SEV.ok).cls, role: 'meter', 'aria-label': label,
+      'aria-valuemin': '0', 'aria-valuemax': String(max), 'aria-valuenow': String(value)
+    }, h('span', { class: 'meter2-fill', style: 'width:' + pct + '%' }));
+  }
+
+  /** 指标卡：标签 · 状态徽章 · 数值（＋单位）· 可视化 · 说明。整张卡可点击跳转。 */
+  function statTile(o) {
+    return h(o.onclick ? 'button' : 'div', { type: o.onclick ? 'button' : null, class: 'tile ' + (o.cls || ''), 'data-tile': o.key, onclick: o.onclick || null },
+      h('span', { class: 'tile-head' }, h('span', { class: 'tile-label' }, o.label), o.badge || null),
+      h('span', { class: 'tile-value' }, o.value, o.unit ? h('span', { class: 'tile-unit' }, o.unit) : null),
+      o.viz || null,
+      o.sub ? h('span', { class: 'tile-sub' }, o.sub) : null);
+  }
+
+  /**
+   * 演示存档在英文界面下用英文内容生成（名字、事件、笔记……）。
+   * 规则判断要用的中文状态值（口渴、意识、饥饿状态）不翻译，否则逻辑比较会失效。
+   */
+  var KEEP_KEYS = { thirst: 1, consciousness: 1, hungerManual: 1 };
+  function localizeDemo(obj) {
+    if (!I18N.isEn()) return obj;
+    (function walk(o) {
+      Object.keys(o).forEach(function (k) {
+        var v = o[k];
+        if (typeof v === 'string') { if (!KEEP_KEYS[k]) o[k] = T(v); }
+        else if (v && typeof v === 'object') walk(v);
+      });
+    })(obj);
+    return obj;
+  }
+
+  /**
+   * 守夜候选卡。t 来自 ShelterCore.watchCardText：{ title, who, tendency, tendencyKind, effects }。
+   * opts: { label（①／②）, selected, onclick（可点选时整张卡是按钮）, id }
+   */
+  function watchCard(t, opts) {
+    opts = opts || {};
+    var clickable = typeof opts.onclick === 'function';
+    return h(clickable ? 'button' : 'div', {
+      type: clickable ? 'button' : null,
+      class: 'watch-card' + (opts.selected ? ' on' : ''),
+      'aria-pressed': clickable ? (opts.selected ? 'true' : 'false') : null,
+      'data-watch-card': opts.id || null,
+      onclick: clickable ? opts.onclick : null
+    },
+      h('span', { class: 'watch-card-head' },
+        opts.label ? h('span', { class: 'watch-card-label' }, opts.label) : null,
+        h('span', { class: 'watch-card-title' }, t.title),
+        opts.selected ? h('span', { class: 'watch-card-picked' }, icon('check'), '已选') : null),
+      h('span', { class: 'watch-card-who' }, t.who),
+      t.tendency ? h('span', { class: 'watch-card-tend tend-' + t.tendencyKind }, t.tendency) : null,
+      t.effects.length ? h('span', { class: 'watch-card-fx' }, t.effects.map(function (e) { return h('span', { class: 'fx' }, e); })) : null);
+  }
+
+  /**
+   * 第2版守夜卡的卡面。face 来自 ShelterCore.watchCardFace。
+   * 全员卡整张只写一句话；普通卡：正上方倾向句（可无）、中央人名、左下技能图标、右下计划图标。
+   * opts.onclick 时整张卡是按钮（可选中）；选中标记放在卡面外，不改卡面内容。
+   */
+  function watchCardFace(face, opts) {
+    opts = opts || {};
+    var inner = face.all
+      ? h('span', { class: 'wcard-all' }, face.text)
+      : [
+        h('span', { class: 'wcard-line' }, face.line || ''),
+        h('span', { class: 'wcard-names' }, face.names.map(function (n) { return h('span', { class: 'wcard-name' }, n); })),
+        h('span', { class: 'wcard-corners' },
+          h('span', { class: 'wcard-corner left' }, face.skill ? [icon('skill'), h('span', null, face.skill)] : null),
+          h('span', { class: 'wcard-corner right' }, face.plan ? [h('span', null, face.plan), icon('plan')] : null))
+      ];
+    var clickable = typeof opts.onclick === 'function';
+    var card = h(clickable ? 'button' : 'div', {
+      type: clickable ? 'button' : null,
+      class: 'wcard' + (face.all ? ' is-all' : '') + (opts.selected ? ' on' : ''),
+      'aria-pressed': clickable ? (opts.selected ? 'true' : 'false') : null,
+      'data-wcard': opts.id || null,
+      onclick: clickable ? opts.onclick : null
+    }, inner);
+    return h('div', { class: 'wcard-slot' }, card,
+      opts.selected ? h('span', { class: 'wcard-picked' }, icon('check'), opts.pickedText || '已选这张') : (opts.caption ? h('span', { class: 'wcard-caption' }, opts.caption) : null));
+  }
+
+  /**
+   * 一键重置：删除本机上以 prefixes 开头的所有本地数据（存档、演示、备份、页面设置），
+   * 然后带上时间戳重新载入，绕开浏览器对旧页面的缓存。语言选择保留。
+   */
+  function wipeLocal(prefixes) {
+    var removed = 0;
+    try {
+      var keys = [];
+      for (var i = 0; i < root.localStorage.length; i++) keys.push(root.localStorage.key(i));
+      keys.forEach(function (k) {
+        if (k && prefixes.some(function (p) { return k.indexOf(p) === 0; })) { root.localStorage.removeItem(k); removed++; }
+      });
+    } catch (e) { /* 存储不可用时没有可删的 */ }
+    try { root.sessionStorage.clear(); } catch (e) { /* 忽略 */ }
+    try { if (root.caches && root.caches.keys) root.caches.keys().then(function (ks) { ks.forEach(function (k) { root.caches.delete(k); }); }); } catch (e) { /* 忽略 */ }
+    return removed;
+  }
+
+  function reloadFresh() {
+    var url = location.href.replace(/#.*$/, '').replace(/([?&])fresh=\d+&?/, '$1').replace(/[?&]$/, '');
+    location.replace(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'fresh=' + Date.now());
+  }
+
+  /** 「从剪贴板粘贴」：浏览器不允许时提示手动粘贴。 */
+  function pasteButton(onText) {
+    return h('button', {
+      type: 'button', class: 'btn', onclick: function () {
+        var fail = function () { toast('浏览器不允许读取剪贴板：请长按或右键粘贴到框里', 'warn'); };
+        try {
+          if (!navigator.clipboard || !navigator.clipboard.readText) { fail(); return; }
+          navigator.clipboard.readText().then(function (text) { if (text) onText(text); else fail(); }, fail);
+        } catch (e) { fail(); }
+      }
+    }, '从剪贴板粘贴');
+  }
+
+  /** 语言切换按钮：显示「要切换到的语言」，点了保存选择并重画页面。 */
+  function langToggle(onChange) {
+    var en = I18N.isEn();
+    return h('button', {
+      type: 'button', class: 'btn small lang-btn', lang: en ? 'zh-CN' : 'en',
+      'aria-label': en ? '切换到中文' : 'Switch to English', title: en ? '切换到中文' : 'Switch to English',
+      onclick: function () {
+        I18N.setLang(en ? 'zh' : 'en');
+        if (onChange) onChange();
+      }
+    }, en ? '中文' : 'EN');
+  }
+
+  root.ShelterUI = {
+    T: T,
+    TC: I18N.TC,
+    i18n: I18N,
+    langToggle: langToggle,
+    localizeDemo: localizeDemo,
+    watchCard: watchCard,
+    watchCardFace: watchCardFace,
+    wipeLocal: wipeLocal,
+    reloadFresh: reloadFresh,
+    pasteButton: pasteButton,
+    sevBadge: sevBadge,
+    meter: meter,
+    statTile: statTile,
+    h: h,
+    clear: clear,
+    icon: icon,
+    fmtTime: fmtTime,
+    fmtClock: fmtClock,
+    parseNumber: parseNumber,
+    toast: toast,
+    modal: modal,
+    confirmBox: confirmBox,
+    copyText: copyText,
+    copyBlock: copyBlock,
+    downloadJSON: downloadJSON,
+    readFileText: readFileText,
+    stamp: stamp,
+    Store: Store,
+    connectOnline: connectOnline,
+    onlineBanner: onlineBanner,
+    onlineFailCard: onlineFailCard,
+    onlineReloadedText: onlineReloadedText,
+    readKey: readKey,
+    writeKey: writeKey,
+    removeKey: removeKey,
+    UndoStack: UndoStack,
+    ruleBadge: ruleBadge,
+    pendingTag: pendingTag,
+    field: field,
+    select: select,
+    segmented: segmented,
+    stepper: stepper
+  };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/* src/lobby/lobby.js */
+/*
+ * 避难所 Playtest · 联机大厅
+ *
+ * 一个页面三种视图（按网址 # 切换）：首页（创建／加入入口 + 我的对局）、#join（邀请码 + 公开对局）、#game=<id>（房间）。
+ * 没登录时显示登录／注册。数据都在服务器上：HTTP 接口做操作，Socket.IO 推送房间变化与在线状态。
+ * 界面组件、配色和中英切换与主持人／玩家面板共用（base.css、ui.js、i18n.js）。
+ * 用户名和对局标题是玩家输入的内容，用 raw() 原样写入，不经过翻译。
+ */
+(function () {
+  'use strict';
+
+  // 网址没有结尾斜杠时（如 /Misc/ShelterPT）补上，否则相对路径会落到上一级目录
+  if (location.protocol !== 'file:' && !/\/$/.test(location.pathname) && !/\.html?$/.test(location.pathname)) {
+    location.replace(location.pathname + '/' + location.search + location.hash);
+    return;
+  }
+
+  var U = window.ShelterUI;
+  var h = U.h;
+  var PAGE_TITLE = '避难所 Playtest';
+  // 接口与 Socket.IO 都按页面所在目录拼路径：本地是 /api、/socket.io，线上自动带上 /Misc/ShelterPT/
+  var BASE = location.pathname.replace(/[^/]*$/, '');
+
+  var ERRORS = {
+    network: '连不上服务器，请稍后再试。',
+    unauthorized: '登录已失效，请重新登录。',
+    rate_limited: '尝试次数太多，请过几分钟再试。',
+    bad_username: '用户名需要 3～20 个字符：中英文、数字、下划线。',
+    bad_password: '密码至少 8 位。',
+    username_taken: '这个用户名已经被注册了。',
+    wrong_credentials: '用户名或密码不对。',
+    bad_title: '对局名称需要 1～40 个字。',
+    bad_max_seats: '人数上限需要在 1～12 之间。',
+    bad_code: '没有找到这个邀请码。',
+    game_full: '这局已经满员了。',
+    no_open_seat: '这局已经开始，目前没有空出来的座位。',
+    game_closed: '这局已经结束了。',
+    not_found: '找不到这局对局，或者你已经不在其中。',
+    owner_only: '只有主导能这样做。',
+    bad_transition: '当前状态下不能这样做。',
+    no_players: '至少要有一名玩家才能开始。',
+    already_started: '对局已经开始，不能这样做了。',
+    not_started: '对局还没开始。',
+    use_host_plays: '主导自己的座位请用「参与扮演／只主持」切换。',
+    owner_cannot_leave: '主导不能退出，可以删除对局。',
+    already_open: '这个座位已经是空的。'
+  };
+  var STATUS = { lobby: ['info', '招募中'], active: ['ok', '进行中'], paused: ['warning', '已暂停'], finished: ['info', '已结束'] };
+  var ROLE = { host: '主导', 'host-player': '主导兼角色', player: '玩家' };
+
+  var me = null;
+  var socket = null;
+  var ui = { page: 'home', gameId: null, mine: null, open: null, game: null, code: '', authMode: 'login', authUser: '', authError: '' };
+
+  function raw(s) { return document.createTextNode(String(s == null ? '' : s)); }
+  // 「已结束」「加入」等词在主持人／玩家页另有译法，大厅里按语境 lobby 取词
+  function statusBadge(s) { var v = STATUS[s] || STATUS.info; return U.sevBadge(v[0], U.TC('lobby', v[1])); }
+  function presence(on) { return h('span', { class: 'presence' + (on ? ' on' : '') }, on ? '在线' : '离线'); }
+
+  // ---------------------------------------------------------------- 接口
+
+  function api(method, path, body) {
+    return fetch(BASE + 'api/' + path, {
+      method: method,
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: 'same-origin'
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        if (!r.ok) throw { code: data.error || 'http_' + r.status };
+        return data;
+      });
+    }, function () { throw { code: 'network' }; });
+  }
+
+  function fail(e) {
+    var code = (e && e.code) || 'unknown';
+    U.toast(ERRORS[code] || '出错了：' + code, 'warn');
+    if (code === 'unauthorized') signedOut();
+  }
+
+  // ---------------------------------------------------------------- 实时连接
+
+  function connect() {
+    if (socket || !window.io) return;
+    socket = window.io({ path: BASE + 'socket.io' });
+    socket.on('connect', function () { if (ui.page === 'room') watch(); });
+    socket.on('games:changed', function () { if (ui.page === 'home') loadMine(); });
+    socket.on('lobby:changed', function () { if (ui.page === 'join') loadOpen(); });
+    socket.on('game:update', function (g) {
+      if (ui.page === 'room' && g.id === ui.gameId) { ui.game = g; render(); }
+    });
+    socket.on('game:gone', function (msg) {
+      if (ui.page === 'room' && msg.id === ui.gameId) { U.toast('你已经不在这局对局里了。', 'warn'); location.hash = ''; }
+    });
+    socket.on('connect_error', function (e) { if (e.message === 'unauthorized') signedOut(); });
+  }
+
+  function watch() {
+    if (!socket) return;
+    socket.emit('game:watch', ui.gameId, function (res) {
+      if (res.error) { fail({ code: res.error }); location.hash = ''; return; }
+      if (ui.page === 'room') { ui.game = res.game; render(); }
+    });
+  }
+
+  function signedOut() {
+    me = null;
+    if (socket) { socket.disconnect(); socket = null; }
+    render();
+  }
+
+  // ---------------------------------------------------------------- 导航与数据
+
+  function route() {
+    var m = /^#game=([\w-]+)$/.exec(location.hash);
+    var prev = ui.page;
+    ui.page = m ? 'room' : location.hash === '#join' ? 'join' : 'home';
+    if (prev === 'room' && (!m || m[1] !== ui.gameId) && socket) socket.emit('game:unwatch');
+    ui.gameId = m ? m[1] : null;
+    if (!me) return render();
+    if (ui.page === 'home') loadMine();
+    if (ui.page === 'join') loadOpen();
+    if (ui.page === 'room') { ui.game = null; watch(); }
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  function loadMine() { api('GET', 'games').then(function (d) { ui.mine = d.games; if (ui.page === 'home') render(); }, fail); }
+  function loadOpen() { api('GET', 'games/open').then(function (d) { ui.open = d.games; if (ui.page === 'join') render(); }, fail); }
+  function enter(id) { location.hash = 'game=' + id; }
+
+  // ---------------------------------------------------------------- 渲染
+
+  function onLangChange() {
+    document.title = U.T(PAGE_TITLE);
+    render();
+  }
+
+  function render() {
+    renderTop();
+    var main = U.clear(document.getElementById('main'));
+    if (!me) main.appendChild(renderAuth());
+    else if (ui.page === 'join') renderJoin(main);
+    else if (ui.page === 'room') renderRoom(main);
+    else renderHome(main);
+  }
+
+  function renderTop() {
+    var top = U.clear(document.getElementById('topbar'));
+    top.appendChild(h('div', { class: 'l-top' },
+      h('button', { type: 'button', class: 'l-brand', onclick: function () { location.hash = ''; } }, h('b', null, '避难所'), h('span', { class: 'brand-role badge' }, '联机大厅')),
+      h('div', { class: 'l-top-tools' },
+        me ? h('span', { class: 'l-user', title: me.id }, raw(me.username)) : null,
+        U.langToggle(onLangChange),
+        me ? h('button', { type: 'button', class: 'btn small', onclick: logout }, '退出登录') : null)));
+  }
+
+  function renderAuth() {
+    var reg = ui.authMode === 'register';
+    var user = h('input', { name: 'username', autocomplete: 'username', maxlength: 20, required: true, value: ui.authUser });
+    var pass = h('input', { name: 'password', type: 'password', autocomplete: reg ? 'new-password' : 'current-password', maxlength: 200, required: true });
+    var submit = h('button', { type: 'submit', class: 'btn primary big' }, reg ? '注册并登录' : '登录');
+    var form = h('form', {
+      novalidate: true,
+      onsubmit: function (ev) {
+        ev.preventDefault();
+        submit.disabled = true;
+        ui.authUser = user.value.trim();
+        api('POST', reg ? 'register' : 'login', { username: ui.authUser, password: pass.value }).then(function (d) {
+          ui.authError = '';
+          me = d.user;
+          connect();
+          route();
+        }, function (e) {
+          ui.authError = ERRORS[e.code] || '出错了：' + e.code;
+          render();
+        });
+      }
+    },
+      U.field('用户名', user, reg ? '3～20 个字符：中英文、数字、下划线。' : null),
+      U.field('密码', pass, reg ? '至少 8 位。忘记密码请找管理员重置。' : null),
+      ui.authError ? h('div', { class: 'callout danger', role: 'alert' }, ui.authError) : null,
+      submit);
+    return h('div', { class: 'l-hero auth' },
+      h('div', { class: 'eyebrow' }, 'PLAYTEST · 联机'),
+      h('h1', null, '避难所 Playtest'),
+      h('section', { class: 'card' },
+        U.segmented([['login', '登录'], ['register', '注册']], ui.authMode, function (v) { ui.authMode = v; ui.authError = ''; render(); }),
+        form));
+  }
+
+  function renderHome(main) {
+    main.appendChild(h('section', { class: 'l-hero' },
+      h('div', { class: 'eyebrow' }, 'PLAYTEST · 规则测试工具'),
+      h('h1', null, '避难所 Playtest'),
+      h('p', { class: 'lead' }, '末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。'),
+      h('p', { class: 'quote' }, '军方热线目前忙音。请保持冷静，并清点你的面包。')));
+    main.appendChild(h('div', { class: 'l-actions' },
+      h('button', { type: 'button', class: 'entry', 'data-entry': 'create', onclick: createGame },
+        h('span', { class: 'tag' }, '主导'),
+        h('h2', null, '创建对局'),
+        h('p', null, '开一局新的游戏：设定人数，选择自己只主持还是也扮演角色，然后把邀请码发给朋友。'),
+        h('span', { class: 'go' }, '创建对局', U.icon('arrow'))),
+      h('button', { type: 'button', class: 'entry', 'data-entry': 'join', onclick: function () { location.hash = 'join'; } },
+        h('span', { class: 'tag' }, '玩家'),
+        h('h2', null, '加入对局'),
+        h('p', null, '输入朋友给的邀请码，或者在公开列表里挑一局还有空位的。'),
+        h('span', { class: 'go' }, '去加入', U.icon('arrow')))));
+
+    var list = ui.mine;
+    main.appendChild(h('section', { class: 'card', id: 'my-games' },
+      h('div', { class: 'card-head' }, h('h2', null, '我的对局'), list ? h('span', { class: 'muted small' }, list.length + ' 局') : null),
+      !list ? h('p', { class: 'empty' }, '载入中…')
+        : !list.length ? h('p', { class: 'empty' }, '还没有对局。创建一局，或者加入朋友的对局。')
+          : h('ul', { class: 'game-list' }, list.map(function (g) {
+            return h('li', { class: 'game-row' + (g.status === 'finished' ? ' closed' : ''), 'data-game': g.id },
+              h('div', null,
+                h('div', { class: 'game-title' }, raw(g.title)),
+                h('div', { class: 'game-meta' },
+                  statusBadge(g.status),
+                  h('span', { class: 'badge' }, ROLE[g.role]),
+                  h('span', null, '主导：', raw(g.owner.username)),
+                  h('span', null, g.taken + '／' + g.maxSeats + ' 人'),
+                  g.ownerDeleted ? h('span', null, '主导已删除这局') : null,
+                  h('span', null, '更新于 ' + U.fmtTime(g.updatedAt)))),
+              h('button', { type: 'button', class: 'btn primary', onclick: function () { enter(g.id); } }, U.TC('lobby', '进入')));
+          }))));
+  }
+
+  function renderJoin(main) {
+    var input = h('input', {
+      class: 'code-input', maxlength: 6, value: ui.code, autocomplete: 'off', spellcheck: 'false', 'aria-label': '邀请码', placeholder: 'ABC234',
+      oninput: function () { ui.code = input.value; }
+    });
+    main.appendChild(h('div', null, h('button', { type: 'button', class: 'btn ghost small', onclick: function () { location.hash = ''; } }, '← 返回大厅')));
+    main.appendChild(h('section', { class: 'card' },
+      h('div', { class: 'card-head' }, h('h2', null, '用邀请码加入')),
+      h('form', {
+        class: 'code-form',
+        onsubmit: function (ev) {
+          ev.preventDefault();
+          api('POST', 'games/join', { code: input.value }).then(function (d) { ui.code = ''; enter(d.id); }, fail);
+        }
+      }, U.field('邀请码', input, '6 位，不分大小写'), h('button', { type: 'submit', class: 'btn primary' }, U.TC('lobby', '加入')))));
+
+    var list = ui.open;
+    main.appendChild(h('section', { class: 'card', id: 'open-games' },
+      h('div', { class: 'card-head' },
+        h('h2', null, '公开对局'),
+        h('button', { type: 'button', class: 'btn small', onclick: loadOpen }, '刷新')),
+      h('p', { class: 'section-note' }, '招募中的对局有空位就能加入；已经开始的对局只有被主导空出来的座位可以接手。'),
+      !list ? h('p', { class: 'empty' }, '载入中…')
+        : !list.length ? h('p', { class: 'empty' }, '现在没有可以加入的对局。')
+          : h('ul', { class: 'game-list' }, list.map(function (g) {
+            return h('li', { class: 'game-row', 'data-game': g.id },
+              h('div', null,
+                h('div', { class: 'game-title' }, raw(g.title)),
+                h('div', { class: 'game-meta' },
+                  statusBadge(g.status),
+                  h('span', null, '主导：', raw(g.owner.username)),
+                  h('span', null, g.taken + '／' + g.maxSeats + ' 人'),
+                  h('span', { class: 'badge ok' }, '空位 ' + g.free))),
+              h('button', {
+                type: 'button', class: 'btn primary',
+                onclick: function () { api('POST', 'games/' + g.id + '/join', {}).then(function (d) { enter(d.id); }, fail); }
+              }, g.status === 'lobby' ? U.TC('lobby', '加入') : '接手空座位'));
+          }))));
+  }
+
+  function renderRoom(main) {
+    main.appendChild(h('div', null, h('button', { type: 'button', class: 'btn ghost small', onclick: function () { location.hash = ''; } }, '← 返回大厅')));
+    var g = ui.game;
+    if (!g) { main.appendChild(h('p', { class: 'empty' }, '载入中…')); return; }
+    var isOwner = g.owner.id === me.id;
+    var mySeat = g.seats.filter(function (s) { return s.user && s.user.id === me.id; })[0];
+    var taken = g.seats.filter(function (s) { return s.user; }).length;
+    var open = g.seats.length - taken;
+
+    main.appendChild(h('section', { class: 'card' },
+      h('div', { class: 'room-head' },
+        h('div', null,
+          h('h1', null, raw(g.title)),
+          h('div', { class: 'room-sub' },
+            statusBadge(g.status),
+            h('span', null, '主导：', raw(g.owner.username)), presence(g.owner.online),
+            h('span', null, taken + '／' + g.maxSeats + ' 人'))),
+        g.status !== 'finished' ? h('div', { class: 'invite' },
+          h('span', { class: 'muted small' }, '邀请码'),
+          h('span', { class: 'invite-code', id: 'invite-code' }, g.code),
+          h('button', {
+            type: 'button', class: 'btn small',
+            onclick: function () { U.copyText(g.code).then(function (ok) { U.toast(ok ? '邀请码已复制' : '复制失败，请手动抄写', ok ? 'ok' : 'warn'); }); }
+          }, U.icon('copy'), '复制')) : null),
+      h('div', { class: 'callout ' + (g.status === 'paused' ? 'risk' : 'info'), style: 'margin-top:12px' },
+        g.ownerDeleted ? '主导已经删除了这局；记录保留，状态为已结束。'
+          : g.status === 'lobby' ? '招募中：把邀请码发给朋友，或者让他们在「加入对局」的公开列表里找到这局。人齐后由主导开始。'
+            : g.status === 'active' ? '对局进行中：从下面进入面板。存档保存在服务器上，换设备登录也能接着玩。'
+              : g.status === 'paused' ? '已暂停：数据都保存在服务器上，面板现在只能查看。主导点「继续」后，大家回到原来的座位接着玩。'
+                : '这局已经结束，面板只能查看。'),
+      // 开局后才有面板存档：主导进主持人面板，有座位的进自己的玩家面板（主导兼角色两个都有）
+      g.status !== 'lobby' && ((isOwner && !g.ownerDeleted) || mySeat) ? h('div', { class: 'room-actions', id: 'panels', style: 'margin-top:12px' },
+        isOwner && !g.ownerDeleted ? h('a', { class: 'btn primary', href: 'host.html?game=' + encodeURIComponent(g.id) }, '进入主持人面板') : null,
+        mySeat ? h('a', { class: 'btn ' + (isOwner ? '' : 'primary'), href: 'player.html?game=' + encodeURIComponent(g.id) }, '进入玩家面板') : null) : null));
+
+    main.appendChild(h('section', { class: 'card', id: 'seats' },
+      h('div', { class: 'card-head' }, h('h2', null, '座位'), open ? h('span', { class: 'badge ok' }, '空座位 ' + open) : null),
+      !g.seats.length ? h('p', { class: 'empty' }, '还没有人入座。') : h('ul', { class: 'seat-list' }, g.seats.map(function (s) {
+        var mine = s.user && s.user.id === me.id;
+        return h('li', { class: 'seat' + (mine ? ' me' : '') + (s.user ? '' : ' open'), 'data-seat': s.seatNo },
+          h('div', { class: 'seat-head' },
+            h('span', { class: 'seat-no' }, String(s.seatNo)),
+            h('span', { class: 'seat-name' }, s.user ? raw(s.user.username) : '空座位'),
+            s.user ? presence(s.user.online) : null),
+          h('div', { class: 'seat-foot' },
+            s.user && s.user.id === g.owner.id ? h('span', { class: 'badge' }, '主导') : null,
+            mine ? h('span', { class: 'badge ok' }, '你') : null,
+            s.user ? null : h('span', { class: 'muted small' }, '座位上的数据保留，等新玩家接手'),
+            isOwner ? seatAction(g, s) : null));
+      }))));
+
+    main.appendChild(renderControls(g, isOwner, mySeat));
+  }
+
+  function seatAction(g, s) {
+    if (!s.user) return null;
+    if (g.status === 'lobby' && s.user.id !== g.owner.id) {
+      return h('button', {
+        type: 'button', class: 'btn small danger',
+        onclick: function () {
+          U.confirmBox('移除玩家', [h('b', null, raw(s.user.username)), '：', '移出这局后，对方还可以用邀请码再加入。'], '移除', 'danger').then(function (ok) {
+            if (ok) api('POST', 'games/' + g.id + '/seats/' + s.id, { action: 'remove' }).catch(fail);
+          });
+        }
+      }, '移除');
+    }
+    if (g.status === 'active' || g.status === 'paused') {
+      return h('button', {
+        type: 'button', class: 'btn small risk',
+        onclick: function () {
+          U.confirmBox('释放座位', [h('b', null, raw(s.user.username)), '：', '座位上的资源、状态等数据都会保留，但这名玩家会失去这局的访问，座位开放给新玩家接手。'],
+            '释放座位', 'risk').then(function (ok) {
+            if (ok) api('POST', 'games/' + g.id + '/seats/' + s.id, { action: 'release' }).catch(fail);
+          });
+        }
+      }, '释放座位');
+    }
+    return null;
+  }
+
+  function renderControls(g, isOwner, mySeat) {
+    function status(next) { return api('POST', 'games/' + g.id + '/status', { status: next }).catch(fail); }
+    var box = h('section', { class: 'card', id: 'controls' }, h('div', { class: 'card-head' }, h('h2', null, isOwner ? '主导操作' : '操作')));
+    if (!isOwner) {
+      box.appendChild(g.status === 'lobby'
+        ? h('div', { class: 'room-actions' }, h('button', {
+          type: 'button', class: 'btn danger',
+          onclick: function () {
+            U.confirmBox('退出对局', '退出后你的座位会空出来，之后还可以用邀请码再加入。', '退出', 'danger').then(function (ok) {
+              if (ok) api('POST', 'games/' + g.id + '/leave', {}).then(function () { location.hash = ''; }, fail);
+            });
+          }
+        }, '退出对局'))
+        : h('p', { class: 'muted' }, g.status === 'finished' ? '这局已经结束，记录会一直保留。' : '开局后如果要离开，请联系主导释放你的座位。'));
+      return box;
+    }
+    var row = h('div', { class: 'room-actions' });
+    if (g.status === 'lobby') {
+      row.appendChild(h('button', { type: 'button', class: 'btn primary', disabled: !g.seats.length, onclick: function () { status('active'); } }, '开始对局'));
+    }
+    if (g.status === 'active') row.appendChild(h('button', { type: 'button', class: 'btn risk', onclick: function () { status('paused'); } }, '暂停'));
+    if (g.status === 'paused') row.appendChild(h('button', { type: 'button', class: 'btn primary', onclick: function () { status('active'); } }, U.TC('lobby', '继续')));
+    if (g.status === 'active' || g.status === 'paused') {
+      row.appendChild(h('button', {
+        type: 'button', class: 'btn',
+        onclick: function () {
+          U.confirmBox('结束对局', '结束后不能再继续，记录会一直保留。', '结束对局', 'danger').then(function (ok) { if (ok) status('finished'); });
+        }
+      }, '结束对局'));
+    }
+    row.appendChild(h('button', {
+      type: 'button', class: 'btn danger',
+      onclick: function () {
+        var text = g.status === 'lobby'
+          ? '对局和所有座位都会被删除，无法恢复。'
+          : '这局会从你的列表里移除并记为已结束。记录仍保存在服务器上，玩家还能查看。';
+        U.confirmBox('删除对局', text, '删除', 'danger').then(function (ok) {
+          if (ok) api('DELETE', 'games/' + g.id).then(function () { location.hash = ''; }, fail);
+        });
+      }
+    }, '删除对局'));
+    box.appendChild(row);
+    if (g.status === 'lobby') {
+      box.appendChild(h('div', { class: 'field', style: 'margin-top:14px' },
+        h('span', { class: 'field-label' }, '我在这局里'),
+        U.segmented([['play', '参与扮演'], ['host', '只主持']], mySeat ? 'play' : 'host', function (v) {
+          api('POST', 'games/' + g.id + '/host-plays', { on: v === 'play' }).catch(fail);
+        }),
+        h('span', { class: 'field-hint' }, '开局后不能再切换。')));
+    }
+    return box;
+  }
+
+  // ---------------------------------------------------------------- 操作
+
+  function createGame() {
+    var title = h('input', { maxlength: 40, value: U.i18n.isEn() ? me.username + "'s game" : me.username + '的对局' });
+    var seats = h('input', { type: 'number', class: 'num', min: 1, max: 12, value: 6 });
+    var plays = 'play';
+    var seg = h('div', null);
+    function drawSeg() { U.clear(seg).appendChild(U.segmented([['play', '参与扮演'], ['host', '只主持']], plays, function (v) { plays = v; drawSeg(); })); }
+    drawSeg();
+    U.modal({
+      title: '创建对局',
+      body: [
+        U.field('对局名称', title),
+        U.field('人数上限', seats, '包括主导自己（如果参与扮演）。1～12，规则建议约 6 人。'),
+        h('div', { class: 'field' }, h('span', { class: 'field-label' }, '我在这局里'), seg)
+      ],
+      actions: [
+        { label: '取消', value: null },
+        {
+          label: '创建', kind: 'primary',
+          validate: function () {
+            var n = Number(seats.value);
+            if (!title.value.trim()) return '请填写对局名称';
+            if (!Number.isInteger(n) || n < 1 || n > 12) return '人数上限需要在 1～12 之间。';
+            return null;
+          },
+          value: function () { return { title: title.value.trim(), maxSeats: Number(seats.value), hostPlays: plays === 'play' }; }
+        }
+      ]
+    }).then(function (body) {
+      if (body) api('POST', 'games', body).then(function (d) { enter(d.game.id); }, fail);
+    });
+  }
+
+  function logout() {
+    api('POST', 'logout', {}).then(signedOut, fail);
+  }
+
+  // ---------------------------------------------------------------- 启动
+
+  document.title = U.T(PAGE_TITLE);
+  window.addEventListener('hashchange', route);
+  api('GET', 'me').then(function (d) {
+    me = d.user;
+    if (me) connect();
+    route();
+  }, function (e) { render(); fail(e); });
+})();
 </script>
 </body>
 </html>

@@ -37,7 +37,10 @@
     ['pass', '放弃行动']
   ];
 
-  var slot = U.readKey(KEY_SLOT) === 'demo' ? 'demo' : 'main';
+  // 联机模式：网址带 ?game=<id> 时存档放在服务器上（见 U.connectOnline）；不带时仍是本机存档
+  var GAME = new URLSearchParams(location.search).get('game');
+  var online = null;
+  var slot = !GAME && U.readKey(KEY_SLOT) === 'demo' ? 'demo' : 'main';
   var store = null;
   var state = null;
   var notices = [];
@@ -143,6 +146,7 @@
    * fn 抛错或返回 false 时恢复原状态，不留下半截修改。
    */
   function commit(label, fn, opts) {
+    if (online && online.blocked()) return false;
     opts = opts || {};
     var before = C.clone(state);
     try {
@@ -163,6 +167,7 @@
   }
 
   function undoLast() {
+    if (online && online.blocked()) return;
     var item = undo.pop();
     if (!item) return;
     state = item.snapshot;
@@ -347,6 +352,7 @@
 
   function renderBanner() {
     var el = U.clear(document.getElementById('banner'));
+    if (online) el.appendChild(U.onlineBanner(online));
     if (slot === 'demo') {
       el.appendChild(h('div', { class: 'banner demo' },
         h('b', null, '演示存档'),
@@ -3092,7 +3098,8 @@
   // ================================================================ 设置与存档
 
   function renderSettings() {
-    return h('div', { class: 'stack' }, playersCard(), rulesCard(), draftsCard(), customItemsCard(), dictionaryCard(), saveCard(), rulesPackCard());
+    // 联机模式下规则与名单由服务器自动同步给玩家，不需要规则包
+    return h('div', { class: 'stack' }, playersCard(), rulesCard(), draftsCard(), customItemsCard(), dictionaryCard(), saveCard(), online ? null : rulesPackCard());
   }
 
   function playersCard() {
@@ -3317,8 +3324,11 @@
     });
     var backups = store.backups();
     return h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, '存档'), store.available ? chip('自动保存到本机浏览器', 'ok') : chip('本地保存不可用：仅内存运行', 'danger')),
-      h('p', { class: 'section-note' }, '主持人存档与玩家存档使用不同的命名空间，互不覆盖。导入前会校验结构并备份旧存档；导入失败不会改动当前存档。'),
+      h('div', { class: 'card-head' }, h('h2', null, '存档'),
+        online ? chip('自动保存到服务器', 'ok') : store.available ? chip('自动保存到本机浏览器', 'ok') : chip('本地保存不可用：仅内存运行', 'danger')),
+      h('p', { class: 'section-note' }, online
+        ? '存档保存在服务器上，换设备登录同一账户就能继续。导出 JSON 可以留一份手动备份；导入会替换服务器上的存档。'
+        : '主持人存档与玩家存档使用不同的命名空间，互不覆盖。导入前会校验结构并备份旧存档；导入失败不会改动当前存档。'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn primary', onclick: function () { U.downloadJSON('shelter-host-' + (slot === 'demo' ? 'demo-' : '') + U.stamp() + '.json', state); } }, '导出 JSON'),
         h('button', { type: 'button', class: 'btn', onclick: function () { U.copyText(JSON.stringify(state)).then(function (ok) { U.toast(ok ? '已复制存档 JSON' : '复制失败', ok ? 'ok' : 'warn'); }); } }, '复制 JSON'),
@@ -3330,13 +3340,14 @@
       backups.length ? h('details', null, h('summary', null, '备份（' + backups.length + '）'), h('ul', { class: 'list-plain' }, backups.map(function (b, i) {
         return h('li', { class: 'row between' }, h('span', null, U.fmtTime(b.at) + ' · ' + (b.reason || '')), h('button', { type: 'button', class: 'btn small', onclick: function () { restoreBackup(i); } }, '恢复此备份'));
       }))) : null,
-      h('div', { class: 'card inset' },
+      // 演示存档与一键重置都是本机的事，联机模式下不显示
+      online ? null : h('div', { class: 'card inset' },
         h('h3', null, '演示存档'),
         h('p', { class: 'muted small' }, '演示存档使用独立的存储位置，载入、修改、清空都不会碰到正式存档。'),
         slot === 'demo'
           ? h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: exitDemo }, '返回正式存档'), h('button', { type: 'button', class: 'btn danger', onclick: clearDemo }, '清空演示数据'))
           : h('button', { type: 'button', class: 'btn', onclick: enterDemo }, '打开演示存档')),
-      h('div', { class: 'card inset reset-box' },
+      online ? null : h('div', { class: 'card inset reset-box' },
         h('h3', null, '一键重置（删除本机缓存）'),
         h('p', { class: 'muted small' }, '删除这个浏览器里的主持人正式存档、演示存档、备份和页面设置，然后重新载入最新页面。玩家页的数据不受影响。'),
         h('button', { type: 'button', class: 'btn danger', onclick: wipeAll }, '一键重置')));
@@ -3359,6 +3370,7 @@
   }
 
   function importSave(text) {
+    if (online && online.blocked()) return;
     var data;
     try { data = JSON.parse(text); } catch (e) {
       U.modal({ title: '导入失败', body: h('p', null, '不是有效的 JSON（' + e.message + '）。当前存档未改动。') });
@@ -3394,6 +3406,7 @@
   }
 
   function resetSave() {
+    if (online && online.blocked()) return;
     U.confirmBox('重置存档？', '会清空当前' + (slot === 'demo' ? '演示' : '正式') + '存档（先自动备份，可在「备份」恢复）。', '重置', 'danger').then(function (ok) {
       if (!ok) return;
       store.backup(JSON.stringify(state), '重置前自动备份');
@@ -3450,21 +3463,12 @@
     if (tab && TABS.some(function (t) { return t.id === tab; })) ui.tab = tab;
     U.i18n.setLang(U.i18n.getLang());
     document.title = U.T(PAGE_TITLE);
+    if (GAME) return bootOnline();
     state = loadState();
     // 从玩家的守夜卡片链接打开时，别的主持人标签页直接同步，不弹「另一个标签页修改了存档」
     if (/#watch=/.test(location.hash)) U.writeKey(KEY_SYNC, String(Date.now()));
     save();
-    render();
-    openWatchLink();
-    setInterval(timerTick, 250);
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && ui.present && !document.querySelector('.overlay')) exitPresent();
-    });
-    document.addEventListener('fullscreenchange', function () {
-      // 用浏览器自己的方式（Esc／F11）退出全屏时，一并退出展示模式
-      if (!document.fullscreenElement && ui.present && ui.presentFs) exitPresent();
-    });
-    window.addEventListener('hashchange', openWatchLink);
+    start();
     window.addEventListener('storage', function (e) {
       // 另一个标签页刚通过守夜卡片链接加了候选：直接同步，不用提示刷新
       if (e.key === KEY_SYNC) { ui.syncAt = Date.now(); return; }
@@ -3479,6 +3483,47 @@
         notices.push({ kind: 'risk', text: '另一个标签页修改了同一份主持人存档。为避免互相覆盖，请只保留一个主持人标签页，然后刷新本页。' });
         render();
       }
+    });
+  }
+
+  // 存档就绪后开始运行（本机与联机共用）：渲染、计时、键盘与全屏
+  function start() {
+    render();
+    openWatchLink();
+    setInterval(timerTick, 250);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && ui.present && !document.querySelector('.overlay')) exitPresent();
+    });
+    document.addEventListener('fullscreenchange', function () {
+      // 用浏览器自己的方式（Esc／F11）退出全屏时，一并退出展示模式
+      if (!document.fullscreenElement && ui.present && ui.presentFs) exitPresent();
+    });
+    window.addEventListener('hashchange', openWatchLink);
+  }
+
+  // ================================================================ 联机模式
+
+  function bootOnline() {
+    U.clear(document.getElementById('main')).appendChild(h('p', { class: 'empty' }, '正在从服务器载入存档…'));
+    U.connectOnline(GAME, 'host', {
+      onState: function (s, reason, detail) {
+        state = C.normalizeSave(s, 'shelter-host');
+        undo.clear();
+        render();
+        U.toast(U.onlineReloadedText(reason), reason === 'device' ? 'ok' : 'warn');
+      },
+      onGame: function () { render(); },
+      onGone: function () { location.href = 'index.html'; },
+      onError: function (code) {
+        U.toast(code === 'network' ? '网络断开：恢复连接后会自动保存' : '保存到服务器失败（' + code + '）', 'warn');
+      }
+    }).then(function (ctx) {
+      online = ctx;
+      store = ctx.store;
+      state = C.normalizeSave(ctx.state, 'shelter-host');
+      start();
+    }, function (e) {
+      U.clear(document.getElementById('main')).appendChild(U.onlineFailCard(e.code));
     });
   }
 

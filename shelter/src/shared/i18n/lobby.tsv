@@ -1,0 +1,110 @@
+# 联机大厅（src/lobby/lobby.js）
+连不上服务器，请稍后再试。	Cannot reach the server. Try again later.
+登录已失效，请重新登录。	Your session has expired. Please log in again.
+尝试次数太多，请过几分钟再试。	Too many attempts. Try again in a few minutes.
+用户名需要 3～20 个字符：中英文、数字、下划线。	Username must be 3–20 characters: letters, digits or underscores.
+密码至少 8 位。	Password must be at least 8 characters.
+这个用户名已经被注册了。	That username is already taken.
+用户名或密码不对。	Wrong username or password.
+对局名称需要 1～40 个字。	Game name must be 1–40 characters.
+人数上限需要在 1～12 之间。	Player limit must be between 1 and 12.
+没有找到这个邀请码。	No game found with that invite code.
+这局已经满员了。	This game is full.
+这局已经开始，目前没有空出来的座位。	This game has started and has no open seats right now.
+这局已经结束了。	This game has ended.
+找不到这局对局，或者你已经不在其中。	Game not found, or you are no longer in it.
+只有主导能这样做。	Only the lead can do that.
+当前状态下不能这样做。	You can't do that in the current state.
+至少要有一名玩家才能开始。	At least one player is needed to start.
+对局已经开始，不能这样做了。	The game has started; this is no longer possible.
+对局还没开始。	The game hasn't started yet.
+主导自己的座位请用「参与扮演／只主持」切换。	Use the “Play a character / Host only” switch for the lead's own seat.
+主导不能退出，可以删除对局。	The lead can't leave, but can delete the game.
+这个座位已经是空的。	This seat is already open.
+招募中	Recruiting
+主导	Lead
+主导兼角色	Lead & character
+在线	Online
+离线	Offline
+出错了：	Something went wrong: 
+你已经不在这局对局里了。	You are no longer in this game.
+避难所	Shelter
+联机大厅	Online lobby
+退出登录	Log out
+注册并登录	Register and log in
+登录	Log in
+用户名	Username
+3～20 个字符：中英文、数字、下划线。	3–20 characters: letters, digits, underscore; Chinese is fine.
+密码	Password
+至少 8 位。忘记密码请找管理员重置。	At least 8 characters. Forgot it? Ask the admin to reset it.
+PLAYTEST · 联机	PLAYTEST · ONLINE
+注册	Register
+PLAYTEST · 规则测试工具	PLAYTEST · RULES TESTING TOOL
+末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。	At the end of the world, the army houses strangers in a shelter in an abandoned city, promises evacuation, then breaks the promise. You fight to survive and to get rescued, while love, hate, wealth and your own secret goals pull you in different directions.
+军方热线目前忙音。请保持冷静，并清点你的面包。	The military hotline is busy. Please stay calm and count your bread.
+创建对局	Create a game
+开一局新的游戏：设定人数，选择自己只主持还是也扮演角色，然后把邀请码发给朋友。	Start a new game: set the player limit, choose whether you only host or also play a character, then send the invite code to your friends.
+加入对局	Join a game
+输入朋友给的邀请码，或者在公开列表里挑一局还有空位的。	Enter an invite code from a friend, or pick a game with open seats from the public list.
+去加入	Find a game
+我的对局	My games
+ 局	 games
+载入中…	Loading…
+还没有对局。创建一局，或者加入朋友的对局。	No games yet. Create one, or join a friend's game.
+主导：	Lead: 
+主导已删除这局	Deleted by the lead
+更新于 	Updated 
+邀请码	Invite code
+← 返回大厅	← Back to lobby
+用邀请码加入	Join with an invite code
+6 位，不分大小写	6 characters, not case-sensitive
+公开对局	Public games
+刷新	Refresh
+招募中的对局有空位就能加入；已经开始的对局只有被主导空出来的座位可以接手。	Recruiting games can be joined while seats remain; in games that have started you can only take over seats the lead has opened up.
+现在没有可以加入的对局。	No games to join right now.
+空位 	Open: 
+接手空座位	Take open seat
+邀请码已复制	Invite code copied
+复制失败，请手动抄写	Copy failed. Please copy it by hand.
+主导已经删除了这局；记录保留，状态为已结束。	The lead deleted this game; the record is kept and the game is marked ended.
+招募中：把邀请码发给朋友，或者让他们在「加入对局」的公开列表里找到这局。人齐后由主导开始。	Recruiting: send the invite code to friends, or have them find this game in the public list under “Join a game”. The lead starts once everyone is in.
+对局进行中。游戏流程（主持人与玩家面板）会在下一步接入联机。	Game in progress. Gameplay (host and player panels) comes online in the next step.
+已暂停：数据都保存在服务器上。主导点「继续」后，大家回到原来的座位接着玩。	Paused: everything is saved on the server. When the lead presses “Resume”, everyone returns to their seats and carries on.
+这局已经结束。	This game has ended.
+座位	Seats
+空座位 	Open seats 
+还没有人入座。	No one has taken a seat yet.
+空座位	Open seat
+你	You
+座位上的数据保留，等新玩家接手	Seat data is kept until a new player takes over
+移除玩家	Remove player
+移出这局后，对方还可以用邀请码再加入。	Once removed, they can still rejoin with the invite code.
+释放座位	Release seat
+座位上的资源、状态等数据都会保留，但这名玩家会失去这局的访问，座位开放给新玩家接手。	The seat's resources, status and other data are kept, but this player loses access to the game and the seat opens up for a new player.
+主导操作	Lead controls
+退出对局	Leave game
+退出后你的座位会空出来，之后还可以用邀请码再加入。	Your seat will be freed. You can rejoin later with the invite code.
+退出	Leave
+这局已经结束，记录会一直保留。	This game has ended; its record is kept.
+开局后如果要离开，请联系主导释放你的座位。	Once the game has started, ask the lead to release your seat if you need to leave.
+开始对局	Start game
+结束对局	End game
+结束后不能再继续，记录会一直保留。	An ended game can't be resumed. Its record is kept.
+对局和所有座位都会被删除，无法恢复。	The game and all its seats will be deleted. This cannot be undone.
+这局会从你的列表里移除并记为已结束。记录仍保存在服务器上，玩家还能查看。	The game is removed from your list and marked ended. The record stays on the server and players can still view it.
+删除对局	Delete game
+我在这局里	My part in this game
+参与扮演	Play a character
+只主持	Host only
+开局后不能再切换。	Can't be changed after the game starts.
+的对局	~
+对局名称	Game name
+人数上限	Player limit
+包括主导自己（如果参与扮演）。1～12，规则建议约 6 人。	Includes the lead if playing a character. 1–12; the rules suggest about 6.
+创建	Create
+请填写对局名称	Please enter a game name
+对局进行中：从下面进入面板。存档保存在服务器上，换设备登录也能接着玩。	Game in progress: open your panel below. Saves live on the server, so you can carry on from any device.
+已暂停：数据都保存在服务器上，面板现在只能查看。主导点「继续」后，大家回到原来的座位接着玩。	Paused: everything is saved on the server and panels are view-only. When the lead presses “Resume”, everyone returns to their seats and carries on.
+这局已经结束，面板只能查看。	This game has ended; panels are view-only.
+进入主持人面板	Open host panel
+进入玩家面板	Open player panel

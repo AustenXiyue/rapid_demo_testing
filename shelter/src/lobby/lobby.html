@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>避难所 Playtest</title>
+<meta name="description" content="避难所 Playtest 联机大厅：登录账户，创建或加入对局，随时换设备继续。">
+<meta name="theme-color" content="#faf6ee">
+<!-- inline:css src/shared/base.css -->
+<!-- inline:css src/lobby/lobby.css -->
+</head>
+<body class="lobby">
+<noscript><p style="padding:16px">本页面需要启用 JavaScript。This page needs JavaScript.</p></noscript>
+<header id="topbar" class="topbar"></header>
+<main id="main" class="l-main"></main>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal-root"></div>
+<script src="socket.io/socket.io.js"></script>
+<!-- inline:i18n src/shared/ui.js,src/lobby/lobby.js -->
+<!-- inline:js src/shared/i18n.js -->
+<!-- inline:js src/shared/ui.js -->
+<!-- inline:js src/lobby/lobby.js -->
+</body>
+</html>

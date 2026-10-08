@@ -327,6 +327,156 @@
     try { root.localStorage.removeItem(key); } catch (e) { /* 忽略 */ }
   }
 
+  // ---------------------------------------------------------------- 联机存档
+
+  /**
+   * 联机模式（网址带 ?game=<id>）：面板存档放在服务器上，主持人存档跟着对局，玩家存档跟着自己的座位。
+   * kind：'host' | 'seat'。返回 Promise<ctx>：ctx.state 是载入的存档，ctx.store 与本地 Store 同接口（write 即保存），
+   * ctx.game 是对局信息（随推送更新）。之后服务器那边的变化通过回调告诉页面：
+   *   onState(state, reason, detail)  reason：device 另一台设备保存了｜conflict 本机保存时撞上了更新的版本｜
+   *                                   rules 主持人更新了规则或名单（detail＝{rules, roster}）｜reload 服务器拒绝写入后重新载入
+   *   onGame(game)   对局状态或座位变化（如暂停）
+   *   onGone()       自己已经不在这局（座位被释放、对局被删除）
+   *   onError(code)  保存失败（网络断开会自动重试）
+   * 同一时间只有一个保存请求在路上，期间的修改合并成最新一份再发。
+   */
+  function connectOnline(gameId, kind, handlers) {
+    var base = location.pathname.replace(/[^/]*$/, '');
+    var url = base + 'api/games/' + encodeURIComponent(gameId) + '/state/' + kind;
+    var socket = null;
+    var toastAt = 0;
+    var store = { available: true, lastError: null, version: 0, pending: null, busy: false };
+    var ctx = {
+      store: store, game: null, state: null,
+      readOnly: function () { return !ctx.game || ctx.game.status !== 'active'; },
+      /** 只读时拦下修改并提示（提示最多 5 秒一次）。 */
+      blocked: function () {
+        if (!ctx.readOnly()) return false;
+        if (Date.now() - toastAt > 5000) {
+          toastAt = Date.now();
+          toast(ctx.game && ctx.game.status === 'paused' ? '对局已暂停，现在只能查看' : '对局不在进行中，现在只能查看', 'warn');
+        }
+        return true;
+      }
+    };
+
+    function getJSON(r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
+    }
+    function load() {
+      return fetch(url, { credentials: 'same-origin' }).then(getJSON, function () { throw { code: 'network' }; }).then(function (res) {
+        if (!res.ok) throw { code: res.d.error || 'unknown' };
+        store.version = res.d.version;
+        ctx.game = res.d.game;
+        return res.d.state;
+      });
+    }
+
+    store.write = function (obj) {
+      store.pending = JSON.stringify(obj);
+      flush();
+      return true;
+    };
+    store.backup = function () { return false; };
+    store.backups = function () { return []; };
+
+    function flush() {
+      if (store.busy || store.pending == null) return;
+      var body = store.pending;
+      store.pending = null;
+      store.busy = true;
+      fetch(url, {
+        method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: '{"version":' + store.version + ',"from":' + JSON.stringify(socket ? socket.id : null) + ',"state":' + body + '}'
+      }).then(getJSON).then(function (res) {
+        store.busy = false;
+        if (res.ok) { store.version = res.d.version; store.lastError = null; return flush(); }
+        var code = res.d.error || 'unknown';
+        store.pending = null;
+        if (code === 'version_conflict') {
+          store.version = res.d.version;
+          handlers.onState(res.d.state, 'conflict');
+        } else if (code === 'read_only') {
+          load().then(function (s) { handlers.onState(s, 'reload'); handlers.onGame(ctx.game); }, function (e) { handlers.onError(e.code); });
+        } else {
+          store.lastError = { name: code };
+          handlers.onError(code);
+        }
+      }, function () {
+        // 网络断开：留着这份（若期间没有更新的）稍后重试
+        store.busy = false;
+        if (store.pending == null) store.pending = body;
+        if (!store.lastError || store.lastError.name !== 'network') handlers.onError('network'); // 重试期间只提示一次
+        store.lastError = { name: 'network' };
+        setTimeout(flush, 3000);
+      });
+    }
+
+    // 实时连接：订阅房间（状态、座位变化）和自己的存档推送。Socket.IO 客户端由服务端提供，按需加载
+    function connectSocket() {
+      var script = document.createElement('script');
+      script.src = base + 'socket.io/socket.io.js';
+      script.onload = function () {
+        socket = root.io({ path: base + 'socket.io' });
+        socket.on('connect', function () { socket.emit('game:watch', gameId); });
+        socket.on('game:update', function (g) {
+          if (g.id !== gameId) return;
+          ctx.game = g;
+          handlers.onGame(g);
+        });
+        socket.on('game:gone', function (m) { if (m.id === gameId) handlers.onGone(); });
+        socket.on('state:update', function (m) {
+          if (m.gameId !== gameId || m.kind !== kind || m.from === socket.id || m.version <= store.version) return;
+          store.version = m.version;
+          store.pending = null;
+          handlers.onState(m.state, m.reason ? 'rules' : 'device', m.reason);
+        });
+      };
+      document.head.appendChild(script);
+    }
+
+    root.addEventListener('beforeunload', function (e) {
+      if (store.busy || store.pending != null) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    return load().then(function (s) {
+      ctx.state = s;
+      connectSocket();
+      return ctx;
+    });
+  }
+
+  var ONLINE_RELOADED = {
+    device: '另一台设备更新了存档：已载入最新',
+    conflict: '服务器上的存档刚被更新：已载入最新，你最后一步操作没有保存，请重做',
+    reload: '对局现在不能修改：已恢复为服务器上的存档'
+  };
+  var ONLINE_FAIL = {
+    network: '连不上服务器，请稍后刷新重试。',
+    unauthorized: '登录已失效：请回到大厅重新登录。',
+    not_found: '找不到这局对局，或者你已经不在其中。',
+    no_seat: '你在这局里没有座位。',
+    not_started: '对局还没开始：主导在大厅点「开始对局」后才能进入面板。'
+  };
+
+  function onlineReloadedText(reason) { return ONLINE_RELOADED[reason] || '存档已更新'; }
+
+  /** 联机面板顶部：对局名（玩家输入，原样显示）、是否只读、返回大厅。 */
+  function onlineBanner(ctx) {
+    var g = ctx.game;
+    return h('div', { class: 'banner ' + (g.status === 'active' ? 'info' : 'risk') },
+      h('span', { class: 'grow' },
+        g.status === 'active' ? '联机对局：' : g.status === 'paused' ? '对局已暂停，现在只能查看：' : '对局不在进行中，现在只能查看：',
+        document.createTextNode(g.title)),
+      h('a', { class: 'btn small', href: 'index.html#game=' + g.id }, '返回大厅'));
+  }
+
+  function onlineFailCard(code) {
+    return h('section', { class: 'card' },
+      h('p', null, ONLINE_FAIL[code] || '载入失败：' + code),
+      h('a', { class: 'btn primary', href: 'index.html' }, '返回大厅'));
+  }
+
   // ---------------------------------------------------------------- 撤销
 
   /** 最近操作撤销：保存操作前的完整快照（内存中，最多 limit 步）。 */
@@ -591,6 +741,10 @@
     readFileText: readFileText,
     stamp: stamp,
     Store: Store,
+    connectOnline: connectOnline,
+    onlineBanner: onlineBanner,
+    onlineFailCard: onlineFailCard,
+    onlineReloadedText: onlineReloadedText,
     readKey: readKey,
     writeKey: writeKey,
     removeKey: removeKey,

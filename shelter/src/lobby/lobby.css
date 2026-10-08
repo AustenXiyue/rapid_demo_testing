@@ -1,0 +1,90 @@
+/* 联机大厅：沿用主持人／玩家面板的配色、卡片、按钮与徽章（base.css），这里只放版面。
+ * 首页＝标题区 + 两张入口卡（创建／加入）+ 我的对局；加入页＝邀请码 + 公开对局；房间＝座位与主导操作。 */
+
+body.lobby { min-width: 300px; }
+
+/* ---------- 顶栏 ---------- */
+.topbar { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
+.l-top { max-width: 960px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.l-brand { display: flex; align-items: center; gap: 8px; font-size: 16px; white-space: nowrap; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit; }
+.l-brand b { font-weight: 700; }
+.l-top-tools { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.l-user { font-size: 14px; color: var(--ink-2); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.l-main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; display: flex; flex-direction: column; gap: 16px; }
+.l-main > .card + .card { margin-top: 0; }
+
+/* ---------- 标题区（与旧入口页同一套文案风格） ---------- */
+.eyebrow { color: var(--muted); font-size: 14px; letter-spacing: 1px; }
+.l-hero h1 { font-size: 36px; line-height: 1.2; margin: 4px 0 8px; font-weight: 750; }
+.l-hero .lead { color: var(--ink-2); font-size: 16.5px; max-width: 640px; margin: 0; }
+.quote { margin: 14px 0 0; padding: 10px 14px; border-left: 3px solid var(--orange); background: var(--orange-soft); color: #6a3205; border-radius: 0 8px 8px 0; font-size: 15px; max-width: 640px; }
+
+/* ---------- 入口卡：创建／加入 ---------- */
+.l-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.entry {
+  display: flex; flex-direction: column; gap: 8px; padding: 20px; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  font: inherit; color: inherit; transition: border-color 0.15s, transform 0.15s;
+}
+.entry:hover, .entry:focus-visible { border-color: var(--teal); transform: translateY(-1px); outline: none; }
+.entry h2 { font-size: 22px; }
+.entry p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.entry .go { margin-top: auto; padding-top: 6px; color: var(--teal-strong); font-weight: 650; display: inline-flex; align-items: center; gap: 4px; }
+.tag { align-self: flex-start; display: inline-block; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; background: var(--teal-soft); color: var(--teal-strong); font-weight: 600; }
+
+/* ---------- 对局列表 ---------- */
+.game-list { list-style: none; margin: 0; padding: 0; }
+.game-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.game-row:first-child { border-top: 0; padding-top: 2px; }
+.game-title { font-size: 16.5px; font-weight: 650; overflow-wrap: anywhere; }
+.game-meta { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); }
+.game-row.closed .game-title { color: var(--ink-2); }
+
+/* ---------- 加入页 ---------- */
+.code-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.code-input { font-family: var(--mono); font-size: 20px; letter-spacing: 0.2em; text-transform: uppercase; width: 9.5em; text-align: center; }
+
+/* ---------- 房间 ---------- */
+.room-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px 20px; flex-wrap: wrap; }
+.room-head h1 { font-size: 26px; overflow-wrap: anywhere; }
+.room-sub { display: flex; gap: 6px 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 14px; color: var(--muted); }
+.invite { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.invite-code { font-family: var(--mono); font-size: 26px; font-weight: 700; letter-spacing: 0.18em; color: var(--teal-strong); }
+.room-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.seat-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.seat { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); min-width: 0; }
+.seat.me { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+.seat.open { border-style: dashed; background: var(--surface-2); }
+.seat-head { display: flex; align-items: center; gap: 8px; }
+.seat-no { display: inline-flex; min-width: 26px; height: 26px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface-3); font-weight: 700; font-size: 13px; }
+.seat.me .seat-no { background: var(--teal); color: #fff; }
+.seat-name { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
+.seat-foot { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* 在线：圆点＋文字，不只靠颜色 */
+.presence { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.presence::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.presence.on { color: var(--teal-strong); }
+.presence.on::before { background: var(--teal); }
+
+/* ---------- 登录 ---------- */
+.auth { max-width: 420px; width: 100%; margin: 0 auto; }
+.auth .segmented { display: flex; margin-bottom: 14px; }
+.auth .seg { flex: 1 1 0; }
+.auth form { display: flex; flex-direction: column; gap: 12px; }
+.auth input { width: 100%; }
+.auth input[type="password"] { border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; padding: 7px 10px; min-height: 36px; }
+
+@media (max-width: 640px) {
+  .l-main { padding-top: 16px; }
+  .l-hero h1 { font-size: 30px; }
+  .l-actions { grid-template-columns: minmax(0, 1fr); }
+  .invite { align-items: flex-start; }
+  .l-user { display: none; }
+}
+
+/* 表单里的单选组按内容宽度，不撑满整行 */
+.field > .segmented { align-self: flex-start; }
+.auth .card { margin-top: 14px; }
