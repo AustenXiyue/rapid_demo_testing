@@ -12,11 +12,11 @@
   var U = window.ShelterUI;
   var h = U.h;
 
-  var KEY_MAIN = 'shelter-playtest:host:v1';
-  var KEY_DEMO = 'shelter-playtest:host-demo:v1';
-  var KEY_SLOT = 'shelter-playtest:host:slot';
-  var KEY_TAB = 'shelter-playtest:host:tab';
-  var KEY_SYNC = 'shelter-playtest:host:sync';
+  var KEY_MAIN = 'shelterpt_host:v1';
+  var KEY_DEMO = 'shelterpt_host-demo:v1';
+  var KEY_SLOT = 'shelterpt_host:slot';
+  var KEY_TAB = 'shelterpt_host:tab';
+  var KEY_SYNC = 'shelterpt_host:sync';
 
   // 三组：可以屏幕共享的（主持台、公开展示）｜要先暂停共享的秘密页｜设置。从左到右越来越「不能给人看」。
   var TABS = [
@@ -358,9 +358,6 @@
       el.appendChild(h('div', { class: 'banner ' + n.kind }, U.icon('warn'), h('span', { class: 'grow' }, n.text),
         h('button', { type: 'button', class: 'btn small ghost', onclick: function () { notices.splice(i, 1); render(); } }, '关闭')));
     });
-    if (/\.vercel\.app$/.test(location.hostname)) {
-      el.appendChild(h('div', { class: 'banner info' }, '你正在通过上游部署地址访问。正式入口是 www.xxxmnalx.com/game/shelter ——两个地址的存档互不相通。'));
-    }
   }
 
   function stat(label, value, cls) {
@@ -3356,7 +3353,7 @@
     }).then(function (ok) {
       if (!ok) return;
       wiping = true;
-      U.wipeLocal(['shelter-playtest:host:', 'shelter-playtest:host-demo:']);
+      U.wipeLocal(['shelterpt_host:', 'shelterpt_host-demo:']);
       U.reloadFresh();
     });
   }

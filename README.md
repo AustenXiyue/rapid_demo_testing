@@ -1,11 +1,9 @@
 # rapid_demo_testing · 玩法测试原型
 
-本仓库按原样作为静态站点部署到 Vercel（无构建步骤），线上入口挂在 `www.xxxmnalx.com/game` 下：
-
 | 原型 | 目录 | 线上入口 |
 | --- | --- | --- |
-| 骰迹 · 玩法测试原型 | 根目录（`index.html`） | `www.xxxmnalx.com/game/demo` |
-| 避难所 Playtest · 主持人／玩家双网页 | [`shelter/`](./shelter/README.md) | `www.xxxmnalx.com/game/shelter` |
+| 骰迹 · 玩法测试原型 | 根目录（`index.html`） | — |
+| 避难所 Playtest · 主持人／玩家双网页 | [`shelter/`](./shelter/README.md) | `https://xiyueym.com/Misc/ShelterPT/`（计划，尚未部署） |
 
 ---
 
@@ -17,18 +15,6 @@
 ## 本地运行
 
 直接用浏览器打开 `index.html` 即可(纯静态,无构建步骤)。
-
-## 部署到 Vercel
-
-1. 推送本仓库到 GitHub。
-2. 在 [vercel.com](https://vercel.com) 导入该仓库,Framework Preset 选 **Other**,
-   构建命令留空,输出目录留空(根目录即静态站点),直接 Deploy。
-
-或使用 CLI:
-
-```bash
-npx vercel --prod
-```
 
 ## 游玩方式(单窗口多人)
 

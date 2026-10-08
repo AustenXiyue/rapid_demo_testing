@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 把 src/ 下共用的数据与代码内联成两个自包含页面：host.html、player.html。
-// 产物不依赖任何外部资源，双击即可离线打开；部署到 Vercel 时也是这两个文件原样上传。
+// 产物不依赖任何外部资源，双击即可离线打开；部署时也是这两个文件原样上线。
 //
 //   node build.mjs          生成
 //   node build.mjs --check  只检查产物是否与源码一致（不一致时退出码 1）
@@ -25,7 +25,7 @@ export function loadDictionary(only = null, dir = join(ROOT, 'src/shared/i18n'))
   const unescape = (t) => t.replace(/\\(n|t|\\)/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : '\\'));
   const names = readdirSync(dir).filter((f) => f.endsWith('.tsv') && (!only || only.includes(f.replace(/\.tsv$/, '')))).sort();
   for (const name of names) {
-    readFileSync(join(dir, name), 'utf8').split('\n').forEach((line, i) => {
+    readFileSync(join(dir, name), 'utf8').split(/\r?\n/).forEach((line, i) => {
       if (!line.trim() || line.startsWith('#')) return;
       const tab = line.indexOf('\t');
       if (tab < 0) throw new Error(`${name}:${i + 1} 缺少制表符`);

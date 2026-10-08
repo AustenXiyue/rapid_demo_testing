@@ -17,7 +17,7 @@
   var T = U && U.T ? U.T : function (s) { return s; };
   var TC = U && U.TC ? U.TC : function (c, s) { return s; };
   var PAGE = document.body.classList.contains('host') ? 'host' : 'player';
-  var NS = 'shelter-playtest:';
+  var NS = 'shelterpt_';
   var KEY_FX = NS + 'fx';
   var STATE_KEY = new RegExp('^' + NS.replace(/[-:]/g, '\\$&') + '(host|player)(-demo)?:v1$');
   var reduceMQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };

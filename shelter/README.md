@@ -4,13 +4,12 @@
 **主持人面板** `host.html` 与 **玩家面板** `player.html`，各自独立保存数据。
 优先保证是一个可操作的测试工具，不是完整的商业游戏。
 
-- 线上入口：<https://www.xxxmnalx.com/game/shelter>
-  （主持人 `/game/shelter/host.html`，玩家 `/game/shelter/player.html`）
+- 线上入口（计划，尚未部署）：<https://xiyueym.com/Misc/ShelterPT/>
+  （主持人 `host.html`，玩家 `player.html`）
 - 离线使用：直接双击 `host.html` 或 `player.html`。每个文件都内含全部 CSS、JavaScript 与道具数据，
   不加载 CDN、远程字体，不发任何网络请求。
 
-> 与说明书不同的地方只有一处：按惯例部署到了 Vercel 并挂在 xxxmnalx.com 下。
-> 线上版本仍是同样的两个静态文件，不引入账号、服务器、实时同步或远程数据库。
+> 当前线上版本仍是同样的两个静态文件，不引入账号、服务器、实时同步或远程数据库。
 
 ## 目录
 
@@ -38,7 +37,7 @@
   计时最后 10 秒滴答、最后 3 秒更急，到点响三声并闪烁；公共事件揭晓时事件卡从上方翻下来，投票选项依次出现；
   营救进度上升有上行音阶；新的公开结果滑入。打开玩家的守夜链接时卡片在弹窗里翻出来，但**不出声**（秘密页）。
   屏幕共享时勾选了「共享声音」，大家都能听到这些提示音。
-- **设置**：左下角的音符按钮打开面板：动画 跟随系统／开／关，音效 开／关，音量，以及九种音效的试听，本机记住（`shelter-playtest:fx`）。
+- **设置**：左下角的音符按钮打开面板：动画 跟随系统／开／关，音效 开／关，音量，以及九种音效的试听，本机记住（`shelterpt_fx`）。
   默认动画跟随系统、音效开。系统开了「减少动态效果」时只淡入淡出。全屏展示时按钮自动隐藏。
 
 ## 中文／English
@@ -163,7 +162,7 @@
 ## 存档
 
 - 两端自动保存到浏览器 `localStorage`，命名空间不同：
-  主持人 `shelter-playtest:host:v1`，玩家 `shelter-playtest:player:v1`；演示存档另用 `…-demo:v1`，载入或清空都不会碰到正式存档。
+  主持人 `shelterpt_host:v1`，玩家 `shelterpt_player:v1`；演示存档另用 `…-demo:v1`，载入或清空都不会碰到正式存档。
 - 支持 JSON 导出、复制、文件导入、粘贴导入、重置与「撤销最近操作」。导入前会校验结构并先备份旧存档（保留最近5份），导入失败不会改动当前存档。
 - 浏览器本地保存不可用（隐私模式等）时会显示红色提示，页面仍可在内存中运行并导出文件。
 - 主持人可以导出「规则包」（规则配置＋自定义物品＋玩家名单），玩家在自己的「存档」页导入。
@@ -261,7 +260,5 @@ node --test tests/core.test.mjs          # 单元测试（无依赖）
 npm install && npm run test:e2e          # 浏览器验收（需要 Playwright 的 Chromium）
 ```
 
-部署：仓库根目录按原样作为静态站点部署到 Vercel（无构建步骤），`shelter/` 下的构建产物直接上线；
-`src/`、`tests/`、`tools/` 与构建脚本由根目录的 `.vercelignore` 排除，不会被公开。
-主站 `www.xxxmnalx.com` 通过 `xxxmnalx-com` 仓库的 zone 表把 `/game/shelter` 反代到本项目的 `/shelter/`，
-与主站同 origin，因此存档在 `www.xxxmnalx.com` 下保存；直接访问 `*.vercel.app` 时页面会提示两处存档不互通。
+部署：计划挂在 `https://xiyueym.com/Misc/ShelterPT/` 子路径下（不是域名根目录），上线的只有 `index.html`、`host.html`、`player.html`。
+因此页面与资源一律用相对路径，localStorage 键名统一以 `shelterpt_` 开头，避免和同域名下的其他项目冲突。

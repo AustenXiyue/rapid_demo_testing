@@ -12,10 +12,10 @@ import { chromium } from 'playwright';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HOST = 'file://' + join(ROOT, 'host.html');
 const PLAYER = 'file://' + join(ROOT, 'player.html');
-const HOST_KEY = 'shelter-playtest:host:v1';
-const HOST_DEMO = 'shelter-playtest:host-demo:v1';
-const PLAYER_KEY = 'shelter-playtest:player:v1';
-const PLAYER_DEMO = 'shelter-playtest:player-demo:v1';
+const HOST_KEY = 'shelterpt_host:v1';
+const HOST_DEMO = 'shelterpt_host-demo:v1';
+const PLAYER_KEY = 'shelterpt_player:v1';
+const PLAYER_DEMO = 'shelterpt_player-demo:v1';
 const ITEM_NAMES = ['面包', '普通水', '能量棒', '奶油汤', '功能饮料', '绷带', '医疗箱', '钞票', '珠宝', '军用折刀', '子弹', '地图', '军用水壶', '跳棋'];
 const P = (n) => 'demo_p' + n; // A..F = 1..6
 
@@ -746,7 +746,7 @@ test('玩家：携带模式在库存页——默认上限2单位、确认后其�
 });
 
 test('玩家：库存按类别分区或默认顺序；删除可选数量；旧版「携带」「身份」页地址自动转到新页', async () => {
-  const { context } = await newContext({ init: () => localStorage.setItem('shelter-playtest:player:tab', 'loadout') });
+  const { context } = await newContext({ init: () => localStorage.setItem('shelterpt_player:tab', 'loadout') });
   const { page, errors } = await open(context, PLAYER);
   assert.equal(await page.locator('#tabs .tab.on').getAttribute('data-tab'), 'inventory', '旧的携带页转到库存与携带');
   await playerDemo(page);
@@ -1085,7 +1085,7 @@ test('中英文切换：按钮切换后整页变英文、刷新保持、可切�
 });
 
 test('英文界面：主持人与玩家每一页都没有残留中文（演示存档按英文生成）', async () => {
-  const { context } = await newContext({ init: () => localStorage.setItem('shelter-playtest:lang', 'en') });
+  const { context } = await newContext({ init: () => localStorage.setItem('shelterpt_lang', 'en') });
   const { page: host, errors } = await open(context, HOST);
   await tab(host, 'settings');
   await btn(host, 'Open demo save').click();
@@ -1177,7 +1177,7 @@ test('守夜名单：只在点亮「计划守夜名单」时出现；抽两张�
     await nameInput.fill(name);
     await nameInput.press('Enter');
     await nameInput.blur();
-    await page.waitForFunction((n) => JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).name === n, name);
+    await page.waitForFunction((n) => JSON.parse(localStorage.getItem('shelterpt_player:v1')).name === n, name);
     await tab(page, 'save');
     const roster = page.locator('.roster-card');
     await roster.getByRole('textbox', { name: '其他玩家的名字' }).fill(allNames.filter((n) => n !== name).join('，'));
@@ -1293,11 +1293,11 @@ test('一键重置：玩家页、主持人页只删自己的本机数据并重�
   await nameInput.fill('要被清掉的名字');
   await nameInput.press('Enter');
   await nameInput.blur();
-  await player.waitForFunction(() => JSON.parse(localStorage.getItem('shelter-playtest:player:v1')).name === '要被清掉的名字');
+  await player.waitForFunction(() => JSON.parse(localStorage.getItem('shelterpt_player:v1')).name === '要被清掉的名字');
   await playerDemo(player);
   await player.evaluate(() => {
-    localStorage.setItem('shelter-playtest:host:v1', '{"keep":true}');
-    localStorage.setItem('shelter-playtest:lang', 'zh');
+    localStorage.setItem('shelterpt_host:v1', '{"keep":true}');
+    localStorage.setItem('shelterpt_lang', 'zh');
     localStorage.setItem('unrelated-site-key', '1');
   });
   await tab(player, 'save');
@@ -1309,8 +1309,8 @@ test('一键重置：玩家页、主持人页只删自己的本机数据并重�
   assert.ok(!keys.includes(PLAYER_DEMO), '演示存档已删除');
   const fresh = await read(player, PLAYER_KEY);
   assert.equal(fresh ? fresh.name : '', '', '玩家存档回到空白');
-  assert.equal(await player.evaluate(() => localStorage.getItem('shelter-playtest:host:v1')), '{"keep":true}', '主持人数据不受影响');
-  assert.equal(await player.evaluate(() => localStorage.getItem('shelter-playtest:lang')), 'zh', '语言选择保留');
+  assert.equal(await player.evaluate(() => localStorage.getItem('shelterpt_host:v1')), '{"keep":true}', '主持人数据不受影响');
+  assert.equal(await player.evaluate(() => localStorage.getItem('shelterpt_lang')), 'zh', '语言选择保留');
   assert.equal(await player.evaluate(() => localStorage.getItem('unrelated-site-key')), '1', '不碰别的网站数据');
 
   const { page: host, errors: hostErrors } = await open(context, HOST);
@@ -1327,8 +1327,8 @@ test('一键重置：玩家页、主持人页只删自己的本机数据并重�
   await landing.goto('file://' + join(ROOT, 'index.html'));
   landing.on('dialog', (d) => d.accept());
   await Promise.all([landing.waitForURL(/[?&]fresh=\d+/), landing.locator('#reset-btn').click()]);
-  const left = await landing.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('shelter-playtest:')));
-  assert.deepEqual(left, ['shelter-playtest:lang']);
+  const left = await landing.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('shelterpt_')));
+  assert.deepEqual(left, ['shelterpt_lang']);
   assert.deepEqual([...errors, ...hostErrors], []);
   await context.close();
 });
@@ -1376,7 +1376,7 @@ test('动画与音效·玩家：点亮行动、发牌翻牌、选中都有动画
   await page.reload();
   assert.deepEqual(await page.evaluate(() => window.ShelterFX.settings()), { motion: 'off', sound: false, volume: 0.6 });
   assert.equal(await page.locator('.fx-pill.muted').count(), 1, '静音时图标变灰');
-  assert.equal(await page.evaluate(() => localStorage.getItem('shelter-playtest:fx')), JSON.stringify({ motion: 'off', sound: false, volume: 0.6 }));
+  assert.equal(await page.evaluate(() => localStorage.getItem('shelterpt_fx')), JSON.stringify({ motion: 'off', sound: false, volume: 0.6 }));
   assert.deepEqual(errors, []);
   await context.close();
 
@@ -1438,7 +1438,7 @@ test('动画与音效·主持人：新的一天、换阶段、轮换座次、计
 });
 
 test('动画与音效：设置面板中英文都没有残留；全屏展示时按钮隐藏', async () => {
-  const { context } = await newContext({ init: () => localStorage.setItem('shelter-playtest:lang', 'en') });
+  const { context } = await newContext({ init: () => localStorage.setItem('shelterpt_lang', 'en') });
   const { page, errors } = await open(context, PLAYER);
   await page.locator('.fx-pill').click();
   await page.locator('.fx-panel').waitFor();

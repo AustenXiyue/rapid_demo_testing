@@ -12,11 +12,11 @@
   var U = window.ShelterUI;
   var h = U.h;
 
-  var KEY_MAIN = 'shelter-playtest:player:v1';
-  var KEY_DEMO = 'shelter-playtest:player-demo:v1';
-  var KEY_SLOT = 'shelter-playtest:player:slot';
-  var KEY_TAB = 'shelter-playtest:player:tab';
-  var KEY_SORT = 'shelter-playtest:player:inv-sort';
+  var KEY_MAIN = 'shelterpt_player:v1';
+  var KEY_DEMO = 'shelterpt_player-demo:v1';
+  var KEY_SLOT = 'shelterpt_player:slot';
+  var KEY_TAB = 'shelterpt_player:tab';
+  var KEY_SORT = 'shelterpt_player:inv-sort';
   var DEFAULT_CARRY_TICKS = 4; // 携带模式默认上限 2 单位（规则里填了就用规则）
 
   /* primary：手机底栏常驻；其余收进「更多」。电脑端全部显示在侧栏。 */
@@ -41,7 +41,7 @@
   var notices = [];
   var wiping = false;
   var undo = new U.UndoStack(40);
-  var KEY_HIDE_ID = 'shelter-playtest:player:hide-identity';
+  var KEY_HIDE_ID = 'shelterpt_player:hide-identity';
   var ui = { tab: 'dashboard', filter: 'all', sort: U.readKey(KEY_SORT) === 'default' ? 'default' : 'category', drafts: {}, keep: {}, transfer: {}, moreOpen: false, hideIdentity: U.readKey(KEY_HIDE_ID) === '1' };
 
   // ================================================================ 演示
@@ -229,9 +229,6 @@
       el.appendChild(h('div', { class: 'banner ' + n.kind }, U.icon('warn'), h('span', { class: 'grow' }, n.text),
         h('button', { type: 'button', class: 'btn small ghost', onclick: function () { notices.splice(i, 1); render(); } }, '关闭')));
     });
-    if (/\.vercel\.app$/.test(location.hostname)) {
-      el.appendChild(h('div', { class: 'banner info' }, '你正在通过上游部署地址访问。正式入口是 www.xxxmnalx.com/game/shelter ——两个地址的存档互不相通。'));
-    }
   }
 
   /** 简要面板：除总览页外常驻顶部。每格「名称＋数值＋小进度」，颜色之外都有文字，点一下去对应页。 */
@@ -2297,7 +2294,7 @@
     }).then(function (ok) {
       if (!ok) return;
       wiping = true;
-      U.wipeLocal(['shelter-playtest:player:', 'shelter-playtest:player-demo:']);
+      U.wipeLocal(['shelterpt_player:', 'shelterpt_player-demo:']);
       U.reloadFresh();
     });
   }

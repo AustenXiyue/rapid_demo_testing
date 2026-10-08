@@ -77,22 +77,22 @@
   <footer>
     <span data-en="First version · rules snapshot 2026-10-04">第一版 · 规则快照 2026-10-04</span>
     <button type="button" class="reset-link" id="reset-btn" data-en="Reset everything on this device">一键重置本机数据</button>
-    <a href="/" id="home-link" hidden data-en="← Back to xxxmnalx.com">← 返回 xxxmnalx.com</a>
+    <a href="https://xiyueym.com/" id="home-link" hidden data-en="← Back to xiyueym.com">← 返回 xiyueym.com</a>
   </footer>
 </main>
 <script>
   (function () {
-    // 经 www.xxxmnalx.com/game/shelter 反代访问时路径没有结尾斜杠，
+    // 经反向代理以子路径访问（如 /Misc/ShelterPT）时路径可能没有结尾斜杠，
     // 相对链接会落到上一级目录：这里补成当前路径下的绝对地址。
     var path = location.pathname;
     if (location.protocol !== 'file:' && !/\/$/.test(path) && !/\.html?$/.test(path)) {
       var links = document.querySelectorAll('a[data-page]');
       for (var i = 0; i < links.length; i++) links[i].href = path + '/' + links[i].getAttribute('data-page');
     }
-    if (/(^|\.)xxxmnalx\.com$/.test(location.hostname)) document.getElementById('home-link').hidden = false;
+    if (/(^|\.)xiyueym\.com$/.test(location.hostname)) document.getElementById('home-link').hidden = false;
 
     // 中文／English：与主持人、玩家页面共用同一个选择（本机记住）
-    var KEY = 'shelter-playtest:lang';
+    var KEY = 'shelterpt_lang';
     var TITLE = { zh: document.title, en: 'Shelter Playtest' };
     var btn = document.getElementById('lang-btn');
     function read() { try { return localStorage.getItem(KEY) === 'en' ? 'en' : 'zh'; } catch (e) { return 'zh'; } }
@@ -127,7 +127,7 @@
       try {
         var keys = [];
         for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
-        keys.forEach(function (k) { if (k && k.indexOf('shelter-playtest:') === 0 && k !== KEY) { localStorage.removeItem(k); n++; } });
+        keys.forEach(function (k) { if (k && k.indexOf('shelterpt_') === 0 && k !== KEY) { localStorage.removeItem(k); n++; } });
       } catch (e) { /* 存储不可用时没有可删的 */ }
       try { sessionStorage.clear(); } catch (e) { /* 忽略 */ }
       try { if (window.caches && caches.keys) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }); } catch (e) { /* 忽略 */ }

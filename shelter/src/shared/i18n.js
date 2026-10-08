@@ -13,7 +13,7 @@
 })(typeof self !== 'undefined' ? self : this, function (root) {
   'use strict';
 
-  var KEY_LANG = 'shelter-playtest:lang';
+  var KEY_LANG = 'shelterpt_lang';
   var HAN = /[一-鿿]/;
   var dict = root.SHELTER_I18N_EN || {};
   var lang = readLang();

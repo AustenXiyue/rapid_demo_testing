@@ -397,7 +397,7 @@ test('守夜卡片链接：带着已选卡片的完整结果，主持人读出�
   const data = { v: 2, day: 3, from: 'B·阿珍', card };
   const hash = C.watchLinkHash(data);
   assert.match(hash, /^#watch=[A-Za-z0-9_-]+$/, '链接里只有网址安全字符');
-  const link = 'https://www.xxxmnalx.com/game/shelter/host.html' + hash;
+  const link = 'https://xiyueym.com/Misc/ShelterPT/host.html' + hash;
   assert.ok(link.length < 400, '链接不长：' + link.length);
   assert.deepEqual(C.readWatchLink(link), { ok: true, data });
   assert.deepEqual(C.readWatchLink('守夜卡片 ' + link + ' 麻烦了').data, data);
