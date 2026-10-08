@@ -317,3 +317,33 @@ button.wcard:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outlin
 
 /* 一键重置（主持人页、玩家页的存档卡里） */
 .reset-box { margin-top: 12px; border-color: #f0b4ab; }
+
+/* ---------- 私信（联机模式，主持人与玩家共用）：左联系人，右对话；窄屏上下排 ---------- */
+.messenger { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; min-height: 320px; }
+.msg-contacts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.msg-contact { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; font: inherit; color: inherit; flex-wrap: wrap; }
+.msg-contact:hover { border-color: var(--line-strong); }
+.msg-contact.on { border-color: var(--teal); background: var(--teal-soft); }
+.msg-contact:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+.msg-unread { margin-left: auto; }
+.msg-thread { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.msg-head { padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.msg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; }
+.msg { align-self: flex-start; max-width: 85%; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.msg.mine { align-self: flex-end; background: var(--teal-soft); border-color: #b4dbd2; }
+.msg-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.msg-compose { display: flex; gap: 8px; align-items: flex-end; }
+.msg-compose .msg-input { flex: 1 1 auto; }
+.tab-unread { margin-left: 4px; padding: 2px 6px; }
+@media (max-width: 640px) {
+  .messenger { grid-template-columns: minmax(0, 1fr); }
+  .msg-contacts { flex-direction: row; overflow-x: auto; }
+  .msg-contact { width: auto; white-space: nowrap; flex-wrap: nowrap; }
+}
+
+/* ---------- 交接单（联机，主持人与玩家共用） ---------- */
+.transfers h3 { font-size: 15px; margin: 10px 0 4px; }
+.transfer { display: flex; flex-direction: column; gap: 4px; }
+.transfer-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.transfer .row { margin-top: 2px; }

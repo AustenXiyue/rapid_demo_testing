@@ -243,6 +243,8 @@
    * 所以悬浮、页面搜索、通知、侧栏与日志摘要都拿不到秘密。
    */
   function gate(key, title, renderFn) {
+    // May Delete：屏幕共享相关。联机模式下玩家在自己的面板看公开信息，主持人不再共享屏幕，秘密页直接显示
+    if (online) return renderFn();
     if (!ui.revealed[key]) {
       return h('section', { class: 'card gate', 'data-gate': key },
         h('div', { class: 'gate-icon' }, U.icon('lock')),
@@ -398,7 +400,8 @@
         h('span', { class: 'top-group' },
           h('button', { type: 'button', class: 'btn', onclick: undoLast, disabled: !last, title: last ? '撤销：' + last.label : '没有可撤销的操作' }, U.icon('undo'), '撤销'),
           h('button', { type: 'button', class: 'btn', onclick: manualAdjust }, '手动调整')),
-        h('button', { type: 'button', class: 'btn danger', onclick: hideAllSecrets }, U.icon('eyeOff'), '一键隐藏所有秘密'))));
+        // May Delete：屏幕共享相关，联机模式下隐藏
+        online ? null : h('button', { type: 'button', class: 'btn danger', onclick: hideAllSecrets }, U.icon('eyeOff'), '一键隐藏所有秘密'))));
   }
 
   function renderTabs() {
@@ -407,8 +410,9 @@
     var groups = { public: null, secret: null, setup: null };
     TABS.forEach(function (t) {
       if (!groups[t.group]) {
-        groups[t.group] = h('div', { class: 'tab-group g-' + t.group, role: 'group', 'aria-label': t.group === 'secret' ? '秘密页（先暂停屏幕共享）' : t.group === 'public' ? '可以共享的页' : '设置' },
-          t.group === 'secret' ? h('span', { class: 'tab-group-label' }, U.icon('lock'), '先暂停共享') : null);
+        // May Delete：「先暂停共享」标签与锁图标是屏幕共享相关，联机模式下隐藏
+        groups[t.group] = h('div', { class: 'tab-group g-' + t.group, role: 'group', 'aria-label': online ? null : t.group === 'secret' ? '秘密页（先暂停屏幕共享）' : t.group === 'public' ? '可以共享的页' : '设置' },
+          t.group === 'secret' && !online ? h('span', { class: 'tab-group-label' }, U.icon('lock'), '先暂停共享') : null);
         nav.appendChild(groups[t.group]);
       }
       groups[t.group].appendChild(h('button', {
@@ -417,13 +421,15 @@
         'aria-current': ui.tab === t.id ? 'page' : null,
         'data-tab': t.id,
         onclick: function () { setTab(t.id); }
-      }, t.secret ? U.icon('lock') : null, t.name));
+      }, t.secret && !online ? U.icon('lock') : null, t.name,
+        t.id === 'messages' && online && online.unread() ? h('span', { class: 'badge danger tab-unread' }, String(online.unread())) : null,
+        t.id === 'supply' && online && pendingToPool() ? h('span', { class: 'badge danger tab-unread' }, String(pendingToPool())) : null));
     });
   }
 
   function renderMain() {
     var main = U.clear(document.getElementById('main'));
-    var views = { stage: renderStage, flow: renderFlow, supply: renderSupply, watch: renderWatch, events: renderEvents, records: renderRecords, log: renderLog, settings: renderSettings };
+    var views = { stage: renderStage, flow: renderFlow, supply: renderSupply, watch: renderWatch, events: renderEvents, records: renderRecords, log: renderLog, settings: renderSettings, messages: renderMessages };
     if (ui.present && ui.tab !== 'stage') exitPresent(true);
     main.className = 'main tab-' + ui.tab;
     main.appendChild((views[ui.tab] || renderStage)());
@@ -447,7 +453,8 @@
       h('section', { class: 'stage-hero', 'aria-label': '当前进度' },
         h('div', { class: 'hero-top' },
           h('span', { class: 'hero-day' }, state.started ? '第 ' + state.day + ' 天' : '尚未开始'),
-          ui.present
+          // May Delete：全屏展示是给屏幕共享用的，联机模式下隐藏
+          online ? null : ui.present
             ? h('button', { type: 'button', class: 'btn small ghost present-btn', onclick: function () { exitPresent(); } }, U.icon('exitFull'), '退出展示（Esc）')
             : h('button', { type: 'button', class: 'btn small present-btn', onclick: enterPresent, title: '隐藏主持人工具栏，只留公开内容' }, U.icon('expand'), '全屏展示')),
         h('h1', { class: 'hero-phase' },
@@ -732,8 +739,9 @@
     return h('details', { class: 'card side-card guide' },
       h('summary', null, h('b', null, '主持人速查')),
       h('ol', null,
-        h('li', null, '「主持台」和「公开展示」都没有秘密，可以直接屏幕共享；给玩家看时用公开展示的「全屏展示」。'),
-        h('li', null, '带锁的页含秘密。打开前先暂停 Discord 共享；处理完点顶栏「一键隐藏所有秘密」再恢复共享。'),
+        // May Delete：前两条是屏幕共享的说明，联机模式下不显示
+        online ? null : h('li', null, '「主持台」和「公开展示」都没有秘密，可以直接屏幕共享；给玩家看时用公开展示的「全屏展示」。'),
+        online ? null : h('li', null, '带锁的页含秘密。打开前先暂停 Discord 共享；处理完点顶栏「一键隐藏所有秘密」再恢复共享。'),
         h('li', null, '主持人端不会把任何东西「发」给玩家：发放、事件后果、治疗都生成可复制的文本，由玩家在自己的页面手动修改。'),
         h('li', null, '「下一阶段／回退／手动调整」都会写进日志；顶栏的「撤销」可以回滚最近的操作。')));
   }
@@ -1383,7 +1391,7 @@
 
   function renderSupply() {
     return gate('pool', '补给与公共池', function () {
-      return h('div', { class: 'stack' }, poolCard(), batchCard(), openingCard(), poolTemplatesCard(), weightsCard());
+      return h('div', { class: 'stack' }, online ? hostTransfers() : null, poolCard(), batchCard(), openingCard(), poolTemplatesCard(), weightsCard());
     });
   }
 
@@ -1660,7 +1668,9 @@
           if (picked) {
             return h('tr', { class: 'done', 'data-picker': pid }, h('td', null, String(i + 1)), h('td', null, nameOf(pid)), h('td', null, '已选：' + describe(picked.piece)),
               h('td', null, h('div', { class: 'row tight' },
-                h('button', { type: 'button', class: 'btn small', onclick: function () { showHandoff(handoffForPick(b, picked)); } }, '交接文本'),
+                // 联机：这件补给已经作为交接单发给玩家，显示状态；本机：交接文本
+                online && pickTransfer(b, picked) ? transferChip(pickTransfer(b, picked))
+                  : h('button', { type: 'button', class: 'btn small', onclick: function () { showHandoff(handoffForPick(b, picked), null, picked.playerId); } }, '交接文本'),
                 h('button', { type: 'button', class: 'btn small', onclick: function () { unpick(b.id, pid); } }, '撤回'))));
           }
           var sel = U.select(b.items.map(function (p, k) { return [p.id, (k + 1) + '. ' + describe(p)]; }), b.items[0] ? b.items[0].id : '', function () {});
@@ -1668,7 +1678,7 @@
             h('td', null, b.items.length ? sel : '无可选物品'),
             h('td', null, h('button', { type: 'button', class: 'btn small primary', disabled: !b.items.length, onclick: function () { pick(b.id, pid, sel.value); } }, '记录选择')));
         })))),
-      next ? h('details', null, h('summary', null, '给 ' + nameOf(next) + ' 的私信文本'), U.copyBlock(dm, { note: '暂停共享后私发' })) : null,
+      next ? h('details', null, h('summary', null, '给 ' + nameOf(next) + ' 的私信文本'), dmBlock(dm, next, { note: '暂停共享后私发' })) : null,
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', onclick: function () { closeBatch(b.id); } }, '结束批次（未选的放回公共池）'),
         h('button', { type: 'button', class: 'btn danger', onclick: function () { undoBatch(b.id); } }, '撤销整个批次')));
@@ -1678,8 +1688,31 @@
     return '【补给交接·' + (b.day ? '第' + b.day + '天' : '开局') + '】' + nameOf(pick.playerId) + '：请在玩家页「库存」手动添加「' + describe(pick.piece) + '」。主持人端不会自动发送到你的页面。';
   }
 
-  function showHandoff(text, title) {
-    U.modal({ title: title || '交接文本（需对方手动修改）', body: U.copyBlock(text, { note: '复制后私信对方' }) });
+  function showHandoff(text, title, toId) {
+    U.modal({ title: title || '交接文本（需对方手动修改）', body: dmBlock(text, toId, { note: '复制后私信对方' }) });
+  }
+
+  /**
+   * 给某位玩家的私信文本：本机模式只能复制；联机模式下多一个「发送给 X」，直接送到对方的私信收件箱。
+   * toId 是主持人存档里的玩家 ID（联机开局时就是座位 ID）；主持人手动加的玩家（如 NPC）没有座位，就只能复制。
+   */
+  function dmBlock(text, toId, opts) {
+    var block = U.copyBlock(text, opts);
+    var seat = online && toId && online.game.seats.filter(function (s) { return s.id === toId && s.user; })[0];
+    if (!seat) return block;
+    var btn = h('button', {
+      type: 'button', class: 'btn small primary',
+      onclick: function () {
+        btn.disabled = true;
+        online.sendMessage(toId, text).then(function () {
+          U.toast('私信已送达：' + nameOf(toId), 'ok');
+        }, function (e) {
+          btn.disabled = false;
+          U.toast('发送失败：' + e.code, 'warn');
+        });
+      }
+    }, '发送给 ', document.createTextNode(nameOf(toId)));
+    return h('div', { class: 'stack' }, block, h('div', { class: 'row' }, btn));
   }
 
   function findBatch(s, id) {
@@ -1688,6 +1721,7 @@
 
   function pick(batchId, pid, pieceId) {
     var text = '';
+    var to = null;
     var ok = commit('记录选择', function (s) {
       var b = findBatch(s, batchId);
       var r = C.pickFromBatch(b, pid, pieceId);
@@ -1695,12 +1729,39 @@
       log(s, b.label + '：' + nameOf(pid) + ' 选择 ' + describe(r.pick.piece), true);
       log(s, b.label + '：' + nameOf(pid) + ' 已领取');
       text = handoffForPick(b, r.pick);
+      to = r.pick.playerId;
       if (!b.items.length && b.picks.length === b.pickOrder.length) markOpeningDone(s, b);
     });
-    if (ok) showHandoff(text);
+    if (!ok) return;
+    // 联机：选择记录后直接作为交接单发给这位玩家（玩家接收后入库；拒收时撤回这次选择）
+    var seatTarget = online && online.game.seats.some(function (x) { return x.id === to && x.user; });
+    if (!seatTarget) return showHandoff(text, null, to);
+    online.transfer('', { to: to, source: 'batch', batchId: batchId, pieceId: pieceId, kind: /^opening/.test(findBatch(state, batchId).kind) ? 'opening' : 'supply' })
+      .then(function () { U.toast('已发给 ' + nameOf(to) + '，等对方接收', 'ok'); render(); }, function (e) { U.transferFail(e); showHandoff(text, null, to); });
+  }
+
+  /** 补给批次里某次选择对应的交接单（联机）：最新的一张。 */
+  function pickTransfer(b, pick) {
+    var list = online.transfers.filter(function (t) { return t.source === 'batch' && t.to === pick.playerId && t.items[0] && t.items[0].id === pick.piece.id; });
+    return list[list.length - 1] || null;
+  }
+
+  function transferChip(t) {
+    return t.status === 'accepted' ? chip('已接收', 'ok') : t.status === 'pending' ? chip('待玩家接收', '') : chip(t.status === 'rejected' ? '已拒收' : '已撤回', 'danger');
   }
 
   function unpick(batchId, pid) {
+    if (online) {
+      // 联机：已经发给玩家的补给由服务端处理——待接收的撤回交接单（服务端会撤回这次选择），已接收的不能再撤
+      var b0 = findBatch(state, batchId);
+      var p0 = b0 && b0.picks.find(function (p) { return p.playerId === pid; });
+      var t0 = p0 && pickTransfer(b0, p0);
+      if (t0 && t0.status === 'accepted') { U.toast('玩家已经接收入库，不能撤回这次选择', 'warn'); return; }
+      if (t0 && t0.status === 'pending') {
+        online.transfer(t0.id + '/cancel').then(function () { U.toast('已撤回交接，物品回到本批候选', 'ok'); render(); }, U.transferFail);
+        return;
+      }
+    }
     commit('撤回选择', function (s) {
       var b = findBatch(s, batchId);
       var r = C.unpickFromBatch(b, pid);
@@ -1729,6 +1790,11 @@
   }
 
   function undoBatch(batchId) {
+    // 联机：这一批已经有发出去的补给（待接收或已接收）时不能整批撤销，否则物品会出现两份
+    if (online && online.transfers.some(function (t) { return t.source === 'batch' && (t.status === 'pending' || t.status === 'accepted') && findBatch(state, batchId).picks.some(function (p) { return p.piece.id === t.items[0].id; }); })) {
+      U.toast('这批补给已经发给玩家：先撤回待接收的交接，已接收的不能整批撤销', 'warn');
+      return;
+    }
     U.confirmBox('撤销整个批次？', '抽到的物品（含已被领取的）会全部原样归还公共池。已领取的玩家需要在自己的页面手动删除——系统不会替玩家改库存。', '撤销批次', 'danger').then(function (ok) {
       if (!ok) return;
       var takers = [];
@@ -1830,7 +1896,17 @@
         log(s, '开局领取第' + (index + 1) + '次（固定指定）：' + lines.join('；'), true);
         log(s, '开局领取第' + (index + 1) + '次完成（固定指定）');
       });
-      showHandoff(text, '开局交接文本');
+      if (!online) return showHandoff(text, '开局交接文本');
+      // 联机：在座的玩家直接收到交接单（凭空给予，不经过公共池）；没有座位的（如 NPC）仍用交接文本
+      var offline = [];
+      Object.keys(inputs).forEach(function (id) {
+        var items = C.parseItemList(inputs[id].value, state.customItems).items;
+        if (!items.length) return;
+        if (!online.game.seats.some(function (x) { return x.id === id && x.user; })) { offline.push(nameOf(id) + '：' + C.formatItemList(items, state.customItems)); return; }
+        online.transfer('', { to: id, source: 'none', give: items, kind: 'opening', note: '开局领取第' + (index + 1) + '次' }).then(render, U.transferFail);
+      });
+      U.toast('开局物品已发给在座的玩家，等各自接收', 'ok');
+      if (offline.length) showHandoff('【开局领取第' + (index + 1) + '次·固定指定】\n' + offline.join('\n'), '没有座位的玩家：交接文本');
     });
   }
 
@@ -1882,7 +1958,7 @@
           h('div', { class: 'row between' }, h('b', null, nameOf(pid)),
             C.isInt(cand.chosenIndex) ? chip('已提交：' + (cand.chosenIndex ? '②' : '①'), 'ok') : chip('等待回复', '')),
           watchCardsRow(cand.options.map(function (o, i) { return { card: o, label: i ? '②' : '①', selected: cand.chosenIndex === i }; })),
-          h('details', null, h('summary', null, '私信文本'), U.copyBlock(dm, { note: '暂停共享后私发' })),
+          h('details', null, h('summary', null, '私信文本'), dmBlock(dm, pid, { note: '暂停共享后私发' })),
           h('div', { class: 'row' },
             cand.options.map(function (o, i) {
               return h('button', { type: 'button', class: 'btn small ' + (cand.chosenIndex === i ? 'primary' : ''), disabled: !!t.finalWatch, onclick: function () { submitCandidate(cand.id, i); } }, '提交' + (i ? '②' : '①'));
@@ -1958,6 +2034,8 @@
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; }
     var r = C.readWatchLink(m[0]);
     if (!r.ok) { U.toast(r.reason, 'warn'); return; }
+    // May Delete：联机模式下不再确认「已暂停屏幕共享」，直接显示卡片
+    if (online) { importWatchSubmission(r.data, { fromLink: true }); return; }
     var box = h('input', { type: 'checkbox', id: 'confirm-share-paused' });
     U.modal({
       title: '收到守夜卡片链接',
@@ -2037,7 +2115,7 @@
       var dm = '【守夜拍板·第' + state.day + '天】' + (decider ? nameOf(decider) : '') + '：你是末位，请从以下名单中选择最终一份：' +
         subs.map(function (c, i) { return (i + 1) + '. ' + C.describeWatchOption(c.options[c.chosenIndex], nameOf); }).join('；') + '。请私信回复编号。';
       body.push(h('p', null, '收到 ' + subs.length + ' 份提交：由实际座次最后的人 ', h('b', null, decider ? nameOf(decider) : '（无人在座）'), ' 从所有提交中选择最终一份（仅拍板不算计划者）。'));
-      body.push(U.copyBlock(dm, { label: '复制给末位的私信', note: '暂停共享后私发；末位回复编号后，点下面对应的按钮' }));
+      body.push(dmBlock(dm, decider, { label: '复制给末位的私信', note: '暂停共享后私发；末位回复编号后，点下面对应的按钮' }));
       body.push(h('div', { class: 'row' }, subs.map(function (c, i) {
         return h('button', {
           type: 'button', class: 'btn small ' + (t.watchDecision === c.id ? 'primary' : ''), onclick: function () {
@@ -2951,7 +3029,53 @@
       h('div', { class: 'grid2' }, rescueCard(), h('section', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', null, '结果日志（公开）')), feedList(false))),
       gate('scores', '玩家分数、爱恨与私信记录', function () {
         return h('div', { class: 'stack' }, scoresCard(), settleCard(), dmNotesCard());
-      }));
+      }),
+      // 联机：全部交接记录（主持人能看到玩家之间的物品往来，看不到私信）
+      online ? U.transferCards(online, { customItems: state.customItems, onChange: render, ledger: true, title: '交接记录（全部）' }) : null);
+  }
+
+  // ================================================================ 交接（联机）
+
+  function pendingToPool() {
+    return online.transfers.filter(function (t) { return t.status === 'pending' && t.to === 'host'; }).length;
+  }
+
+  /** 补给页顶部：玩家交公待入池、主持人发出待接收，以及「发放物品…」。 */
+  function hostTransfers() {
+    return h('div', { class: 'stack' },
+      U.transferCards(online, { customItems: state.customItems, onChange: render, title: '交接：待入池与发出' }),
+      h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: grantDialog }, '发放物品给玩家…')));
+  }
+
+  /** 发放物品：从公共池拿（托管，拒收回池）或凭空给予（事件、夜间结果的物品）。玩家接收后入库。 */
+  function grantDialog() {
+    var seats = online.game.seats.filter(function (x) { return x.user; });
+    if (!seats.length) { U.toast('没有在座的玩家', 'warn'); return; }
+    var to = seats[0].id;
+    var source = 'pool';
+    var items = h('input', { type: 'text', placeholder: '例如：面包×2，普通水' });
+    var note = h('input', { type: 'text', maxlength: 500, placeholder: '附言（如：事件「停电」的结果）' });
+    var srcHost = h('div');
+    function drawSrc() { U.clear(srcHost).appendChild(U.segmented([['pool', '从公共池拿'], ['none', '凭空给予']], source, function (v) { source = v; drawSrc(); })); }
+    drawSrc();
+    U.modal({
+      title: '发放物品给玩家',
+      body: h('div', { class: 'stack' },
+        U.field('给谁', U.select(seats.map(function (x) { return [x.id, nameOf(x.id)]; }), to, function (v) { to = v; })),
+        h('div', { class: 'field' }, h('span', { class: 'field-label' }, '物品来源'), srcHost),
+        U.field('物品', items, '多件用逗号分开'), note,
+        h('p', { class: 'muted small' }, '玩家接收后入库；拒收或你撤回时，从公共池拿的物品回到池里。')),
+      actions: [{ label: '取消', value: false }, { label: '发放', kind: 'primary', value: true }]
+    }).then(function (ok) {
+      if (!ok) return;
+      var parsed = C.parseItemList(items.value, state.customItems);
+      if (parsed.errors.length || !parsed.items.length || parsed.items.some(function (x) { return x.qty <= 0; })) {
+        U.toast(parsed.errors[0] || '请填写要发放的物品', 'warn');
+        return;
+      }
+      online.transfer('', { to: to, source: source, give: parsed.items, kind: 'grant', note: note.value.trim() })
+        .then(function () { U.toast('已发给 ' + nameOf(to) + '，等对方接收', 'ok'); render(); }, U.transferFail);
+    });
   }
 
   function scoreRow(id) {
@@ -3070,7 +3194,7 @@
             U.field('恨的人', U.select(people, note.hate || '', function (v) { set('hate', v); })),
             U.field('职业', U.select(professions, note.professionId || '', function (v) { set('professionId', v); })),
             U.field('秘密任务', U.select(tasks, note.taskId || '', function (v) { set('taskId', v); }))),
-          h('details', null, h('summary', null, '私信文本'), U.copyBlock(text, { note: '暂停共享后私发' })));
+          h('details', null, h('summary', null, '私信文本'), dmBlock(text, p.id, { note: '暂停共享后私发' })));
       }));
   }
 
@@ -3459,6 +3583,8 @@
   // ================================================================ 启动
 
   function boot() {
+    // 联机模式多一个「私信」页（放在秘密页最后）
+    if (GAME) TABS.splice(TABS.findIndex(function (t) { return t.id === 'settings'; }), 0, { id: 'messages', name: '私信', group: 'secret' });
     var tab = U.readKey(KEY_TAB);
     if (tab && TABS.some(function (t) { return t.id === tab; })) ui.tab = tab;
     U.i18n.setLang(U.i18n.getLang());
@@ -3503,6 +3629,13 @@
 
   // ================================================================ 联机模式
 
+  // 私信页（只在联机模式下有）：主持人身份的收件箱
+  function renderMessages() {
+    return h('section', { class: 'card' },
+      h('div', { class: 'card-head' }, h('h2', null, '私信'), h('span', { class: 'muted small' }, '主持人与每位玩家的私信；玩家之间的私信主持人看不到')),
+      U.messenger(online, render));
+  }
+
   function bootOnline() {
     U.clear(document.getElementById('main')).appendChild(h('p', { class: 'empty' }, '正在从服务器载入存档…'));
     U.connectOnline(GAME, 'host', {
@@ -3510,9 +3643,19 @@
         state = C.normalizeSave(s, 'shelter-host');
         undo.clear();
         render();
-        U.toast(U.onlineReloadedText(reason), reason === 'device' ? 'ok' : 'warn');
+        if (reason !== 'transfer') U.toast(U.onlineReloadedText(reason), reason === 'device' ? 'ok' : 'warn');
+      },
+      onTransfer: function (t) {
+        if (t.to === 'host' && t.status === 'pending') U.toast('有玩家交公：在「补给与公共池」确认入池', 'ok');
+        else if (t.from === 'host' && t.status === 'rejected') U.toast(nameOf(t.to) + ' 拒收了发放的物品', 'warn');
+        render();
       },
       onGame: function () { render(); },
+      onMessage: function (m) {
+        // 别人发来的、而且不在正看着的对话里：提示一下
+        if (m && m.to === online.inbox.me && !(ui.tab === 'messages' && online.inbox.current === m.from)) U.toast('收到新私信', 'ok');
+        render();
+      },
       onGone: function () { location.href = 'index.html'; },
       onError: function (code) {
         U.toast(code === 'network' ? '网络断开：恢复连接后会自动保存' : '保存到服务器失败（' + code + '）', 'warn');

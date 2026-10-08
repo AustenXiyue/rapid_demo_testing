@@ -301,7 +301,10 @@
       // 开局后才有面板存档：主导进主持人面板，有座位的进自己的玩家面板（主导兼角色两个都有）
       g.status !== 'lobby' && ((isOwner && !g.ownerDeleted) || mySeat) ? h('div', { class: 'room-actions', id: 'panels', style: 'margin-top:12px' },
         isOwner && !g.ownerDeleted ? h('a', { class: 'btn primary', href: 'host.html?game=' + encodeURIComponent(g.id) }, '进入主持人面板') : null,
-        mySeat ? h('a', { class: 'btn ' + (isOwner ? '' : 'primary'), href: 'player.html?game=' + encodeURIComponent(g.id) }, '进入玩家面板') : null) : null));
+        // 主导兼角色：玩家面板在新窗口打开，两个面板可以同时开着（存档和私信各归各的身份）
+        mySeat ? h('a', Object.assign({ class: 'btn ' + (isOwner ? '' : 'primary'), href: 'player.html?game=' + encodeURIComponent(g.id) },
+          isOwner ? { target: '_blank', rel: 'noopener' } : {}), '进入玩家面板') : null,
+        isOwner && mySeat ? h('span', { class: 'muted small' }, '玩家面板会在新窗口打开，可以和主持人面板同时使用。') : null) : null));
 
     main.appendChild(h('section', { class: 'card', id: 'seats' },
       h('div', { class: 'card-head' }, h('h2', null, '座位'), open ? h('span', { class: 'badge ok' }, '空座位 ' + open) : null),

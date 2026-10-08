@@ -108,3 +108,4 @@ PLAYTEST · 规则测试工具	PLAYTEST · RULES TESTING TOOL
 这局已经结束，面板只能查看。	This game has ended; panels are view-only.
 进入主持人面板	Open host panel
 进入玩家面板	Open player panel
+玩家面板会在新窗口打开，可以和主持人面板同时使用。	The player panel opens in a new window and can be used alongside the host panel.

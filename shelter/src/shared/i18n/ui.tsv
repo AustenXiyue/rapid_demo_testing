@@ -34,3 +34,54 @@
 对局不在进行中，现在只能查看：	Game not in progress, view only: 
 返回大厅	Back to lobby
 载入失败：	Failed to load: 
+座位 	Seat 
+已离开的座位	Former seat
+（空座位）	(empty seat)
+输入私信…	Type a message…
+私信内容	Message
+这个座位现在没有人	No one is in this seat right now
+发送失败：	Failed to send: 
+这局里还没有别人。	No one else is in this game yet.
+还没有私信。	No messages yet.
+对局已结束，不能再发私信。	The game has ended; no more messages can be sent.
+发送	Send
+这个座位现在没有人。	No one is in this seat right now.
+私信需要 1～2000 个字。	Messages must be 1–2000 characters.
+搜刮交公	Scavenge hand-in
+开局领取	Opening pick
+主持人发放	Host grant
+待确认	Pending
+已接收	Accepted
+已拒收	Declined
+已撤回	Withdrawn
+对局不在进行中，现在不能处理交接。	The game isn't in progress; transfers can't be handled right now.
+数量不够。	Not enough items.
+携带中的物品被锁定：先结束携带再转出。	Carried items are locked: end carry mode before giving them away.
+交出的物品和对方要的不一致。	The items given don't match what was asked for.
+这张交接单已经处理过了。	This transfer has already been handled.
+对方现在不在座位上。	No one is in that seat right now.
+这件补给已经发过了。	This supply item has already been sent.
+交接失败：	Transfer failed: 
+：需要 	: need 
+，你只有 	, you have 
+：选 	: pick 
+交易：交出对方要的物品	Trade: give what they asked for
+收到：	You get: 
+你需要交出：	You need to give:
+确认交易	Confirm trade
+物品不够，不能完成这笔交易	Not enough items to complete this trade
+需要正好选 	 needs exactly 
+ ⇄ 换取 	 ⇄ for 
+对方交出：	They gave: 
+附言：	Note: 
+交接	Transfers
+ 件待你处理	 waiting for you
+待你处理	Waiting for you
+交易…	Trade…
+接收	Accept
+拒收	Decline
+你发出的（等对方确认）	Sent by you (awaiting confirmation)
+玩家之间待确认	Pending between players
+没有待处理的交接。	No pending transfers.
+全部记录	All records
+最近的记录	Recent records

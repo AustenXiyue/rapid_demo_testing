@@ -442,6 +442,61 @@
     return e;
   }
 
+  /**
+   * 交接用：从库存（或公共池）里取出物品快照。picks：[{ entryId, qty }] 按条目取，或 [{ defId, qty }] 按物品种类取。
+   * 快照保留实例字段（能量棒次数、地图笔记、水量、破损、备注）。数量不够时抛错，list 不变。
+   */
+  function takeEntries(list, picks) {
+    var work = clone(list);
+    var out = [];
+    picks.forEach(function (p) {
+      if (!p || !isInt(p.qty) || p.qty <= 0) throw new Error('数量必须是正整数');
+      if (p.entryId) {
+        var e = findEntry(work, p.entryId);
+        if (!e) throw new Error('找不到该物品');
+        if (p.qty > e.qty) throw new Error('数量不足：现有 ' + e.qty + '，要交出 ' + p.qty);
+        out.push(Object.assign(clone(e), { qty: p.qty }));
+        removeQty(work, e.id, p.qty);
+        return;
+      }
+      var need = p.qty;
+      work.filter(function (x) { return x.defId === p.defId; }).forEach(function (x) {
+        if (!need) return;
+        var n = Math.min(need, x.qty);
+        out.push(Object.assign(clone(x), { qty: n }));
+        removeQty(work, x.id, n);
+        need -= n;
+      });
+      if (need) throw new Error('数量不足：' + p.defId + ' 还差 ' + need);
+    });
+    list.length = 0;
+    work.forEach(function (x) { list.push(x); });
+    return out;
+  }
+
+  /** 交接用：把快照加进库存。普通物品照常叠加；带实例字段的物品逐件加入（换新 id，字段原样保留）。 */
+  function receiveEntries(list, entries, opts) {
+    opts = opts || {};
+    entries.forEach(function (e) {
+      var def = getDef(e.defId, opts.customItems);
+      if (isStackable(def)) {
+        addItem(list, e.defId, e.qty, { customItems: opts.customItems, remark: e.remark });
+      } else {
+        for (var k = 0; k < e.qty; k++) list.push(Object.assign(clone(e), { id: uid('it'), qty: 1 }));
+      }
+    });
+    return list;
+  }
+
+  /** 库存变了以后：携带清单里只保留还在库存里的物品，数量不超过现有。 */
+  function syncLoadout(s) {
+    if (!s.loadout) return;
+    s.loadout.items = s.loadout.items.map(function (r) {
+      var e = findEntry(s.inventory, r.entryId);
+      return e ? { entryId: r.entryId, qty: Math.min(r.qty, e.qty) } : null;
+    }).filter(function (r) { return r && r.qty > 0; });
+  }
+
   function indexOfEntry(list, entryId) {
     for (var i = 0; i < list.length; i++) if (list[i].id === entryId) return i;
     return -1;
@@ -2120,6 +2175,34 @@
   }
 
   /**
+   * 主持人存档里可以公开的部分：就是「公开展示」页上显示的内容。联机时服务端只把这些推给玩家。
+   * 白名单取值，不含公共池明细、补给候选物品、事件库、守夜候选与结果、私信备注、日志。
+   */
+  function publicView(s) {
+    var t = s.today || {};
+    var stageEvent = s.stage && s.stage.event;
+    return {
+      started: !!s.started,
+      day: s.day,
+      phase: s.phase,
+      phases: phaseSequence(s.rules),
+      players: s.players.map(function (p) { return { id: p.id, name: p.name, alive: p.alive !== false }; }),
+      seatOrder: s.seatOrder.slice(),
+      actions: t.actionOrder ? { order: t.actionOrder.slice(), acted: (t.actedIds || []).slice(), current: nextActor(t.actionOrder, t.actedIds || []) } : null,
+      supply: (s.batches || []).filter(function (b) { return b.status === 'open'; }).map(function (b) {
+        var picked = b.picks.map(function (p) { return p.playerId; });
+        return { label: b.label, pickOrder: b.pickOrder.slice(), picked: picked, next: b.pickOrder.filter(function (id) { return picked.indexOf(id) < 0; })[0] || null };
+      }),
+      poolCount: s.stage && s.stage.showPoolCount ? countPieces(s.pool) : null,
+      eventCheck: t.eventCheck ? { triggered: !!t.eventCheck.triggered } : null,
+      event: stageEvent ? { name: stageEvent.name, location: stageEvent.location || '', body: stageEvent.body || '', options: (stageEvent.options || []).slice() } : null,
+      timer: s.timer ? { running: !!s.timer.running, endsAt: s.timer.endsAt, remainingMs: s.timer.remainingMs, durationMs: s.timer.durationMs } : null,
+      rescue: { progress: s.rescueProgress, target: s.rules.rescueTarget },
+      feed: (s.publicFeed || []).map(function (f) { return { id: f.id, day: f.day, kind: f.kind, text: f.text, at: f.at }; })
+    };
+  }
+
+  /**
    * 把主持人的规则包套到玩家存档上：规则、自定义物品（按 id 覆盖）、附带的搜刮模板、玩家名单。
    * 不碰库存和状态。玩家页导入与服务端联机同步共用。
    */
@@ -2284,6 +2367,10 @@
     normalizeSave: normalizeSave,
     makeRulesPack: makeRulesPack,
     validateRulesPack: validateRulesPack,
-    applyRulesPack: applyRulesPack
+    takeEntries: takeEntries,
+    receiveEntries: receiveEntries,
+    syncLoadout: syncLoadout,
+    applyRulesPack: applyRulesPack,
+    publicView: publicView
   };
 });

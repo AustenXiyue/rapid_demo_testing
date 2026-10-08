@@ -14,6 +14,8 @@ const crypto = require('node:crypto');
 const express = require('express');
 const C = require('../src/shared/core.js');
 const { requireUser } = require('./auth');
+const { createMessages } = require('./messages');
+const { createTransfers } = require('./transfers');
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 去掉了容易看混的 I、L、O、0、1
 const MAX_SEATS = 12;
@@ -165,7 +167,7 @@ function createGames(db, io) {
       p.log.unshift({ id: C.uid('log'), at: now, day: p.publicInfo ? p.publicInfo.day : null, text: '主持人更新了' + what + '，已自动同步' });
       db.prepare('UPDATE seats SET state = ?, version = ? WHERE id = ?').run(JSON.stringify(p), seat.version + 1, seat.id);
       if (seat.user_id) {
-        io.to('user:' + seat.user_id).emit('state:update', { gameId, kind: 'seat', version: seat.version + 1, state: p, reason: { rules, roster } });
+        io.to('user:' + seat.user_id).emit('state:update', { gameId, kind: 'seat', version: seat.version + 1, state: p, reason: 'rules', detail: { rules, roster } });
       }
     }
   }
@@ -339,8 +341,30 @@ function createGames(db, io) {
     db.prepare('UPDATE games SET host_state = ?, host_version = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(state), version, Date.now(), g.id);
     io.to('user:' + req.user.id).emit('state:update', { gameId: g.id, kind: 'host', version, state, from: req.body.from || null });
     if (row.state) syncRules(g.id, JSON.parse(row.state), state);
+    pushPublic(g.id, state);
     res.json({ version });
   });
+
+  // 公开信息：主持人存档里「公开展示」的那部分（C.publicView），所有成员都能看；变化时推给房间里的人
+  const lastPublic = new Map();
+  function pushPublic(gameId, hostState) {
+    const view = C.publicView(hostState);
+    const json = JSON.stringify(view);
+    if (lastPublic.get(gameId) === json) return;
+    lastPublic.set(gameId, json);
+    io.to('game:' + gameId).emit('public:update', { gameId, view });
+  }
+
+  r.get('/:id/public', (req, res) => {
+    const g = loadMember(req, res);
+    if (!g) return;
+    const row = hostRow(g.id);
+    if (!row.state) return res.status(409).json({ error: 'not_started' });
+    res.json({ view: C.publicView(JSON.parse(row.state)) });
+  });
+
+  r.use('/:id/messages', createMessages(db, io, { loadMember, seatOf }));
+  r.use('/:id/transfers', createTransfers(db, io, { loadMember, seatOf, pushPublic }));
 
   r.get('/:id/state/seat', (req, res) => {
     const g = loadMember(req, res);

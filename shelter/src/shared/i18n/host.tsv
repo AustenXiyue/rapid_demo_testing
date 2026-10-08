@@ -1234,3 +1234,33 @@ Discord 投票	Discord vote
 正在从服务器载入存档…	Loading the save from the server…
 网络断开：恢复连接后会自动保存	Connection lost: changes will save automatically once it's back
 保存到服务器失败（	Saving to the server failed (
+私信已送达：	Message delivered: 
+发送给 	Send to 
+私信	Messages
+主持人与每位玩家的私信；玩家之间的私信主持人看不到	Messages between the host and each player; the host can't see messages between players
+收到新私信	New message
+已发给 	Sent to 
+，等对方接收	, waiting for them to accept
+待玩家接收	Awaiting player
+玩家已经接收入库，不能撤回这次选择	The player has already accepted it; this pick can't be withdrawn
+已撤回交接，物品回到本批候选	Transfer withdrawn; the item is back among this batch's candidates
+这批补给已经发给玩家：先撤回待接收的交接，已接收的不能整批撤销	Items from this batch have been sent: withdraw pending transfers first; accepted ones can't be undone as a batch
+次	~
+开局物品已发给在座的玩家，等各自接收	Opening items sent to seated players; waiting for each to accept
+没有座位的玩家：交接文本	Players without a seat: handoff text
+交接记录（全部）	Transfer records (all)
+交接：待入池与发出	Transfers: incoming to pool and sent
+发放物品给玩家…	Give items to a player…
+没有在座的玩家	No seated players
+例如：面包×2，普通水	e.g. Bread×2, Water
+附言（如：事件「停电」的结果）	Note (e.g. result of the “Blackout” event)
+从公共池拿	From the pool
+凭空给予	Create new
+发放物品给玩家	Give items to a player
+给谁	To
+物品来源	Source
+多件用逗号分开	Separate items with commas
+玩家接收后入库；拒收或你撤回时，从公共池拿的物品回到池里。	Items enter the player's inventory once accepted; if declined or withdrawn, items taken from the pool go back to it.
+请填写要发放的物品	Please enter the items to give
+有玩家交公：在「补给与公共池」确认入池	A player handed items in: confirm them under “Supplies & pool”
+ 拒收了发放的物品	 declined the items

@@ -181,13 +181,8 @@
   }
 
   /** 库存变化后，把携带数量收缩到库存实际数量以内（携带只引用库存，不复制物品）。 */
-  function syncLoadout(s) {
-    if (!s.loadout) return;
-    s.loadout.items = s.loadout.items.map(function (r) {
-      var e = C.findEntry(s.inventory, r.entryId);
-      return e ? { entryId: r.entryId, qty: Math.min(r.qty, e.qty) } : null;
-    }).filter(function (r) { return r && r.qty > 0; });
-  }
+  // 移到了 core.js（服务端处理交接时也要用）
+  var syncLoadout = C.syncLoadout;
 
   function tempAttack() {
     return state.temporaryEffects.reduce(function (sum, fx) { return sum + (C.isNum(fx.attack) ? fx.attack : 0); }, 0);
@@ -298,8 +293,10 @@
   function tabButton(t) {
     // 手机底栏用短名，平板和电脑用全名
     // 英文短名另取（Home／Items／Loot），手机底栏 6 格放得下
+    var unread = !online ? 0 : t.id === 'game' ? online.unread() : t.id === 'inventory' ? pendingIncoming() : 0;
     return h('button', { type: 'button', class: 'tab ' + (ui.tab === t.id ? 'on' : ''), 'data-tab': t.id, 'aria-current': ui.tab === t.id ? 'page' : null, onclick: function () { setTab(t.id); } },
-      h('span', { class: 'tab-short' }, U.TC('tab-short', t.name)), h('span', { class: 'tab-full' }, t.full || t.name));
+      h('span', { class: 'tab-short' }, U.TC('tab-short', t.name)), h('span', { class: 'tab-full' }, t.full || t.name),
+      unread ? h('span', { class: 'badge danger tab-unread', 'aria-label': unread + ' 条未读私信' }, String(unread)) : null);
   }
 
   /** 手机：底栏 5 个常用页 +「更多」；平板：顶部一行；电脑：左侧栏。三种布局共用同一组按钮，由 CSS 排布。 */
@@ -320,7 +317,7 @@
 
   function renderMain() {
     var main = U.clear(document.getElementById('main'));
-    var views = { dashboard: renderDashboard, status: renderStatus, inventory: renderInventory, scavenge: renderScavenge, action: renderAction, score: renderScore, save: renderSave };
+    var views = { dashboard: renderDashboard, status: renderStatus, inventory: renderInventory, scavenge: renderScavenge, action: renderAction, score: renderScore, save: renderSave, game: renderGame };
     main.className = 'main p-main tab-' + ui.tab;
     main.appendChild((views[ui.tab] || renderDashboard)());
   }
@@ -352,6 +349,8 @@
 
   function renderDashboard() {
     return h('div', { class: 'dash' },
+      online ? publicStrip() : null,
+      online && pendingIncoming() ? transferSection() : null,
       vitalsSection(),
       quickActions(),
       h('div', { class: 'dash-cols' },
@@ -849,6 +848,7 @@
           h('button', { type: 'button', class: 'btn', onclick: customItemDialog }, '添加自定义物品'),
           mode === 'normal' ? h('button', { type: 'button', class: 'btn carry-btn', onclick: carrySetupDialog }, '携带模式') : null)),
       mode !== 'normal' ? carryPanel(mode) : null,
+      online && online.transfers.length ? transferSection() : null,
       body);
   }
 
@@ -1283,6 +1283,7 @@
   // ---------------------------------------------------------------- 赠予与交公
 
   function transferDialog(entryId) {
+    if (online) return transferDialogOnline(entryId);
     var e = C.findEntry(state.inventory, entryId);
     if (!e) return;
     var def = defOf(e);
@@ -1407,6 +1408,16 @@
     var host = h('div');
     var who = h('input', { type: 'text', placeholder: '对方名字', value: holder.who || '' });
     who.addEventListener('input', function () { holder.who = who.value; });
+    // 联机模式：从座位里选对方（治疗结果会私信给他）
+    if (online) {
+      var seats = otherSeats();
+      holder.seat = holder.seat || (seats[0] && seats[0].id) || '';
+      holder.who = seats.length ? seats.filter(function (s) { return s.id === holder.seat; })[0].user.username : '';
+      who = U.select(seats.map(function (s) { return [s.id, s.user.username]; }), holder.seat, function (v) {
+        holder.seat = v;
+        holder.who = seats.filter(function (s) { return s.id === v; })[0].user.username;
+      });
+    }
     function draw() {
       U.clear(host).appendChild(h('div', { class: 'stack' },
         U.segmented([['self', '自己'], ['other', '他人']], holder.target, function (v) { holder.target = v; draw(); }),
@@ -1447,7 +1458,7 @@
           log(s, '对 ' + holder.who.trim() + ' 使用绷带（' + (holder.effect === 'heal' ? '恢复1生命' : '止血') + '）');
         }
       });
-      if (text) showHandoff(text, '治疗他人：请对方手动修改');
+      if (text) healNotice(holder, text);
     });
   }
 
@@ -1492,8 +1503,16 @@
           }
         }
       });
-      if (text) showHandoff(text, '治疗他人：请对方手动修改');
+      if (text) healNotice(holder, text);
     });
+  }
+
+  /** 治疗他人的结果：联机模式下直接私信给对方（对方自己改状态），本机模式照旧弹出交接文本。 */
+  function healNotice(holder, text) {
+    if (!online || !holder.seat) return showHandoff(text, '治疗他人：请对方手动修改');
+    online.sendMessage(holder.seat, text).then(function () {
+      U.toast('治疗结果已私信给 ' + holder.who, 'ok');
+    }, function () { showHandoff(text, '私信没发出去：请复制给对方'); });
   }
 
   function useMap(e) {
@@ -1779,12 +1798,15 @@
       var done = commit('提交搜刮', function (s) {
         if (!s.scavenge || s.scavenge.id !== sc.id || s.scavenge.status !== 'organize') throw new Error('本次搜刮已提交，不会重复领取');
         kept.forEach(function (k) { C.addItem(s.inventory, k.defId, k.qty, { customItems: s.customItems, rules: s.rules }); });
+        // 联机：交公的那部分也先进库存，提交后马上作为交接单交给公共池
+        if (online) handIn.forEach(function (k) { C.addItem(s.inventory, k.defId, k.qty, { customItems: s.customItems, rules: s.rules }); });
         var oldOut = [];
         transfers.forEach(function (t) {
           var e = C.findEntry(s.inventory, t.entry.id);
           if (!e) return;
           oldOut.push(C.isStackable(defOf(e)) ? defOf(e).name + '×' + t.qty : describe(e));
-          C.removeQty(s.inventory, e.id, Math.min(t.qty, e.qty));
+          // 联机时旧物品留在库存里，由下面的交接单交给公共池（服务端扣下）
+          if (!online) C.removeQty(s.inventory, e.id, Math.min(t.qty, e.qty));
         });
         syncLoadout(s);
         var lines = ['【搜刮交公·第' + today() + '天】' + myName() + '：'];
@@ -1796,11 +1818,88 @@
         s.scavenge.submitted = { at: Date.now(), kept: kept, handIn: handIn, oldOut: oldOut, text: text, override: over };
         log(s, '提交搜刮：自留 ' + (kept.length ? C.formatItemList(kept, s.customItems) : '无') + '；交公 ' + (handIn.length ? C.formatItemList(handIn, s.customItems) : '无') + (oldOut.length ? '；旧物品转出 ' + oldOut.join('、') : ''));
       });
-      if (done) {
-        ui.keep = {};
-        ui.transfer = {};
-        showHandoff(text, '交公清单：发给主持人');
+      if (!done) return;
+      ui.keep = {};
+      ui.transfer = {};
+      if (!online) return showHandoff(text, '交公清单：发给主持人');
+      // 联机：本次所得先进自己的库存，再连同旧物品一起交给公共池（等主持人接收）
+      // 同一种物品可能叠在同一个条目里（旧面包＋新面包），按条目累计，不超过现有数量
+      var byEntry = {};
+      function add(e, n) { byEntry[e.id] = Math.min(e.qty, (byEntry[e.id] || 0) + n); }
+      transfers.forEach(function (t) {
+        var e = C.findEntry(state.inventory, t.entry.id);
+        if (e) add(e, Math.min(t.qty, e.qty));
+      });
+      handIn.forEach(function (x) {
+        var need = x.qty;
+        state.inventory.filter(function (e) { return e.defId === x.defId; }).forEach(function (e) {
+          var room = e.qty - (byEntry[e.id] || 0);
+          var n = Math.min(need, room);
+          if (n > 0) { add(e, n); need -= n; }
+        });
+      });
+      var give = Object.keys(byEntry).map(function (id) { return { entryId: id, qty: byEntry[id] }; });
+      if (!give.length) return;
+      online.transfer('', { to: 'host', kind: 'scavenge', give: give, note: '搜刮交公' }).then(function () {
+        U.toast('交公清单已交给公共池，等主持人接收', 'ok');
+      }, U.transferFail);
+    });
+  }
+
+  // ---------------------------------------------------------------- 交接（联机）
+
+  function otherSeats() {
+    return online.game.seats.filter(function (s) { return s.user && s.id !== state.playerId; });
+  }
+
+  function pendingIncoming() {
+    return online.transfers.filter(function (t) { return t.status === 'pending' && t.to === online.inbox.me; }).length;
+  }
+
+  function transferSection() {
+    var locked = state.loadout && state.loadout.confirmed ? state.loadout.items.map(function (x) { return x.entryId; }) : [];
+    return U.transferCards(online, { customItems: state.customItems, inventory: state.inventory, locked: locked, onChange: render });
+  }
+
+  /** 联机的「转出」：选对方（其他座位或公共池），可以顺便向对方要东西（交易：对方接收时两边同时换手）。 */
+  function transferDialogOnline(entryId) {
+    var e = C.findEntry(state.inventory, entryId);
+    if (!e) return;
+    var def = defOf(e);
+    if (state.loadout && state.loadout.confirmed && state.loadout.items.some(function (x) { return x.entryId === e.id; })) {
+      U.toast('携带中的物品被锁定：先结束携带再转出', 'warn');
+      return;
+    }
+    var seats = otherSeats();
+    var to = seats.length ? seats[0].id : 'host';
+    var qty = h('input', { type: 'number', class: 'num', min: 1, max: e.qty, value: 1 });
+    var wants = h('input', { type: 'text', placeholder: '例如：普通水×2（留空就是直接赠予）' });
+    var note = h('input', { type: 'text', maxlength: 500, placeholder: '附言（可不填）' });
+    var wantsHost = h('div');
+    function drawWants() { U.clear(wantsHost).appendChild(to === 'host' ? h('p', { class: 'muted small' }, '交给公共池：主持人接收后入池。') : U.field('想换取（对方接收时同时交给你）', wants)); }
+    drawWants();
+    U.modal({
+      title: '转出：' + describe(e),
+      body: h('div', { class: 'stack' },
+        U.field('交给', U.select(seats.map(function (s) { return [s.id, s.user.username]; }).concat([['host', '公共池（主持人）']]), to, function (v) { to = v; drawWants(); })),
+        C.isStackable(def) ? U.field('数量（现有 ' + e.qty + '）', qty) : null,
+        wantsHost, note,
+        h('p', { class: 'muted small' }, '物品会先从你的库存扣下，对方接收后才算交出；对方拒收或你撤回时原样退回。')),
+      actions: [{ label: '取消', value: false }, { label: '发起', kind: 'primary', value: true }]
+    }).then(function (ok) {
+      if (!ok) return;
+      var n = C.isStackable(def) ? parseInt(qty.value, 10) : 1;
+      if (!(n > 0) || n > e.qty) { U.toast('数量需在 1～' + e.qty + ' 之间', 'warn'); return; }
+      var body = { to: to, give: [{ entryId: e.id, qty: n }], note: note.value.trim() };
+      if (to !== 'host' && wants.value.trim()) {
+        var parsed = C.parseItemList(wants.value, state.customItems);
+        if (parsed.errors.length || parsed.items.some(function (x) { return x.qty <= 0; })) { U.toast(parsed.errors[0] || '换取的数量要大于 0', 'warn'); return; }
+        body.wants = parsed.items;
       }
+      online.transfer('', body).then(function () {
+        U.toast(to === 'host' ? '已交给公共池，等主持人接收' : '已发起，等对方确认', 'ok');
+        render();
+      }, U.transferFail);
     });
   }
 
@@ -2385,6 +2484,11 @@
   // ================================================================ 启动
 
   function boot() {
+    // 联机模式多一个常驻的「对局」页（公开信息与私信）；手机底栏放不下 7 格，「搜刮」改收进「更多」
+    if (GAME) {
+      TABS.splice(1, 0, { id: 'game', name: '对局', full: '对局与私信', primary: true });
+      TABS.find(function (t) { return t.id === 'scavenge'; }).primary = false;
+    }
     var tab = U.readKey(KEY_TAB);
     tab = TAB_ALIASES[tab] || tab;
     U.i18n.setLang(U.i18n.getLang());
@@ -2414,6 +2518,7 @@
   function start() {
     render();
     scavTimer = setInterval(scavTick, 100);
+    if (online) setInterval(publicTimerTick, 500);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) scavTick(); });
   }
 
@@ -2431,9 +2536,22 @@
           U.modal({ title: title, body: h('p', null, '你的页面已经自动同步，库存和状态没有变化。') });
           return;
         }
-        U.toast(U.onlineReloadedText(reason), reason === 'device' ? 'ok' : 'warn');
+        if (reason !== 'transfer') U.toast(U.onlineReloadedText(reason), reason === 'device' ? 'ok' : 'warn');
+      },
+      onTransfer: function (t) {
+        var me = online.inbox.me;
+        if (t.to === me && t.status === 'pending') U.toast('收到交接：' + (t.from === 'host' ? '主持人' : '其他玩家') + '发来物品，请在库存页确认', 'ok');
+        else if (t.from === me && t.status === 'accepted') U.toast('对方已接收你的交接', 'ok');
+        else if (t.from === me && t.status === 'rejected') U.toast('对方拒收了你的交接：物品已退回', 'warn');
+        render();
       },
       onGame: function () { render(); },
+      onPublic: function () { if (ui.tab === 'game' || ui.tab === 'dashboard') render(); },
+      onMessage: function (m) {
+        // 别人发来的、而且不在正看着的对话里：提示一下
+        if (m && m.to === online.inbox.me && !(ui.tab === 'game' && online.inbox.current === m.from)) U.toast('收到新私信', 'ok');
+        render();
+      },
       onGone: function () { location.href = 'index.html'; },
       onError: function (code) {
         U.toast(code === 'network' ? '网络断开：恢复连接后会自动保存' : '保存到服务器失败（' + code + '）', 'warn');
@@ -2446,6 +2564,111 @@
     }, function (e) {
       U.clear(document.getElementById('main')).appendChild(U.onlineFailCard(e.code));
     });
+  }
+
+  // ================================================================ 对局（联机）：公开信息与私信
+
+  function pubName(v, id) {
+    var p = v.players.filter(function (x) { return x.id === id; })[0];
+    return p ? p.name : '（已删除的玩家）';
+  }
+
+  function pubTimerText(tm) {
+    if (!tm) return '';
+    var rem = tm.running && tm.endsAt ? Math.max(0, tm.endsAt - Date.now()) : Math.max(0, tm.remainingMs);
+    return U.fmtClock(rem);
+  }
+
+  /** 计时每半秒刷新一次数字（只改那一个元素，不重绘页面）。 */
+  function publicTimerTick() {
+    var el = document.getElementById('pub-timer');
+    if (el && online.publicView) el.textContent = pubTimerText(online.publicView.timer);
+  }
+
+  /** 总览顶部的一行：现在第几天、哪个阶段、轮到谁，点一下去「对局」页。 */
+  function publicStrip() {
+    var v = online.publicView;
+    if (!v) return null;
+    var p = C.PHASES[v.phase] || {};
+    var now = v.actions && v.actions.current ? v.actions.current : null;
+    return h('button', { type: 'button', class: 'pub-strip', onclick: function () { setTab('game'); } },
+      h('b', null, v.started ? '第 ' + v.day + ' 天' : '尚未开始'), ' · ', p.name || v.phase,
+      now ? h('span', { class: now === state.playerId ? 'pub-now me' : 'pub-now' }, ' · 轮到 ', document.createTextNode(pubName(v, now))) : null,
+      online.unread() ? h('span', { class: 'badge danger' }, online.unread() + ' 条未读私信') : null);
+  }
+
+  function renderGame() {
+    var v = online.publicView;
+    return h('div', { class: 'stack game-page' }, v ? publicBoard(v) : null,
+      h('section', { class: 'card', id: 'messages' },
+        h('div', { class: 'card-head' }, h('h2', null, '私信'), h('span', { class: 'muted small' }, '只有收发双方看得到')),
+        U.messenger(online, render)));
+  }
+
+  /** 公开信息板：内容与主持人的「公开展示」页一致（服务端只推 C.publicView 里的公开字段）。 */
+  function publicBoard(v) {
+    var p = C.PHASES[v.phase] || {};
+    var idx = v.phases.indexOf(v.phase);
+    var me = state.playerId;
+    var who = function (id) { return document.createTextNode(pubName(v, id)); };
+    var panels = [];
+    if (v.actions) {
+      panels.push(h('div', { class: 'pub-panel' },
+        h('h3', null, '个人行动'),
+        h('p', { class: 'pub-focus' }, v.actions.current ? ['轮到 ', h('b', { class: v.actions.current === me ? 'pub-me' : '' }, who(v.actions.current))] : '本轮行动全部完成',
+          h('span', { class: 'muted small' }, ' 已行动 ' + v.actions.acted.length + '／' + v.actions.order.length)),
+        h('ol', { class: 'pub-order' }, v.actions.order.map(function (id) {
+          var done = v.actions.acted.indexOf(id) >= 0;
+          return h('li', { class: done ? 'done' : id === v.actions.current ? 'now' : '' }, done ? '✓ ' : id === v.actions.current ? '▶ ' : '', who(id));
+        }))));
+    }
+    v.supply.forEach(function (b) {
+      panels.push(h('div', { class: 'pub-panel' },
+        h('h3', null, '补给领取 · ', b.label),
+        h('p', { class: 'pub-focus' }, b.next ? ['轮到 ', h('b', { class: b.next === me ? 'pub-me' : '' }, who(b.next))] : '已全部领取',
+          h('span', { class: 'muted small' }, ' 已领取 ' + b.picked.length + '／' + b.pickOrder.length)),
+        h('ol', { class: 'pub-order' }, b.pickOrder.map(function (id) {
+          var done = b.picked.indexOf(id) >= 0;
+          return h('li', { class: done ? 'done' : id === b.next ? 'now' : '' }, done ? '✓ ' : id === b.next ? '▶ ' : '', who(id));
+        }))));
+    });
+    if (v.event || v.eventCheck) {
+      panels.push(h('div', { class: 'pub-panel pub-event' },
+        h('h3', null, '公共事件'),
+        v.event ? [
+          h('p', null, h('b', null, v.event.name), v.event.location ? h('span', { class: 'muted small' }, ' · ' + v.event.location) : null),
+          v.event.body ? h('p', null, v.event.body) : null,
+          v.event.options.length ? h('ol', { class: 'pub-options' }, v.event.options.map(function (o) { return h('li', null, o); })) : null
+        ] : h('p', null, v.eventCheck.triggered ? '今日判定：触发事件，等待主持人公布' : '今日判定：无事件')));
+    }
+    var last = v.seatOrder[v.seatOrder.length - 1];
+    var target = v.rescue.target;
+    return h('section', { class: 'card pub-board', id: 'public-board' },
+      h('div', { class: 'pub-hero' },
+        h('div', null,
+          h('div', { class: 'muted small' }, v.started ? '第 ' + v.day + ' 天' : '尚未开始'),
+          h('h2', { class: 'pub-phase' }, p.no ? h('span', { class: 'pub-no' }, '阶段' + p.no) : null, p.name || v.phase),
+          p.desc ? h('p', { class: 'muted small' }, p.desc) : null),
+        h('div', { class: 'pub-side' },
+          v.timer ? h('div', { class: 'pub-stat' }, h('span', { class: 'muted small' }, '计时'), h('b', { id: 'pub-timer' }, pubTimerText(v.timer))) : null,
+          h('div', { class: 'pub-stat' }, h('span', { class: 'muted small' }, '营救进度'), h('b', null, String(v.rescue.progress), C.isInt(target) ? '／' + target : '')))),
+      v.started && idx >= 0 ? h('ol', { class: 'pub-track' }, v.phases.map(function (ph, i) {
+        return h('li', { class: i < idx ? 'done' : i === idx ? 'on' : '' }, (C.PHASES[ph] || {}).name || ph);
+      })) : null,
+      panels,
+      h('div', { class: 'pub-panel' },
+        h('h3', null, '座次'),
+        v.seatOrder.length ? h('ol', { class: 'pub-seats' }, v.seatOrder.map(function (id) {
+          var pl = v.players.filter(function (x) { return x.id === id; })[0];
+          return h('li', { class: (pl && !pl.alive ? 'dead' : '') + (id === me ? ' me' : '') }, who(id),
+            pl && !pl.alive ? chip('已死亡', 'danger') : null, id === last ? chip('末位') : null, id === me ? chip('你', 'ok') : null);
+        })) : h('p', { class: 'empty' }, '还没有座次。')),
+      v.poolCount != null ? h('p', null, '公共池剩余：', h('b', null, v.poolCount + ' 件')) : null,
+      h('div', { class: 'pub-panel' },
+        h('h3', null, '公开结果'),
+        v.feed.length ? h('ul', { class: 'list-plain' }, v.feed.slice().reverse().map(function (f) {
+          return h('li', null, h('span', { class: 'muted small' }, '第 ' + f.day + ' 天 · '), f.text);
+        })) : h('p', { class: 'empty' }, '还没有公开结果。')));
   }
 
   boot();

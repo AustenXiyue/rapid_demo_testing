@@ -1,5 +1,4 @@
 <!doctype html>
-<!-- 此文件由 shelter/build.mjs 从 shelter/src/ 生成，请勿直接修改。 -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -328,6 +327,36 @@ button.wcard:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outlin
 
 /* 一键重置（主持人页、玩家页的存档卡里） */
 .reset-box { margin-top: 12px; border-color: #f0b4ab; }
+
+/* ---------- 私信（联机模式，主持人与玩家共用）：左联系人，右对话；窄屏上下排 ---------- */
+.messenger { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; min-height: 320px; }
+.msg-contacts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.msg-contact { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; font: inherit; color: inherit; flex-wrap: wrap; }
+.msg-contact:hover { border-color: var(--line-strong); }
+.msg-contact.on { border-color: var(--teal); background: var(--teal-soft); }
+.msg-contact:focus-visible { outline: 3px solid rgba(15, 110, 102, 0.35); outline-offset: 1px; }
+.msg-unread { margin-left: auto; }
+.msg-thread { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.msg-head { padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.msg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; }
+.msg { align-self: flex-start; max-width: 85%; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.msg.mine { align-self: flex-end; background: var(--teal-soft); border-color: #b4dbd2; }
+.msg-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.msg-compose { display: flex; gap: 8px; align-items: flex-end; }
+.msg-compose .msg-input { flex: 1 1 auto; }
+.tab-unread { margin-left: 4px; padding: 2px 6px; }
+@media (max-width: 640px) {
+  .messenger { grid-template-columns: minmax(0, 1fr); }
+  .msg-contacts { flex-direction: row; overflow-x: auto; }
+  .msg-contact { width: auto; white-space: nowrap; flex-wrap: nowrap; }
+}
+
+/* ---------- 交接单（联机，主持人与玩家共用） ---------- */
+.transfers h3 { font-size: 15px; margin: 10px 0 4px; }
+.transfer { display: flex; flex-direction: column; gap: 4px; }
+.transfer-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.transfer .row { margin-top: 2px; }
 </style>
 <style>
 /* src/lobby/lobby.css */
@@ -431,8 +460,8 @@ body.lobby { min-width: 300px; }
 <div id="modal-root"></div>
 <script src="socket.io/socket.io.js"></script>
 <script>
-/* src/shared/i18n/*.tsv（323 条） */
-window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host decides","待配置":"To configure","已确认":"Confirmed","暂定":"Tentative","待定":"TBD","实现建议":"Implementation note","草案":"Draft","自定义":"Custom","财富":"Wealth","面包":"Bread","事件":"Event","营救":"Rescue","饥饿":"Hungry","普通":"Normal","次）":" uses left)","全员":"Everyone","参与":"Join","拒绝":"Decline","口渴":"Thirsty","守夜":"Watch","主持人存档":"Host save","玩家存档":"Player save","玩家":"Player"," 守夜":" watch","选中":"Pick","撤销：":"Undo: ","隐藏":"Hide","显示":"Show","空":"Empty","演示存档":"Demo save","避难所 Playtest":"Shelter Playtest","主持人":"Host","撤销":"Undo","设置":"Settings","公开":"Public","已暂停":"Paused","暂停":"Pause","开始":"Start","重置":"Reset","设定":"Set","跳转":"Jump","继续":"Continue","状态":"Status","操作":"Actions","记录":"Record","加入":"Add","保存":"Save","删除":"Delete","已结束":"Closed","开局":"Opening","选择":"Pick","交接文本":"Handoff text","给 ":"DM text for ","覆盖":"Overwrite","名称":"Name","倾向":"Tendency","主持人裁定":"Host ruling","修改":"Edit","无":"None","秘密":"Secret","单位":"units","件":"pcs","存档":"Save","复制失败":"Copy failed","名单":"Roster","稍后":"Later","一键重置":"One-click reset","连不上服务器，请稍后再试。":"Cannot reach the server. Try again later.","登录已失效，请重新登录。":"Your session has expired. Please log in again.","尝试次数太多，请过几分钟再试。":"Too many attempts. Try again in a few minutes.","用户名需要 3～20 个字符：中英文、数字、下划线。":"Username must be 3–20 characters: letters, digits or underscores.","密码至少 8 位。":"Password must be at least 8 characters.","这个用户名已经被注册了。":"That username is already taken.","用户名或密码不对。":"Wrong username or password.","对局名称需要 1～40 个字。":"Game name must be 1–40 characters.","人数上限需要在 1～12 之间。":"Player limit must be between 1 and 12.","没有找到这个邀请码。":"No game found with that invite code.","这局已经满员了。":"This game is full.","这局已经开始，目前没有空出来的座位。":"This game has started and has no open seats right now.","这局已经结束了。":"This game has ended.","找不到这局对局，或者你已经不在其中。":"Game not found, or you are no longer in it.","只有主导能这样做。":"Only the lead can do that.","当前状态下不能这样做。":"You can't do that in the current state.","至少要有一名玩家才能开始。":"At least one player is needed to start.","对局已经开始，不能这样做了。":"The game has started; this is no longer possible.","对局还没开始。":"The game hasn't started yet.","主导自己的座位请用「参与扮演／只主持」切换。":"Use the “Play a character / Host only” switch for the lead's own seat.","主导不能退出，可以删除对局。":"The lead can't leave, but can delete the game.","这个座位已经是空的。":"This seat is already open.","招募中":"Recruiting","主导":"Lead","主导兼角色":"Lead & character","在线":"Online","离线":"Offline","出错了：":"Something went wrong: ","你已经不在这局对局里了。":"You are no longer in this game.","避难所":"Shelter","联机大厅":"Online lobby","退出登录":"Log out","注册并登录":"Register and log in","登录":"Log in","用户名":"Username","3～20 个字符：中英文、数字、下划线。":"3–20 characters: letters, digits, underscore; Chinese is fine.","密码":"Password","至少 8 位。忘记密码请找管理员重置。":"At least 8 characters. Forgot it? Ask the admin to reset it.","PLAYTEST · 联机":"PLAYTEST · ONLINE","注册":"Register","PLAYTEST · 规则测试工具":"PLAYTEST · RULES TESTING TOOL","末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。":"At the end of the world, the army houses strangers in a shelter in an abandoned city, promises evacuation, then breaks the promise. You fight to survive and to get rescued, while love, hate, wealth and your own secret goals pull you in different directions.","军方热线目前忙音。请保持冷静，并清点你的面包。":"The military hotline is busy. Please stay calm and count your bread.","创建对局":"Create a game","开一局新的游戏：设定人数，选择自己只主持还是也扮演角色，然后把邀请码发给朋友。":"Start a new game: set the player limit, choose whether you only host or also play a character, then send the invite code to your friends.","加入对局":"Join a game","输入朋友给的邀请码，或者在公开列表里挑一局还有空位的。":"Enter an invite code from a friend, or pick a game with open seats from the public list.","去加入":"Find a game","我的对局":"My games"," 局":" games","载入中…":"Loading…","还没有对局。创建一局，或者加入朋友的对局。":"No games yet. Create one, or join a friend's game.","主导：":"Lead: ","主导已删除这局":"Deleted by the lead","更新于 ":"Updated ","邀请码":"Invite code","← 返回大厅":"← Back to lobby","用邀请码加入":"Join with an invite code","6 位，不分大小写":"6 characters, not case-sensitive","公开对局":"Public games","刷新":"Refresh","招募中的对局有空位就能加入；已经开始的对局只有被主导空出来的座位可以接手。":"Recruiting games can be joined while seats remain; in games that have started you can only take over seats the lead has opened up.","现在没有可以加入的对局。":"No games to join right now.","空位 ":"Open: ","接手空座位":"Take open seat","邀请码已复制":"Invite code copied","复制失败，请手动抄写":"Copy failed. Please copy it by hand.","主导已经删除了这局；记录保留，状态为已结束。":"The lead deleted this game; the record is kept and the game is marked ended.","招募中：把邀请码发给朋友，或者让他们在「加入对局」的公开列表里找到这局。人齐后由主导开始。":"Recruiting: send the invite code to friends, or have them find this game in the public list under “Join a game”. The lead starts once everyone is in.","座位":"Seats","空座位 ":"Open seats ","还没有人入座。":"No one has taken a seat yet.","空座位":"Open seat","你":"You","座位上的数据保留，等新玩家接手":"Seat data is kept until a new player takes over","移除玩家":"Remove player","移出这局后，对方还可以用邀请码再加入。":"Once removed, they can still rejoin with the invite code.","释放座位":"Release seat","座位上的资源、状态等数据都会保留，但这名玩家会失去这局的访问，座位开放给新玩家接手。":"The seat's resources, status and other data are kept, but this player loses access to the game and the seat opens up for a new player.","主导操作":"Lead controls","退出对局":"Leave game","退出后你的座位会空出来，之后还可以用邀请码再加入。":"Your seat will be freed. You can rejoin later with the invite code.","退出":"Leave","这局已经结束，记录会一直保留。":"This game has ended; its record is kept.","开局后如果要离开，请联系主导释放你的座位。":"Once the game has started, ask the lead to release your seat if you need to leave.","开始对局":"Start game","结束对局":"End game","结束后不能再继续，记录会一直保留。":"An ended game can't be resumed. Its record is kept.","对局和所有座位都会被删除，无法恢复。":"The game and all its seats will be deleted. This cannot be undone.","这局会从你的列表里移除并记为已结束。记录仍保存在服务器上，玩家还能查看。":"The game is removed from your list and marked ended. The record stays on the server and players can still view it.","删除对局":"Delete game","我在这局里":"My part in this game","参与扮演":"Play a character","只主持":"Host only","开局后不能再切换。":"Can't be changed after the game starts.","对局名称":"Game name","人数上限":"Player limit","包括主导自己（如果参与扮演）。1～12，规则建议约 6 人。":"Includes the lead if playing a character. 1–12; the rules suggest about 6.","创建":"Create","请填写对局名称":"Please enter a game name","对局进行中：从下面进入面板。存档保存在服务器上，换设备登录也能接着玩。":"Game in progress: open your panel below. Saves live on the server, so you can carry on from any device.","已暂停：数据都保存在服务器上，面板现在只能查看。主导点「继续」后，大家回到原来的座位接着玩。":"Paused: everything is saved on the server and panels are view-only. When the lead presses “Resume”, everyone returns to their seats and carries on.","这局已经结束，面板只能查看。":"This game has ended; panels are view-only.","进入主持人面板":"Open host panel","进入玩家面板":"Open player panel","我":"Me","意识":"Consciousness","自动":"Auto","手动":"Manual","查看":"View","进行中":"In progress","移除":"Remove","说明":"Description","带 ":"Carry ","带上":"Take"," 之间":" ","可选":"Optional","修改：":"Edit: ","已删除":"Deleted","不改":"No change","自己":"Self"," 秒":"s","技能":"skill","恢复":"Restore","主持人更新了规则":"The host updated the rules","知道了":"OK","对话框":"Dialog","取消":"Cancel","确定":"Confirm","已复制，请粘贴到 Discord":"Copied — paste it into Discord","复制失败，请手动全选复制":"Copy failed; select all and copy by hand","复制":"Copy","读取文件失败":"Couldn't read the file","演示":"Demo","数值":"Value","请输入数字":"Please enter a number","减少":"Decrease","增加":"Increase","正常":"OK","提示":"Info","注意":"Caution","危险":"Danger","已选":"Picked","浏览器不允许读取剪贴板：请长按或右键粘贴到框里":"The browser won't let the page read the clipboard: long-press or right-click to paste into the box","从剪贴板粘贴":"Paste from clipboard","已选这张":"Picked","对局已暂停，现在只能查看":"The game is paused; view only for now","对局不在进行中，现在只能查看":"The game isn't in progress; view only for now","另一台设备更新了存档：已载入最新":"Another device updated the save: latest version loaded","服务器上的存档刚被更新：已载入最新，你最后一步操作没有保存，请重做":"The save on the server was just updated: latest version loaded. Your last action wasn't saved, please redo it","对局现在不能修改：已恢复为服务器上的存档":"The game can't be changed right now: restored the server's save","连不上服务器，请稍后刷新重试。":"Cannot reach the server. Refresh and try again later.","登录已失效：请回到大厅重新登录。":"Your session has expired: go back to the lobby and log in again.","你在这局里没有座位。":"You don't have a seat in this game.","对局还没开始：主导在大厅点「开始对局」后才能进入面板。":"The game hasn't started: panels open once the lead presses “Start game” in the lobby.","存档已更新":"Save updated","联机对局：":"Online game: ","对局已暂停，现在只能查看：":"Game paused, view only: ","对局不在进行中，现在只能查看：":"Game not in progress, view only: ","返回大厅":"Back to lobby","载入失败：":"Failed to load: ","到期：先与主持人确认是否扣1生命":"is due: check with the host whether to lose 1 HP","的个人行动未标记为已使用":"— personal action not marked as used","label|口渴":"Thirst","label|饥饿":"Hunger","中文":"中文","切换到中文":"切换到中文","记录当前天数：":"Current day recorded:","获得 · ":"acquired ·","提醒":"reminder","到期（获得于":"is due (acquired","）。每两个回合失去1生命——请先与主持人确认，避免两端重复扣血。":"). You lose 1 HP every two turns — check with the host first so it isn't deducted twice.","；下次提醒":"; next reminder","流血伤口：主持人裁定本次不扣血；下次提醒":"Bleeding wound: host ruled no HP loss this time; next reminder","获得于":"Acquired","（主持人确认后扣血）":" (HP lost after the host confirms)","添加流血伤口：":"Added bleeding wound:","获得，":"acquired,","【演示】":"[Demo] ","在超市割伤":"cut at the supermarket","修改流血日期：":"Bleeding dates changed:","获得，下次":"acquired, next","【赠予／交易·":"[Gift/trade ·","【交公·":"[To pool ·","【治疗·":"[Treatment ·","开始搜刮（":"Started scavenging (","选择 ":"picked ","超时，按默认项记录":"timed out; default recorded","选 ":"picked ","【搜刮交公·":"[Scavenge to pool ·","的行动":"action","【分数上报·":"[Score report ·","进入":"Go to","phase-no|开":"S","phase-no|事":"E","switch|开":"On","switch|关":"Off","已记录的当日数据会被丢弃。":"— recorded data will be discarded. ","已记录的数据（行动、名单、事件判定、公开结果等）将被丢弃。":"— recorded data (actions, rosters, event rolls, public results, etc.) will be discarded. ","将恢复":"Will restore","的当日记录与当天结束时的座次。":"records and its end-of-day seating. ","回退到":"Go back to","跨日回退：":"Cross-day rollback:","结束今天，进入":"End today, go to","有一条待公布的守夜结果（":"A watch result is waiting to be announced (","）。内容可在「守夜」页预览（需先暂停共享）。":"). Preview it on the Watch page (pause sharing first).","公布昨夜结果（":"Announced last night's result (","：固定指定":": fixed assignment","【开局领取":"[Opening pickup","·固定指定】\n":" · fixed assignment]\n","（固定指定）：":" (fixed assignment): ","完成（固定指定）":"done (fixed assignment)","【守夜候选·":"[Watch options ·","【守夜拍板·":"[Watch decision ·"," 名单":" ","末位选":"Last seat picks","已于":"announced on"," 公布":" ","的结果尚未公布，保存会覆盖它。确定吗？":"— its result isn't announced yet; saving overwrites it. Continue?","结果草稿：":"result draft:","已按权重抽取（":"Drawn by weight (","已手动选择":"Chosen by hand","【事件结果·":"[Event result ·","避难所 Playtest · 主持人":"Shelter Playtest · Host","避难所 Playtest · 玩家":"Shelter Playtest · Player","主持人面板":"Host panel","玩家面板":"Player panel","条":" entries","第 ":"Day "," 天":" "," 份":" ","tab-short|总览":"Home","tab-short|状态":"Status","tab-short|库存":"Items","tab-short|搜刮":"Loot","tab-short|行动":"Action","tab-short|分数":"Score","tab-short|存档":"Save","代码是":"The code was drawn on","抽的，现在是":"; it is now","【守夜提交·":"[Watch submission ·","收到":"Received","的守夜名单码：":"watch list code:","导入）":"imported)","卡片是":"This card was drawn on","卡片上有不在玩家名单里的名字":"The card has names that aren't on the player list","确认名单时不会自动算进去，可手动勾选":"not counted automatically when confirming; tick them by hand","玩家发来了一张守夜卡片":"A player sent you a watch card","卡片内容是秘密：请先停止或切换屏幕共享，再查看。":"The card is secret: stop or switch your screen share before viewing it.","可抽":"Drawable","本局已用":"Used this game","已重抽":"rerolls","lobby|加入":"Join","lobby|进入":"Enter","lobby|继续":"Resume","lobby|已结束":"Ended"};
+/* src/shared/i18n/*.tsv（401 条） */
+window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host decides","待配置":"To configure","已确认":"Confirmed","暂定":"Tentative","待定":"TBD","实现建议":"Implementation note","草案":"Draft","自定义":"Custom","补给":"Supplies","财富":"Wealth","面包":"Bread","能量棒":"Energy bar","交易":"Trade","地图":"Map","事件":"Event","营救":"Rescue","饥饿":"Hungry","普通":"Normal","次）":" uses left)"," 件":" pcs","全员":"Everyone","参与":"Join","拒绝":"Decline","物品：":"Items: ","口渴":"Thirsty","守夜":"Watch","主持人存档":"Host save","玩家存档":"Player save","玩家":"Player"," 守夜":" watch","选中":"Pick","撤销：":"Undo: ","隐藏":"Hide","显示":"Show","空":"Empty","演示存档":"Demo save","避难所 Playtest":"Shelter Playtest","主持人":"Host","撤销":"Undo","设置":"Settings","公开":"Public","已暂停":"Paused","暂停":"Pause","开始":"Start","重置":"Reset","设定":"Set","跳转":"Jump","继续":"Continue","状态":"Status","操作":"Actions","记录":"Record","公共池":"Common pool","加入":"Add","保存":"Save","删除":"Delete","已结束":"Closed","发放":"Handout","开局":"Opening","选择":"Pick","交接文本":"Handoff text","撤回":"Withdraw","给 ":"DM text for ","覆盖":"Overwrite","名称":"Name","倾向":"Tendency","主持人裁定":"Host ruling","修改":"Edit","无":"None","秘密":"Secret","单位":"units","件":"pcs","存档":"Save","复制失败":"Copy failed","名单":"Roster","稍后":"Later","一键重置":"One-click reset","私信":"Messages","收到新私信":"New message","连不上服务器，请稍后再试。":"Cannot reach the server. Try again later.","登录已失效，请重新登录。":"Your session has expired. Please log in again.","尝试次数太多，请过几分钟再试。":"Too many attempts. Try again in a few minutes.","用户名需要 3～20 个字符：中英文、数字、下划线。":"Username must be 3–20 characters: letters, digits or underscores.","密码至少 8 位。":"Password must be at least 8 characters.","这个用户名已经被注册了。":"That username is already taken.","用户名或密码不对。":"Wrong username or password.","对局名称需要 1～40 个字。":"Game name must be 1–40 characters.","人数上限需要在 1～12 之间。":"Player limit must be between 1 and 12.","没有找到这个邀请码。":"No game found with that invite code.","这局已经满员了。":"This game is full.","这局已经开始，目前没有空出来的座位。":"This game has started and has no open seats right now.","这局已经结束了。":"This game has ended.","找不到这局对局，或者你已经不在其中。":"Game not found, or you are no longer in it.","只有主导能这样做。":"Only the lead can do that.","当前状态下不能这样做。":"You can't do that in the current state.","至少要有一名玩家才能开始。":"At least one player is needed to start.","对局已经开始，不能这样做了。":"The game has started; this is no longer possible.","对局还没开始。":"The game hasn't started yet.","主导自己的座位请用「参与扮演／只主持」切换。":"Use the “Play a character / Host only” switch for the lead's own seat.","主导不能退出，可以删除对局。":"The lead can't leave, but can delete the game.","这个座位已经是空的。":"This seat is already open.","招募中":"Recruiting","主导":"Lead","主导兼角色":"Lead & character","在线":"Online","离线":"Offline","出错了：":"Something went wrong: ","你已经不在这局对局里了。":"You are no longer in this game.","避难所":"Shelter","联机大厅":"Online lobby","退出登录":"Log out","注册并登录":"Register and log in","登录":"Log in","用户名":"Username","3～20 个字符：中英文、数字、下划线。":"3–20 characters: letters, digits, underscore; Chinese is fine.","密码":"Password","至少 8 位。忘记密码请找管理员重置。":"At least 8 characters. Forgot it? Ask the admin to reset it.","PLAYTEST · 联机":"PLAYTEST · ONLINE","注册":"Register","PLAYTEST · 规则测试工具":"PLAYTEST · RULES TESTING TOOL","末日里，军方把身份各异的人安置进废弃城市的避难所，承诺撤离，然后失约。你们一边求生、一边争取营救，一边因为爱恨、财富和各自的秘密目标做出不同的选择。":"At the end of the world, the army houses strangers in a shelter in an abandoned city, promises evacuation, then breaks the promise. You fight to survive and to get rescued, while love, hate, wealth and your own secret goals pull you in different directions.","军方热线目前忙音。请保持冷静，并清点你的面包。":"The military hotline is busy. Please stay calm and count your bread.","创建对局":"Create a game","开一局新的游戏：设定人数，选择自己只主持还是也扮演角色，然后把邀请码发给朋友。":"Start a new game: set the player limit, choose whether you only host or also play a character, then send the invite code to your friends.","加入对局":"Join a game","输入朋友给的邀请码，或者在公开列表里挑一局还有空位的。":"Enter an invite code from a friend, or pick a game with open seats from the public list.","去加入":"Find a game","我的对局":"My games"," 局":" games","载入中…":"Loading…","还没有对局。创建一局，或者加入朋友的对局。":"No games yet. Create one, or join a friend's game.","主导：":"Lead: ","主导已删除这局":"Deleted by the lead","更新于 ":"Updated ","邀请码":"Invite code","← 返回大厅":"← Back to lobby","用邀请码加入":"Join with an invite code","6 位，不分大小写":"6 characters, not case-sensitive","公开对局":"Public games","刷新":"Refresh","招募中的对局有空位就能加入；已经开始的对局只有被主导空出来的座位可以接手。":"Recruiting games can be joined while seats remain; in games that have started you can only take over seats the lead has opened up.","现在没有可以加入的对局。":"No games to join right now.","空位 ":"Open: ","接手空座位":"Take open seat","邀请码已复制":"Invite code copied","复制失败，请手动抄写":"Copy failed. Please copy it by hand.","主导已经删除了这局；记录保留，状态为已结束。":"The lead deleted this game; the record is kept and the game is marked ended.","招募中：把邀请码发给朋友，或者让他们在「加入对局」的公开列表里找到这局。人齐后由主导开始。":"Recruiting: send the invite code to friends, or have them find this game in the public list under “Join a game”. The lead starts once everyone is in.","座位":"Seats","空座位 ":"Open seats ","还没有人入座。":"No one has taken a seat yet.","空座位":"Open seat","你":"You","座位上的数据保留，等新玩家接手":"Seat data is kept until a new player takes over","移除玩家":"Remove player","移出这局后，对方还可以用邀请码再加入。":"Once removed, they can still rejoin with the invite code.","释放座位":"Release seat","座位上的资源、状态等数据都会保留，但这名玩家会失去这局的访问，座位开放给新玩家接手。":"The seat's resources, status and other data are kept, but this player loses access to the game and the seat opens up for a new player.","主导操作":"Lead controls","退出对局":"Leave game","退出后你的座位会空出来，之后还可以用邀请码再加入。":"Your seat will be freed. You can rejoin later with the invite code.","退出":"Leave","这局已经结束，记录会一直保留。":"This game has ended; its record is kept.","开局后如果要离开，请联系主导释放你的座位。":"Once the game has started, ask the lead to release your seat if you need to leave.","开始对局":"Start game","结束对局":"End game","结束后不能再继续，记录会一直保留。":"An ended game can't be resumed. Its record is kept.","对局和所有座位都会被删除，无法恢复。":"The game and all its seats will be deleted. This cannot be undone.","这局会从你的列表里移除并记为已结束。记录仍保存在服务器上，玩家还能查看。":"The game is removed from your list and marked ended. The record stays on the server and players can still view it.","删除对局":"Delete game","我在这局里":"My part in this game","参与扮演":"Play a character","只主持":"Host only","开局后不能再切换。":"Can't be changed after the game starts.","对局名称":"Game name","人数上限":"Player limit","包括主导自己（如果参与扮演）。1～12，规则建议约 6 人。":"Includes the lead if playing a character. 1–12; the rules suggest about 6.","创建":"Create","请填写对局名称":"Please enter a game name","对局进行中：从下面进入面板。存档保存在服务器上，换设备登录也能接着玩。":"Game in progress: open your panel below. Saves live on the server, so you can carry on from any device.","已暂停：数据都保存在服务器上，面板现在只能查看。主导点「继续」后，大家回到原来的座位接着玩。":"Paused: everything is saved on the server and panels are view-only. When the lead presses “Resume”, everyone returns to their seats and carries on.","这局已经结束，面板只能查看。":"This game has ended; panels are view-only.","进入主持人面板":"Open host panel","进入玩家面板":"Open player panel","玩家面板会在新窗口打开，可以和主持人面板同时使用。":"The player panel opens in a new window and can be used alongside the host panel.","库存":"Inventory","搜刮":"Scavenge","我":"Me","意识":"Consciousness","携带中":"Carrying","自动":"Auto","手动":"Manual","查看":"View","进行中":"In progress","全部":"All","移除":"Remove","说明":"Description","使用":"Use","赠予":"Give","带 ":"Carry ","带上":"Take","结束携带":"End carry"," 之间":" ","物品":"Item","可选":"Optional","修改：":"Edit: ","已删除":"Deleted","交公":"To pool","不改":"No change","自己":"Self","对象":"Target","对 ":"Used a bandage on "," 秒":"s","技能":"skill","完成":"Done","恢复":"Restore","主持人更新了规则":"The host updated the rules","对局":"Game","携带中的物品被锁定：先结束携带再转出":"Carried items are locked: end carry mode before giving them away","发起":"Send","知道了":"OK","对话框":"Dialog","取消":"Cancel","确定":"Confirm","已复制，请粘贴到 Discord":"Copied — paste it into Discord","复制失败，请手动全选复制":"Copy failed; select all and copy by hand","复制":"Copy","读取文件失败":"Couldn't read the file","演示":"Demo","数值":"Value","请输入数字":"Please enter a number","减少":"Decrease","增加":"Increase","正常":"OK","提示":"Info","注意":"Caution","危险":"Danger","已选":"Picked","浏览器不允许读取剪贴板：请长按或右键粘贴到框里":"The browser won't let the page read the clipboard: long-press or right-click to paste into the box","从剪贴板粘贴":"Paste from clipboard","已选这张":"Picked","对局已暂停，现在只能查看":"The game is paused; view only for now","对局不在进行中，现在只能查看":"The game isn't in progress; view only for now","另一台设备更新了存档：已载入最新":"Another device updated the save: latest version loaded","服务器上的存档刚被更新：已载入最新，你最后一步操作没有保存，请重做":"The save on the server was just updated: latest version loaded. Your last action wasn't saved, please redo it","对局现在不能修改：已恢复为服务器上的存档":"The game can't be changed right now: restored the server's save","连不上服务器，请稍后刷新重试。":"Cannot reach the server. Refresh and try again later.","登录已失效：请回到大厅重新登录。":"Your session has expired: go back to the lobby and log in again.","你在这局里没有座位。":"You don't have a seat in this game.","对局还没开始：主导在大厅点「开始对局」后才能进入面板。":"The game hasn't started: panels open once the lead presses “Start game” in the lobby.","存档已更新":"Save updated","联机对局：":"Online game: ","对局已暂停，现在只能查看：":"Game paused, view only: ","对局不在进行中，现在只能查看：":"Game not in progress, view only: ","返回大厅":"Back to lobby","载入失败：":"Failed to load: ","座位 ":"Seat ","已离开的座位":"Former seat","（空座位）":"(empty seat)","输入私信…":"Type a message…","私信内容":"Message","这个座位现在没有人":"No one is in this seat right now","发送失败：":"Failed to send: ","这局里还没有别人。":"No one else is in this game yet.","还没有私信。":"No messages yet.","对局已结束，不能再发私信。":"The game has ended; no more messages can be sent.","发送":"Send","这个座位现在没有人。":"No one is in this seat right now.","私信需要 1～2000 个字。":"Messages must be 1–2000 characters.","搜刮交公":"Scavenge hand-in","开局领取":"Opening pick","主持人发放":"Host grant","待确认":"Pending","已接收":"Accepted","已拒收":"Declined","已撤回":"Withdrawn","对局不在进行中，现在不能处理交接。":"The game isn't in progress; transfers can't be handled right now.","数量不够。":"Not enough items.","携带中的物品被锁定：先结束携带再转出。":"Carried items are locked: end carry mode before giving them away.","交出的物品和对方要的不一致。":"The items given don't match what was asked for.","这张交接单已经处理过了。":"This transfer has already been handled.","对方现在不在座位上。":"No one is in that seat right now.","这件补给已经发过了。":"This supply item has already been sent.","交接失败：":"Transfer failed: ","：需要 ":": need ","，你只有 ":", you have ","：选 ":": pick ","交易：交出对方要的物品":"Trade: give what they asked for","收到：":"You get: ","你需要交出：":"You need to give:","确认交易":"Confirm trade","物品不够，不能完成这笔交易":"Not enough items to complete this trade","需要正好选 ":" needs exactly "," ⇄ 换取 ":" ⇄ for ","对方交出：":"They gave: ","附言：":"Note: ","交接":"Transfers"," 件待你处理":" waiting for you","待你处理":"Waiting for you","交易…":"Trade…","接收":"Accept","拒收":"Decline","你发出的（等对方确认）":"Sent by you (awaiting confirmation)","玩家之间待确认":"Pending between players","没有待处理的交接。":"No pending transfers.","全部记录":"All records","最近的记录":"Recent records","到期：先与主持人确认是否扣1生命":"is due: check with the host whether to lose 1 HP","的个人行动未标记为已使用":"— personal action not marked as used","label|口渴":"Thirst","label|饥饿":"Hunger","中文":"中文","切换到中文":"切换到中文","记录当前天数：":"Current day recorded:","获得 · ":"acquired ·","提醒":"reminder","到期（获得于":"is due (acquired","）。每两个回合失去1生命——请先与主持人确认，避免两端重复扣血。":"). You lose 1 HP every two turns — check with the host first so it isn't deducted twice.","；下次提醒":"; next reminder","流血伤口：主持人裁定本次不扣血；下次提醒":"Bleeding wound: host ruled no HP loss this time; next reminder","获得于":"Acquired","（主持人确认后扣血）":" (HP lost after the host confirms)","添加流血伤口：":"Added bleeding wound:","获得，":"acquired,","【演示】":"[Demo] ","在超市割伤":"cut at the supermarket","修改流血日期：":"Bleeding dates changed:","获得，下次":"acquired, next","【赠予／交易·":"[Gift/trade ·","【交公·":"[To pool ·","【治疗·":"[Treatment ·","开始搜刮（":"Started scavenging (","选择 ":"picked ","超时，按默认项记录":"timed out; default recorded","选 ":"picked ","【搜刮交公·":"[Scavenge to pool ·","的行动":"action","【分数上报·":"[Score report ·","进入":"Go to","phase-no|开":"S","phase-no|事":"E","switch|开":"On","switch|关":"Off","已记录的当日数据会被丢弃。":"— recorded data will be discarded. ","已记录的数据（行动、名单、事件判定、公开结果等）将被丢弃。":"— recorded data (actions, rosters, event rolls, public results, etc.) will be discarded. ","将恢复":"Will restore","的当日记录与当天结束时的座次。":"records and its end-of-day seating. ","回退到":"Go back to","跨日回退：":"Cross-day rollback:","结束今天，进入":"End today, go to","有一条待公布的守夜结果（":"A watch result is waiting to be announced (","）。内容可在「守夜」页预览（需先暂停共享）。":"). Preview it on the Watch page (pause sharing first).","公布昨夜结果（":"Announced last night's result (","：固定指定":": fixed assignment","【开局领取":"[Opening pickup","·固定指定】\n":" · fixed assignment]\n","（固定指定）：":" (fixed assignment): ","完成（固定指定）":"done (fixed assignment)","【守夜候选·":"[Watch options ·","【守夜拍板·":"[Watch decision ·"," 名单":" ","末位选":"Last seat picks","已于":"announced on"," 公布":" ","的结果尚未公布，保存会覆盖它。确定吗？":"— its result isn't announced yet; saving overwrites it. Continue?","结果草稿：":"result draft:","已按权重抽取（":"Drawn by weight (","已手动选择":"Chosen by hand","【事件结果·":"[Event result ·","避难所 Playtest · 主持人":"Shelter Playtest · Host","避难所 Playtest · 玩家":"Shelter Playtest · Player","主持人面板":"Host panel","玩家面板":"Player panel","条":" entries","第 ":"Day "," 天":" "," 份":" ","tab-short|总览":"Home","tab-short|状态":"Status","tab-short|库存":"Items","tab-short|搜刮":"Loot","tab-short|行动":"Action","tab-short|分数":"Score","tab-short|存档":"Save","代码是":"The code was drawn on","抽的，现在是":"; it is now","【守夜提交·":"[Watch submission ·","收到":"Received","的守夜名单码：":"watch list code:","导入）":"imported)","卡片是":"This card was drawn on","卡片上有不在玩家名单里的名字":"The card has names that aren't on the player list","确认名单时不会自动算进去，可手动勾选":"not counted automatically when confirming; tick them by hand","玩家发来了一张守夜卡片":"A player sent you a watch card","卡片内容是秘密：请先停止或切换屏幕共享，再查看。":"The card is secret: stop or switch your screen share before viewing it.","可抽":"Drawable","本局已用":"Used this game","已重抽":"rerolls","lobby|加入":"Join","lobby|进入":"Enter","lobby|继续":"Resume","lobby|已结束":"Ended"};
 </script>
 <script>
 /* src/shared/i18n.js */
@@ -914,6 +943,10 @@ window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host dec
    *   onGame(game)   对局状态或座位变化（如暂停）
    *   onGone()       自己已经不在这局（座位被释放、对局被删除）
    *   onError(code)  保存失败（网络断开会自动重试）
+   *   onPublic(view) 公开信息变化（玩家面板用；ctx.publicView 是最新的一份）
+   *   onMessage(msg) 收到或发出了一条私信（ctx.inbox 里已经加上）
+   *   onTransfer(t)  交接单新建或状态变化（ctx.transfers 里已经更新）
+   * onState 的 reason 还可能是 transfer：服务端处理交接时改了这份存档（页面静默重载）
    * 同一时间只有一个保存请求在路上，期间的修改合并成最新一份再发。
    */
   function connectOnline(gameId, kind, handlers) {
@@ -922,8 +955,13 @@ window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host dec
     var socket = null;
     var toastAt = 0;
     var store = { available: true, lastError: null, version: 0, pending: null, busy: false };
+    var gameUrl = base + 'api/games/' + encodeURIComponent(gameId) + '/';
     var ctx = {
-      store: store, game: null, state: null,
+      store: store, game: null, state: null, publicView: null,
+      // 私信：主持人面板以「主持人」身份收发，玩家面板以自己座位的身份收发
+      inbox: { as: kind === 'host' ? 'host' : 'seat', me: null, messages: [], current: null, drafts: {}, focus: false },
+      // 交接单：玩家看到和自己有关的，主持人看到全部
+      transfers: [],
       readOnly: function () { return !ctx.game || ctx.game.status !== 'active'; },
       /** 只读时拦下修改并提示（提示最多 5 秒一次）。 */
       blocked: function () {
@@ -939,6 +977,67 @@ window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host dec
     function getJSON(r) {
       return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
     }
+    function call(method, path, body) {
+      return fetch(gameUrl + path, {
+        method: method, credentials: 'same-origin',
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined
+      }).then(getJSON, function () { throw { code: 'network' }; }).then(function (res) {
+        if (!res.ok) throw { code: res.d.error || 'unknown' };
+        return res.d;
+      });
+    }
+    function addMessage(m) {
+      var box = ctx.inbox;
+      if (m.from !== box.me && m.to !== box.me) return false;
+      if (box.messages.some(function (x) { return x.id === m.id; })) return false;
+      box.messages.push(m);
+      return true;
+    }
+
+    function upsertTransfer(t) {
+      var i = ctx.transfers.findIndex(function (x) { return x.id === t.id; });
+      if (i >= 0) ctx.transfers[i] = t; else ctx.transfers.push(t);
+    }
+    // 等本机的存档保存完，免得服务端改存档时和还在路上的保存撞版本
+    function whenSaved() {
+      return new Promise(function (resolve) {
+        (function check() { if (!store.busy && store.pending == null) resolve(); else setTimeout(check, 50); })();
+      });
+    }
+    /** 交接单操作（发起、接收、拒收、撤回）：path 相对 transfers/，body 自动带上身份。 */
+    ctx.transfer = function (path, body) {
+      return whenSaved().then(function () {
+        return call('POST', 'transfers' + (path ? '/' + path : ''), Object.assign({ as: ctx.inbox.as }, body || {}));
+      }).then(function (d) {
+        upsertTransfer(d.transfer);
+        if (handlers.onTransfer) handlers.onTransfer(d.transfer);
+        return d.transfer;
+      });
+    };
+
+    /** 发私信；成功后（推送到之前）就先放进收件箱。 */
+    ctx.sendMessage = function (to, text) {
+      return call('POST', 'messages', { as: ctx.inbox.as, to: to, text: text }).then(function (d) {
+        if (addMessage(d.message)) handlers.onMessage(d.message);
+        return d.message;
+      });
+    };
+    /** 打开某个对话时把对方发来的标为已读（本地立即生效，服务器那边失败也不影响使用）。 */
+    ctx.markRead = function (other) {
+      var changed = false;
+      ctx.inbox.messages.forEach(function (m) {
+        if (m.to === ctx.inbox.me && m.from === other && !m.readAt) { m.readAt = Date.now(); changed = true; }
+      });
+      if (changed) call('POST', 'messages/read', { as: ctx.inbox.as, with: other }).catch(function () {});
+      return changed;
+    };
+    /** 未读条数：不传 other 时是全部未读。 */
+    ctx.unread = function (other) {
+      return ctx.inbox.messages.filter(function (m) {
+        return m.to === ctx.inbox.me && !m.readAt && (other == null || m.from === other);
+      }).length;
+    };
     function load() {
       return fetch(url, { credentials: 'same-origin' }).then(getJSON, function () { throw { code: 'network' }; }).then(function (res) {
         if (!res.ok) throw { code: res.d.error || 'unknown' };
@@ -1001,11 +1100,30 @@ window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host dec
           handlers.onGame(g);
         });
         socket.on('game:gone', function (m) { if (m.id === gameId) handlers.onGone(); });
+        socket.on('public:update', function (m) {
+          if (m.gameId !== gameId || kind !== 'seat') return;
+          ctx.publicView = m.view;
+          if (handlers.onPublic) handlers.onPublic(m.view);
+        });
+        socket.on('transfer:update', function (m) {
+          if (m.gameId !== gameId) return;
+          upsertTransfer(m.transfer);
+          if (handlers.onTransfer) handlers.onTransfer(m.transfer);
+        });
+        socket.on('message:new', function (m) {
+          if (m.gameId === gameId && addMessage(m.message) && handlers.onMessage) handlers.onMessage(m.message);
+        });
+        // 另一台设备读过了：这边也去掉未读
+        socket.on('message:read', function (m) {
+          if (m.gameId !== gameId || m.me !== ctx.inbox.me) return;
+          ctx.inbox.messages.forEach(function (x) { if (x.to === m.me && x.from === m.with && !x.readAt) x.readAt = m.at; });
+          if (handlers.onMessage) handlers.onMessage(null);
+        });
         socket.on('state:update', function (m) {
           if (m.gameId !== gameId || m.kind !== kind || m.from === socket.id || m.version <= store.version) return;
           store.version = m.version;
           store.pending = null;
-          handlers.onState(m.state, m.reason ? 'rules' : 'device', m.reason);
+          handlers.onState(m.state, m.reason || 'device', m.detail);
         });
       };
       document.head.appendChild(script);
@@ -1017,10 +1135,233 @@ window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host dec
 
     return load().then(function (s) {
       ctx.state = s;
+      return Promise.all([
+        call('GET', 'messages?as=' + ctx.inbox.as),
+        kind === 'seat' ? call('GET', 'public') : null,
+        call('GET', 'transfers?as=' + ctx.inbox.as)
+      ]);
+    }).then(function (r) {
+      ctx.inbox.me = r[0].me;
+      ctx.inbox.messages = r[0].messages;
+      if (r[1]) ctx.publicView = r[1].view;
+      ctx.transfers = r[2].transfers;
       connectSocket();
       return ctx;
     });
   }
+
+  /**
+   * 私信界面（主持人面板与玩家面板共用）：左边联系人与未读数，右边对话与输入框。
+   * 状态（当前对话、草稿）存在 ctx.inbox 里，页面整体重绘时不会丢。onChange：需要页面重绘时调用。
+   */
+  function messenger(ctx, onChange) {
+    var box = ctx.inbox;
+    var g = ctx.game;
+    var contacts = [];
+    if (box.me !== 'host' && !g.ownerDeleted) contacts.push({ id: 'host', name: g.owner.username, tag: '主持人' });
+    g.seats.forEach(function (s) {
+      if (s.id === box.me) return;
+      contacts.push({ id: s.id, name: s.user ? s.user.username : null, tag: '座位 ' + s.seatNo });
+    });
+    // 只有历史私信、此刻已经不在名单上的对象（如主导删除了对局）也列出来，能看记录
+    box.messages.forEach(function (m) {
+      var other = m.from === box.me ? m.to : m.from;
+      if (!contacts.some(function (c) { return c.id === other; })) contacts.push({ id: other, name: null, tag: other === 'host' ? '主持人' : '已离开的座位' });
+    });
+    // 默认打开最近有私信往来的对话，没有就打开第一个
+    if (!box.current || !contacts.some(function (c) { return c.id === box.current; })) {
+      var latest = box.messages[box.messages.length - 1];
+      box.current = latest ? (latest.from === box.me ? latest.to : latest.from) : contacts.length ? contacts[0].id : null;
+    }
+    var current = contacts.filter(function (c) { return c.id === box.current; })[0];
+    var thread = box.messages.filter(function (m) {
+      return (m.from === box.me && m.to === box.current) || (m.to === box.me && m.from === box.current);
+    });
+    if (current && ctx.markRead(current.id)) setTimeout(onChange, 0);
+
+    function label(c) {
+      return [h('b', null, c.name ? document.createTextNode(c.name) : '（空座位）'), ' ', h('span', { class: 'muted small' }, c.tag)];
+    }
+    var input = h('textarea', { rows: 2, maxlength: 2000, placeholder: '输入私信…', 'aria-label': '私信内容', class: 'msg-input' });
+    input.value = box.drafts[box.current] || '';
+    input.addEventListener('input', function () { box.drafts[box.current] = input.value; });
+    input.addEventListener('focus', function () { box.focus = true; });
+    input.addEventListener('blur', function () { box.focus = false; });
+    function send() {
+      var text = input.value.trim();
+      if (!text || !current) return;
+      if (!current.name) { toast('这个座位现在没有人', 'warn'); return; }
+      ctx.sendMessage(current.id, text).then(function () {
+        box.drafts[current.id] = '';
+        box.focus = true;
+        onChange();
+      }, function (e) { toast(MESSAGE_FAIL[e.code] || '发送失败：' + e.code, 'warn'); });
+    }
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+    });
+    // 重绘后把光标放回输入框，打字时收到新私信不会被打断
+    if (box.focus) setTimeout(function () { if (input.isConnected) { input.focus(); input.selectionStart = input.selectionEnd = input.value.length; } }, 0);
+
+    return h('div', { class: 'messenger' },
+      h('ul', { class: 'msg-contacts', role: 'list' }, contacts.length ? contacts.map(function (c) {
+        var n = ctx.unread(c.id);
+        return h('li', null, h('button', {
+          type: 'button', class: 'msg-contact' + (c.id === box.current ? ' on' : ''), 'data-contact': c.id,
+          onclick: function () { box.current = c.id; onChange(); }
+        }, label(c), n ? h('span', { class: 'badge danger msg-unread' }, String(n)) : null));
+      }) : h('li', { class: 'empty' }, '这局里还没有别人。')),
+      current ? h('div', { class: 'msg-thread' },
+        h('div', { class: 'msg-head' }, label(current)),
+        h('ol', { class: 'msg-list' }, thread.length ? thread.map(function (m) {
+          return h('li', { class: 'msg' + (m.from === box.me ? ' mine' : '') },
+            h('div', { class: 'msg-text' }, document.createTextNode(m.text)),
+            h('div', { class: 'msg-meta' }, fmtTime(m.at)));
+        }) : h('li', { class: 'empty' }, '还没有私信。')),
+        ctx.game.status === 'finished' ? h('p', { class: 'muted small' }, '对局已结束，不能再发私信。') : h('div', { class: 'msg-compose' },
+          input, h('button', { type: 'button', class: 'btn primary', onclick: send }, '发送'))) : null);
+  }
+
+  // ---------------------------------------------------------------- 交接单（联机）
+
+  var TRANSFER_KIND = { gift: '赠予', trade: '交易', pool: '交公', scavenge: '搜刮交公', supply: '补给', opening: '开局领取', grant: '主持人发放' };
+  var TRANSFER_STATUS = { pending: ['warning', '待确认'], accepted: ['ok', '已接收'], rejected: ['info', '已拒收'], cancelled: ['info', '已撤回'] };
+  var TRANSFER_FAIL = {
+    network: '连不上服务器，请稍后再试。',
+    read_only: '对局不在进行中，现在不能处理交接。',
+    not_enough: '数量不够。',
+    in_loadout: '携带中的物品被锁定：先结束携带再转出。',
+    wants_mismatch: '交出的物品和对方要的不一致。',
+    already_resolved: '这张交接单已经处理过了。',
+    no_recipient: '对方现在不在座位上。',
+    already_sent: '这件补给已经发过了。'
+  };
+  function transferFail(e) { toast(TRANSFER_FAIL[e.code] || '交接失败：' + e.code + (e.detail ? '（' + e.detail + '）' : ''), 'warn'); }
+
+  /** 交接单里身份的显示名：主持人、公共池或座位上的人。 */
+  function partyName(ctx, who, asRecipient) {
+    if (who === 'host') return asRecipient ? '公共池' : '主持人';
+    var s = ctx.game.seats.filter(function (x) { return x.id === who; })[0];
+    return s ? (s.user ? s.user.username : '座位 ' + s.seatNo) : '已离开的座位';
+  }
+
+  function transferItems(t, list, customItems) {
+    var Core = root.ShelterCore;
+    var defs = (customItems || []).concat(t.defs || []);
+    return list.map(function (e) { return Core.describeEntry(e, defs); }).join('、');
+  }
+
+  /**
+   * 交易时由接收方选出对方要的物品：普通物品自动按数量取；带实例的物品（能量棒、地图……）逐件勾选。
+   * inventory：接收方的库存；locked：携带中被锁定的条目 id。返回 Promise<give 或 null>。
+   */
+  function pickForTrade(t, inventory, customItems, locked) {
+    var Core = root.ShelterCore;
+    var defs = (customItems || []).concat(t.defs || []);
+    var rows = t.wants.map(function (w) {
+      var def = Core.getDef(w.defId, defs);
+      var pool = inventory.filter(function (e) { return e.defId === w.defId && locked.indexOf(e.id) < 0; });
+      var have = pool.reduce(function (n, e) { return n + e.qty; }, 0);
+      var checks = [];
+      var node;
+      if (have < w.qty) node = h('p', { class: 'callout danger' }, def.name + '：需要 ' + w.qty + '，你只有 ' + have);
+      else if (Core.isStackable(def)) node = h('p', null, def.name + ' ×' + w.qty);
+      else {
+        node = h('div', { class: 'stack' }, h('b', null, def.name + '：选 ' + w.qty + ' 件'), pool.map(function (e, i) {
+          var box = h('input', { type: 'checkbox', checked: i < w.qty });
+          checks.push({ box: box, entry: e });
+          return h('label', { class: 'check' }, box, Core.describeEntry(e, defs));
+        }));
+      }
+      return { want: w, def: def, pool: pool, have: have, checks: checks, node: node };
+    });
+    return modal({
+      title: '交易：交出对方要的物品',
+      body: h('div', { class: 'stack' }, h('p', null, '收到：', transferItems(t, t.items, customItems)), h('p', null, h('b', null, '你需要交出：')), rows.map(function (r) { return r.node; })),
+      actions: [
+        { label: '取消', value: null },
+        {
+          label: '确认交易', kind: 'primary',
+          validate: function () {
+            for (var i = 0; i < rows.length; i++) {
+              var r = rows[i];
+              if (r.have < r.want.qty) return '物品不够，不能完成这笔交易';
+              if (r.checks.length && r.checks.filter(function (c) { return c.box.checked; }).length !== r.want.qty) return r.def.name + '需要正好选 ' + r.want.qty + ' 件';
+            }
+            return '';
+          },
+          value: function () {
+            var give = [];
+            rows.forEach(function (r) {
+              if (r.checks.length) { r.checks.forEach(function (c) { if (c.box.checked) give.push({ entryId: c.entry.id, qty: 1 }); }); return; }
+              var need = r.want.qty;
+              r.pool.forEach(function (e) { if (!need) return; var n = Math.min(need, e.qty); give.push({ entryId: e.id, qty: n }); need -= n; });
+            });
+            return give;
+          }
+        }
+      ]
+    });
+  }
+
+  /**
+   * 交接卡片（主持人与玩家共用）：待我处理（接收／拒收）、我发出的（撤回），以及最近的记录。
+   * opts：{ customItems, inventory, locked（携带锁定的 id）, onChange, ledger（主持人：显示全部记录）, title }
+   */
+  function transferCards(ctx, opts) {
+    var me = ctx.inbox.me;
+    var busy = false;
+    function act(t, path, body) {
+      if (busy) return;
+      busy = true;
+      ctx.transfer(t.id + '/' + path, body).then(function () { busy = false; opts.onChange(); }, function (e) { busy = false; transferFail(e); });
+    }
+    function line(t, actions) {
+      var st = TRANSFER_STATUS[t.status];
+      return h('li', { class: 'transfer', 'data-transfer': t.id },
+        h('div', { class: 'transfer-head' },
+          h('span', { class: 'badge' }, TRANSFER_KIND[t.kind] || t.kind),
+          h('b', null, document.createTextNode(partyName(ctx, t.from, false))), ' → ', h('b', null, document.createTextNode(partyName(ctx, t.to, true))),
+          sevBadge(st[0], st[1]),
+          h('span', { class: 'muted small' }, fmtTime(t.at))),
+        h('div', null, transferItems(t, t.items, opts.customItems),
+          t.wants ? h('span', null, ' ⇄ 换取 ', root.ShelterCore.formatItemList(t.wants, (opts.customItems || []).concat(t.defs || []))) : null),
+        t.given ? h('div', { class: 'muted small' }, '对方交出：', transferItems(t, t.given, opts.customItems)) : null,
+        t.note ? h('div', { class: 'muted small' }, '附言：', document.createTextNode(t.note)) : null,
+        actions ? h('div', { class: 'row' }, actions) : null);
+    }
+    var incoming = ctx.transfers.filter(function (t) { return t.status === 'pending' && t.to === me; });
+    var outgoing = ctx.transfers.filter(function (t) { return t.status === 'pending' && t.from === me; });
+    var done = ctx.transfers.filter(function (t) { return t.status !== 'pending' && (opts.ledger || t.from === me || t.to === me); }).slice().reverse();
+    var others = opts.ledger ? ctx.transfers.filter(function (t) { return t.status === 'pending' && t.from !== me && t.to !== me; }) : [];
+    return h('section', { class: 'card transfers', id: 'transfers' },
+      h('div', { class: 'card-head' }, h('h2', null, opts.title || '交接'), incoming.length ? h('span', { class: 'badge danger' }, incoming.length + ' 件待你处理') : null),
+      incoming.length ? h('div', null, h('h3', null, '待你处理'), h('ul', { class: 'list-plain' }, incoming.map(function (t) {
+        return line(t, [
+          h('button', {
+            type: 'button', class: 'btn small primary', onclick: function () {
+              if (!t.wants) return act(t, 'accept');
+              pickForTrade(t, opts.inventory || [], opts.customItems, opts.locked || []).then(function (give) { if (give) act(t, 'accept', { give: give }); });
+            }
+          }, t.wants ? '交易…' : '接收'),
+          h('button', { type: 'button', class: 'btn small', onclick: function () { act(t, 'reject'); } }, '拒收')
+        ]);
+      }))) : null,
+      outgoing.length ? h('div', null, h('h3', null, '你发出的（等对方确认）'), h('ul', { class: 'list-plain' }, outgoing.map(function (t) {
+        return line(t, [h('button', { type: 'button', class: 'btn small', onclick: function () { act(t, 'cancel'); } }, '撤回')]);
+      }))) : null,
+      others.length ? h('div', null, h('h3', null, '玩家之间待确认'), h('ul', { class: 'list-plain' }, others.map(function (t) { return line(t, null); }))) : null,
+      !incoming.length && !outgoing.length && !others.length ? h('p', { class: 'empty' }, '没有待处理的交接。') : null,
+      done.length ? h('details', { open: !!opts.ledger }, h('summary', null, (opts.ledger ? '全部记录' : '最近的记录') + '（' + done.length + '）'),
+        h('ul', { class: 'list-plain' }, (opts.ledger ? done : done.slice(0, 20)).map(function (t) { return line(t, null); }))) : null);
+  }
+
+  var MESSAGE_FAIL = {
+    network: '连不上服务器，请稍后再试。',
+    no_recipient: '这个座位现在没有人。',
+    game_closed: '对局已结束，不能再发私信。',
+    bad_text: '私信需要 1～2000 个字。'
+  };
 
   var ONLINE_RELOADED = {
     device: '另一台设备更新了存档：已载入最新',
@@ -1318,6 +1659,9 @@ window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host dec
     stamp: stamp,
     Store: Store,
     connectOnline: connectOnline,
+    messenger: messenger,
+    transferCards: transferCards,
+    transferFail: transferFail,
     onlineBanner: onlineBanner,
     onlineFailCard: onlineFailCard,
     onlineReloadedText: onlineReloadedText,
@@ -1639,7 +1983,10 @@ window.SHELTER_I18N_EN = {"待配置／主持人裁定":"To configure / host dec
       // 开局后才有面板存档：主导进主持人面板，有座位的进自己的玩家面板（主导兼角色两个都有）
       g.status !== 'lobby' && ((isOwner && !g.ownerDeleted) || mySeat) ? h('div', { class: 'room-actions', id: 'panels', style: 'margin-top:12px' },
         isOwner && !g.ownerDeleted ? h('a', { class: 'btn primary', href: 'host.html?game=' + encodeURIComponent(g.id) }, '进入主持人面板') : null,
-        mySeat ? h('a', { class: 'btn ' + (isOwner ? '' : 'primary'), href: 'player.html?game=' + encodeURIComponent(g.id) }, '进入玩家面板') : null) : null));
+        // 主导兼角色：玩家面板在新窗口打开，两个面板可以同时开着（存档和私信各归各的身份）
+        mySeat ? h('a', Object.assign({ class: 'btn ' + (isOwner ? '' : 'primary'), href: 'player.html?game=' + encodeURIComponent(g.id) },
+          isOwner ? { target: '_blank', rel: 'noopener' } : {}), '进入玩家面板') : null,
+        isOwner && mySeat ? h('span', { class: 'muted small' }, '玩家面板会在新窗口打开，可以和主持人面板同时使用。') : null) : null));
 
     main.appendChild(h('section', { class: 'card', id: 'seats' },
       h('div', { class: 'card-head' }, h('h2', null, '座位'), open ? h('span', { class: 'badge ok' }, '空座位 ' + open) : null),

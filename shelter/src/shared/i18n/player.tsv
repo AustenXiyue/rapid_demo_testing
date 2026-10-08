@@ -745,3 +745,35 @@
 主持人更新了玩家名单	The host updated the player list
 主持人更新了规则	The host updated the rules
 你的页面已经自动同步，库存和状态没有变化。	Your page has synced automatically; your inventory and status are unchanged.
+ 条未读私信	 unread messages
+对局	Game
+对局与私信	Game & messages
+ · 轮到 	 · Turn: 
+只有收发双方看得到	Only the sender and recipient can see these
+ 已行动 	 Acted 
+补给领取 · 	Supply pick · 
+已全部领取	Everyone has picked
+ 已领取 	 Picked 
+计时	Timer
+还没有座次。	No seating yet.
+还没有公开结果。	No public results yet.
+治疗结果已私信给 	Treatment result messaged to 
+私信没发出去：请复制给对方	The message didn't go through: copy it to them
+交公清单已交给公共池，等主持人接收	Hand-in list sent to the pool; waiting for the host to accept
+携带中的物品被锁定：先结束携带再转出	Carried items are locked: end carry mode before giving them away
+例如：普通水×2（留空就是直接赠予）	e.g. Water×2 (leave blank for a plain gift)
+附言（可不填）	Note (optional)
+交给公共池：主持人接收后入池。	To the pool: it's added once the host accepts.
+想换取（对方接收时同时交给你）	Ask in return (they give it when they accept)
+交给	To
+公共池（主持人）	Pool (host)
+物品会先从你的库存扣下，对方接收后才算交出；对方拒收或你撤回时原样退回。	Items are held from your inventory now and only change hands when accepted; if declined or withdrawn they come back unchanged.
+发起	Send
+换取的数量要大于 0	Requested quantities must be above 0
+已交给公共池，等主持人接收	Sent to the pool; waiting for the host to accept
+已发起，等对方确认	Sent; waiting for them to confirm
+收到交接：	Incoming transfer: 
+其他玩家	another player
+发来物品，请在库存页确认	 sent you items; confirm on the inventory page
+对方已接收你的交接	They accepted your transfer
+对方拒收了你的交接：物品已退回	They declined your transfer: items returned

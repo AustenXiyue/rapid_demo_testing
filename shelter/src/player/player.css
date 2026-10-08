@@ -330,3 +330,28 @@ details.card > summary { cursor: pointer; }
 .name-chip-x { border: 0; background: none; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; color: var(--muted); font-size: 16px; line-height: 1; }
 .name-chip-x:hover, .name-chip-x:focus-visible { background: var(--red-soft); color: var(--red); }
 .roster-card .row input { flex: 1 1 200px; min-width: 0; }
+
+/* ---------- 对局（联机）：公开信息板，内容与主持人的「公开展示」一致 ---------- */
+.pub-strip { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; width: 100%; text-align: left; padding: 10px 14px; margin-bottom: 12px; border: 1px solid #cfdcea; border-radius: 10px; background: #eef3f8; color: #2c4058; font: inherit; cursor: pointer; }
+.pub-strip .badge { margin-left: auto; }
+.pub-now.me, .pub-me { color: var(--teal-strong); }
+.pub-board { display: flex; flex-direction: column; gap: 14px; }
+.pub-hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px 20px; flex-wrap: wrap; }
+.pub-phase { font-size: 26px; display: flex; align-items: baseline; gap: 8px; }
+.pub-no { font-size: 14px; color: var(--muted); font-weight: 600; }
+.pub-side { display: flex; gap: 18px; }
+.pub-stat { display: flex; flex-direction: column; align-items: flex-end; }
+.pub-stat b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.pub-track { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; overflow-x: auto; }
+.pub-track li { flex: 1 1 0; min-width: 64px; padding: 4px 6px; border-top: 4px solid var(--line-strong); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.pub-track li.done { border-top-color: var(--teal); color: var(--ink-2); }
+.pub-track li.on { border-top-color: var(--teal); color: var(--teal-strong); font-weight: 700; }
+.pub-panel h3 { font-size: 15px; margin-bottom: 6px; }
+.pub-focus { font-size: 18px; margin-bottom: 6px; }
+.pub-order, .pub-seats { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.pub-order li, .pub-seats li { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); font-size: 14px; }
+.pub-order li.done { color: var(--muted); }
+.pub-order li.now { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-strong); font-weight: 650; }
+.pub-seats li.me { border-color: var(--teal); }
+.pub-seats li.dead { color: var(--muted); text-decoration: line-through; }
+.pub-options { margin: 6px 0 0; }

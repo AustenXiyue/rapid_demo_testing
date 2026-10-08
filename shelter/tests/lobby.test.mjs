@@ -241,3 +241,176 @@ test('面板接入服务器：从房间进入面板；修改存到服务器，�
     await phone.context.close();
   }
 });
+
+test('对局与私信：主持人推进阶段玩家实时看到；主持人「发送给」直达玩家收件箱，未读提示，玩家回复与玩家之间私聊；联机模式不再要求暂停屏幕共享', async () => {
+  const host = await openPage();
+  const bob = await openPage();
+  const cat = await openPage();
+  try {
+    await register(host.page, 'host_msg');
+    await host.page.locator('[data-entry="create"]').click();
+    await host.page.locator('.modal input').first().fill('私信局');
+    await host.page.locator('.modal').getByRole('button', { name: '创建', exact: true }).click();
+    await host.page.waitForURL(/#game=/);
+    const code = (await host.page.locator('#invite-code').textContent()).trim();
+    for (const [p, n] of [[bob, 'bob_msg'], [cat, 'cat_msg']]) {
+      await register(p.page, n);
+      await p.page.locator('[data-entry="join"]').click();
+      await p.page.locator('.code-input').fill(code);
+      await p.page.locator('form.code-form').getByRole('button', { name: '加入', exact: true }).click();
+      await p.page.waitForURL(/#game=/);
+    }
+    await host.page.getByRole('button', { name: '开始对局' }).click();
+    await host.page.locator('#panels').getByRole('link', { name: '进入主持人面板' }).click();
+    await host.page.waitForURL(/host\.html\?game=/);
+    for (const p of [bob, cat]) {
+      await p.page.locator('#panels').getByRole('link', { name: '进入玩家面板' }).click();
+      await p.page.waitForURL(/player\.html\?game=/);
+    }
+
+    // 联机模式：没有「一键隐藏所有秘密」，秘密页直接显示
+    assert.equal(await host.page.getByRole('button', { name: '一键隐藏所有秘密' }).count(), 0);
+    await host.page.locator('[data-tab="supply"]').click();
+    assert.equal(await host.page.locator('[data-gate]').count(), 0, '不再有「先暂停屏幕共享」的遮挡');
+
+    // 公开信息：总览顶部一行 + 「对局」页随主持人推进实时变化
+    await bob.page.locator('.pub-strip', { hasText: '开局准备' }).waitFor();
+    await host.page.getByRole('button', { name: '开始第 1 天 →' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '开始', exact: true }).click();
+    await bob.page.locator('.pub-strip', { hasText: '第 1 天' }).waitFor();
+    await tab(bob.page, 'game');
+    await bob.page.locator('#public-board .pub-phase', { hasText: '昨夜结果' }).waitFor();
+    await host.page.getByRole('button', { name: '下一阶段 →' }).click();
+    await bob.page.locator('#public-board .pub-phase', { hasText: '资源补给' }).waitFor();
+
+    // bob 正看着和 cat 的对话（默认打开的是主持人对话，看着的对话来了私信会直接算已读）
+    await bob.page.locator('.msg-contact', { hasText: 'cat_msg' }).click();
+    // 主持人在「记录与结算 → 私信分配记录」展开 bob 的私信文本，点「发送给 bob_msg」
+    await host.page.locator('[data-tab="records"]').click();
+    await host.page.locator('.card.inset').filter({ has: host.page.locator('b', { hasText: /^bob_msg$/ }) }).locator('summary', { hasText: '私信文本' }).click();
+    await host.page.getByRole('button', { name: '发送给 bob_msg' }).click();
+    await host.page.locator('.toast', { hasText: '私信已送达' }).waitFor();
+    await cat.page.locator('[data-tab="game"] .tab-unread').waitFor({ state: 'detached', timeout: 1000 }).catch(() => {});
+    assert.equal(await cat.page.locator('[data-tab="game"] .tab-unread').count(), 0, '别人收不到');
+    // bob 在「对局」页但不在主持人的对话里：有未读数；点开后清零
+    const hostContact = bob.page.locator('.msg-contact[data-contact="host"]');
+    await hostContact.locator('.msg-unread').waitFor();
+    await hostContact.click();
+    await bob.page.locator('.msg-list .msg', { hasText: '【私信·身份】' }).waitFor();
+    await hostContact.locator('.msg-unread').waitFor({ state: 'detached' });
+
+    // 回复主持人：主持人的「私信」页实时出现
+    await bob.page.locator('.msg-input').fill('收到，谢谢');
+    await bob.page.locator('.msg-input').press('Enter');
+    await host.page.locator('[data-tab="messages"] .tab-unread').waitFor();
+    await host.page.locator('[data-tab="messages"]').click();
+    await host.page.locator('.msg-list .msg', { hasText: '收到，谢谢' }).waitFor();
+
+    // 玩家之间私聊：主持人看不到
+    await bob.page.locator('.msg-contact', { hasText: 'cat_msg' }).click();
+    await bob.page.locator('.msg-input').fill('结盟吗？');
+    await bob.page.getByRole('button', { name: '发送', exact: true }).click();
+    await bob.page.locator('.msg-list .msg.mine', { hasText: '结盟吗？' }).waitFor();
+    await cat.page.locator('.toast', { hasText: '收到新私信' }).waitFor();
+    await tab(cat.page, 'game');
+    await cat.page.locator('.msg-contact', { hasText: 'bob_msg' }).click();
+    await cat.page.locator('.msg-list .msg', { hasText: '结盟吗？' }).waitFor();
+    assert.equal(await host.page.locator('.msg-contact', { hasText: 'cat_msg' }).locator('.msg-unread').count(), 0);
+    assert.ok(!(await host.page.locator('body').innerText()).includes('结盟吗？'), '主持人看不到玩家之间的私信');
+
+    // 刷新后私信还在
+    await cat.page.reload();
+    await tab(cat.page, 'game');
+    await cat.page.locator('.msg-contact', { hasText: 'bob_msg' }).click();
+    await cat.page.locator('.msg-list .msg', { hasText: '结盟吗？' }).waitFor();
+    assert.deepEqual([...host.errors, ...bob.errors, ...cat.errors], []);
+  } finally {
+    await host.context.close();
+    await bob.context.close();
+    await cat.context.close();
+  }
+});
+
+test('物品流转：玩家之间赠予与交易需要对方确认；交公由主持人接收入池；主持人记录补给选择后玩家接收入库', async () => {
+  const host = await openPage();
+  const bob = await openPage();
+  const cat = await openPage();
+  try {
+    await register(host.page, 'host_tr');
+    await host.page.locator('[data-entry="create"]').click();
+    await host.page.locator('.modal input').first().fill('交接局');
+    await host.page.locator('.modal').getByRole('button', { name: '创建', exact: true }).click();
+    await host.page.waitForURL(/#game=/);
+    const code = (await host.page.locator('#invite-code').textContent()).trim();
+    for (const [p, n] of [[bob, 'bob_tr'], [cat, 'cat_tr']]) {
+      await register(p.page, n);
+      await p.page.locator('[data-entry="join"]').click();
+      await p.page.locator('.code-input').fill(code);
+      await p.page.locator('form.code-form').getByRole('button', { name: '加入', exact: true }).click();
+      await p.page.waitForURL(/#game=/);
+    }
+    await host.page.getByRole('button', { name: '开始对局' }).click();
+    await host.page.locator('#panels').getByRole('link', { name: '进入主持人面板' }).click();
+    await host.page.waitForURL(/host\.html\?game=/);
+    for (const p of [bob, cat]) {
+      await p.page.locator('#panels').getByRole('link', { name: '进入玩家面板' }).click();
+      await p.page.waitForURL(/player\.html\?game=/);
+    }
+
+    // 主持人凭空发给 bob：面包×3、子弹×2（bob 接收入库）
+    await host.page.locator('[data-tab="supply"]').click();
+    await host.page.getByRole('button', { name: '发放物品给玩家…' }).click();
+    const gm = host.page.locator('.modal');
+    await gm.locator('select').first().selectOption({ label: 'bob_tr' });
+    await gm.getByRole('button', { name: '凭空给予' }).click();
+    await gm.locator('input[placeholder="例如：面包×2，普通水"]').fill('面包×3，子弹×2');
+    await gm.getByRole('button', { name: '发放', exact: true }).click();
+    await bob.page.locator('.toast', { hasText: '收到交接' }).waitFor();
+    await tab(bob.page, 'inventory');
+    await bob.page.locator('#transfers .transfer').getByRole('button', { name: '接收' }).click();
+    await bob.page.locator('.inv-card', { hasText: '面包' }).waitFor();
+
+    // bob 赠予 cat 面包×1：先从 bob 扣下，cat 接收后才到 cat
+    const bread = bob.page.locator('.inv-card', { hasText: '面包' });
+    await bread.getByRole('button', { name: '赠予' }).click();
+    const tm = bob.page.locator('.modal');
+    await tm.locator('select').first().selectOption({ label: 'cat_tr' });
+    await tm.locator('input[type="number"]').fill('1');
+    await tm.getByRole('button', { name: '发起', exact: true }).click();
+    await bob.page.locator('#transfers', { hasText: '你发出的' }).waitFor();
+    await tab(cat.page, 'inventory');
+    await cat.page.locator('#transfers .transfer', { hasText: '面包' }).getByRole('button', { name: '接收' }).click();
+    await cat.page.locator('.inv-card', { hasText: '面包' }).waitFor();
+    await bob.page.locator('.toast', { hasText: '对方已接收' }).waitFor();
+
+    // 交易：bob 用子弹×1 换 cat 的面包×1，cat 确认后两边同时换手
+    await bob.page.locator('.inv-card', { hasText: '子弹' }).getByRole('button', { name: '赠予' }).click();
+    await tm.locator('select').first().selectOption({ label: 'cat_tr' });
+    await tm.locator('input[type="number"]').fill('1');
+    await tm.locator('input[placeholder^="例如：普通水×2"]').fill('面包×1');
+    await tm.getByRole('button', { name: '发起', exact: true }).click();
+    const trade = cat.page.locator('#transfers .transfer', { hasText: '换取' });
+    await trade.getByRole('button', { name: '交易…' }).click();
+    await cat.page.locator('.modal').getByRole('button', { name: '确认交易' }).click();
+    await cat.page.locator('.inv-card', { hasText: '子弹' }).waitFor();
+    await cat.page.locator('.inv-card', { hasText: '面包' }).waitFor({ state: 'detached' });
+
+    // cat 把子弹交给公共池；主持人在补给页接收入池
+    await cat.page.locator('.inv-card', { hasText: '子弹' }).getByRole('button', { name: '赠予' }).click();
+    await cat.page.locator('.modal select').first().selectOption('host');
+    await cat.page.locator('.modal').getByRole('button', { name: '发起', exact: true }).click();
+    await host.page.locator('[data-tab="supply"] .tab-unread').waitFor();
+    await host.page.locator('#transfers .transfer', { hasText: '交公' }).getByRole('button', { name: '接收' }).click();
+    await host.page.locator('.card', { hasText: '公共池' }).getByText('子弹').first().waitFor();
+
+    // 主持人能在「记录与结算」看到全部交接
+    await host.page.locator('[data-tab="records"]').click();
+    const ledger = host.page.locator('#transfers', { hasText: '交接记录（全部）' });
+    await ledger.locator('.transfer', { hasText: '交易' }).first().waitFor();
+    assert.deepEqual([...host.errors, ...bob.errors, ...cat.errors], []);
+  } finally {
+    await host.context.close();
+    await bob.context.close();
+    await cat.context.close();
+  }
+});

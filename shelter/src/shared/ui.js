@@ -338,6 +338,10 @@
    *   onGame(game)   对局状态或座位变化（如暂停）
    *   onGone()       自己已经不在这局（座位被释放、对局被删除）
    *   onError(code)  保存失败（网络断开会自动重试）
+   *   onPublic(view) 公开信息变化（玩家面板用；ctx.publicView 是最新的一份）
+   *   onMessage(msg) 收到或发出了一条私信（ctx.inbox 里已经加上）
+   *   onTransfer(t)  交接单新建或状态变化（ctx.transfers 里已经更新）
+   * onState 的 reason 还可能是 transfer：服务端处理交接时改了这份存档（页面静默重载）
    * 同一时间只有一个保存请求在路上，期间的修改合并成最新一份再发。
    */
   function connectOnline(gameId, kind, handlers) {
@@ -346,8 +350,13 @@
     var socket = null;
     var toastAt = 0;
     var store = { available: true, lastError: null, version: 0, pending: null, busy: false };
+    var gameUrl = base + 'api/games/' + encodeURIComponent(gameId) + '/';
     var ctx = {
-      store: store, game: null, state: null,
+      store: store, game: null, state: null, publicView: null,
+      // 私信：主持人面板以「主持人」身份收发，玩家面板以自己座位的身份收发
+      inbox: { as: kind === 'host' ? 'host' : 'seat', me: null, messages: [], current: null, drafts: {}, focus: false },
+      // 交接单：玩家看到和自己有关的，主持人看到全部
+      transfers: [],
       readOnly: function () { return !ctx.game || ctx.game.status !== 'active'; },
       /** 只读时拦下修改并提示（提示最多 5 秒一次）。 */
       blocked: function () {
@@ -363,6 +372,67 @@
     function getJSON(r) {
       return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
     }
+    function call(method, path, body) {
+      return fetch(gameUrl + path, {
+        method: method, credentials: 'same-origin',
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined
+      }).then(getJSON, function () { throw { code: 'network' }; }).then(function (res) {
+        if (!res.ok) throw { code: res.d.error || 'unknown' };
+        return res.d;
+      });
+    }
+    function addMessage(m) {
+      var box = ctx.inbox;
+      if (m.from !== box.me && m.to !== box.me) return false;
+      if (box.messages.some(function (x) { return x.id === m.id; })) return false;
+      box.messages.push(m);
+      return true;
+    }
+
+    function upsertTransfer(t) {
+      var i = ctx.transfers.findIndex(function (x) { return x.id === t.id; });
+      if (i >= 0) ctx.transfers[i] = t; else ctx.transfers.push(t);
+    }
+    // 等本机的存档保存完，免得服务端改存档时和还在路上的保存撞版本
+    function whenSaved() {
+      return new Promise(function (resolve) {
+        (function check() { if (!store.busy && store.pending == null) resolve(); else setTimeout(check, 50); })();
+      });
+    }
+    /** 交接单操作（发起、接收、拒收、撤回）：path 相对 transfers/，body 自动带上身份。 */
+    ctx.transfer = function (path, body) {
+      return whenSaved().then(function () {
+        return call('POST', 'transfers' + (path ? '/' + path : ''), Object.assign({ as: ctx.inbox.as }, body || {}));
+      }).then(function (d) {
+        upsertTransfer(d.transfer);
+        if (handlers.onTransfer) handlers.onTransfer(d.transfer);
+        return d.transfer;
+      });
+    };
+
+    /** 发私信；成功后（推送到之前）就先放进收件箱。 */
+    ctx.sendMessage = function (to, text) {
+      return call('POST', 'messages', { as: ctx.inbox.as, to: to, text: text }).then(function (d) {
+        if (addMessage(d.message)) handlers.onMessage(d.message);
+        return d.message;
+      });
+    };
+    /** 打开某个对话时把对方发来的标为已读（本地立即生效，服务器那边失败也不影响使用）。 */
+    ctx.markRead = function (other) {
+      var changed = false;
+      ctx.inbox.messages.forEach(function (m) {
+        if (m.to === ctx.inbox.me && m.from === other && !m.readAt) { m.readAt = Date.now(); changed = true; }
+      });
+      if (changed) call('POST', 'messages/read', { as: ctx.inbox.as, with: other }).catch(function () {});
+      return changed;
+    };
+    /** 未读条数：不传 other 时是全部未读。 */
+    ctx.unread = function (other) {
+      return ctx.inbox.messages.filter(function (m) {
+        return m.to === ctx.inbox.me && !m.readAt && (other == null || m.from === other);
+      }).length;
+    };
     function load() {
       return fetch(url, { credentials: 'same-origin' }).then(getJSON, function () { throw { code: 'network' }; }).then(function (res) {
         if (!res.ok) throw { code: res.d.error || 'unknown' };
@@ -425,11 +495,30 @@
           handlers.onGame(g);
         });
         socket.on('game:gone', function (m) { if (m.id === gameId) handlers.onGone(); });
+        socket.on('public:update', function (m) {
+          if (m.gameId !== gameId || kind !== 'seat') return;
+          ctx.publicView = m.view;
+          if (handlers.onPublic) handlers.onPublic(m.view);
+        });
+        socket.on('transfer:update', function (m) {
+          if (m.gameId !== gameId) return;
+          upsertTransfer(m.transfer);
+          if (handlers.onTransfer) handlers.onTransfer(m.transfer);
+        });
+        socket.on('message:new', function (m) {
+          if (m.gameId === gameId && addMessage(m.message) && handlers.onMessage) handlers.onMessage(m.message);
+        });
+        // 另一台设备读过了：这边也去掉未读
+        socket.on('message:read', function (m) {
+          if (m.gameId !== gameId || m.me !== ctx.inbox.me) return;
+          ctx.inbox.messages.forEach(function (x) { if (x.to === m.me && x.from === m.with && !x.readAt) x.readAt = m.at; });
+          if (handlers.onMessage) handlers.onMessage(null);
+        });
         socket.on('state:update', function (m) {
           if (m.gameId !== gameId || m.kind !== kind || m.from === socket.id || m.version <= store.version) return;
           store.version = m.version;
           store.pending = null;
-          handlers.onState(m.state, m.reason ? 'rules' : 'device', m.reason);
+          handlers.onState(m.state, m.reason || 'device', m.detail);
         });
       };
       document.head.appendChild(script);
@@ -441,10 +530,233 @@
 
     return load().then(function (s) {
       ctx.state = s;
+      return Promise.all([
+        call('GET', 'messages?as=' + ctx.inbox.as),
+        kind === 'seat' ? call('GET', 'public') : null,
+        call('GET', 'transfers?as=' + ctx.inbox.as)
+      ]);
+    }).then(function (r) {
+      ctx.inbox.me = r[0].me;
+      ctx.inbox.messages = r[0].messages;
+      if (r[1]) ctx.publicView = r[1].view;
+      ctx.transfers = r[2].transfers;
       connectSocket();
       return ctx;
     });
   }
+
+  /**
+   * 私信界面（主持人面板与玩家面板共用）：左边联系人与未读数，右边对话与输入框。
+   * 状态（当前对话、草稿）存在 ctx.inbox 里，页面整体重绘时不会丢。onChange：需要页面重绘时调用。
+   */
+  function messenger(ctx, onChange) {
+    var box = ctx.inbox;
+    var g = ctx.game;
+    var contacts = [];
+    if (box.me !== 'host' && !g.ownerDeleted) contacts.push({ id: 'host', name: g.owner.username, tag: '主持人' });
+    g.seats.forEach(function (s) {
+      if (s.id === box.me) return;
+      contacts.push({ id: s.id, name: s.user ? s.user.username : null, tag: '座位 ' + s.seatNo });
+    });
+    // 只有历史私信、此刻已经不在名单上的对象（如主导删除了对局）也列出来，能看记录
+    box.messages.forEach(function (m) {
+      var other = m.from === box.me ? m.to : m.from;
+      if (!contacts.some(function (c) { return c.id === other; })) contacts.push({ id: other, name: null, tag: other === 'host' ? '主持人' : '已离开的座位' });
+    });
+    // 默认打开最近有私信往来的对话，没有就打开第一个
+    if (!box.current || !contacts.some(function (c) { return c.id === box.current; })) {
+      var latest = box.messages[box.messages.length - 1];
+      box.current = latest ? (latest.from === box.me ? latest.to : latest.from) : contacts.length ? contacts[0].id : null;
+    }
+    var current = contacts.filter(function (c) { return c.id === box.current; })[0];
+    var thread = box.messages.filter(function (m) {
+      return (m.from === box.me && m.to === box.current) || (m.to === box.me && m.from === box.current);
+    });
+    if (current && ctx.markRead(current.id)) setTimeout(onChange, 0);
+
+    function label(c) {
+      return [h('b', null, c.name ? document.createTextNode(c.name) : '（空座位）'), ' ', h('span', { class: 'muted small' }, c.tag)];
+    }
+    var input = h('textarea', { rows: 2, maxlength: 2000, placeholder: '输入私信…', 'aria-label': '私信内容', class: 'msg-input' });
+    input.value = box.drafts[box.current] || '';
+    input.addEventListener('input', function () { box.drafts[box.current] = input.value; });
+    input.addEventListener('focus', function () { box.focus = true; });
+    input.addEventListener('blur', function () { box.focus = false; });
+    function send() {
+      var text = input.value.trim();
+      if (!text || !current) return;
+      if (!current.name) { toast('这个座位现在没有人', 'warn'); return; }
+      ctx.sendMessage(current.id, text).then(function () {
+        box.drafts[current.id] = '';
+        box.focus = true;
+        onChange();
+      }, function (e) { toast(MESSAGE_FAIL[e.code] || '发送失败：' + e.code, 'warn'); });
+    }
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+    });
+    // 重绘后把光标放回输入框，打字时收到新私信不会被打断
+    if (box.focus) setTimeout(function () { if (input.isConnected) { input.focus(); input.selectionStart = input.selectionEnd = input.value.length; } }, 0);
+
+    return h('div', { class: 'messenger' },
+      h('ul', { class: 'msg-contacts', role: 'list' }, contacts.length ? contacts.map(function (c) {
+        var n = ctx.unread(c.id);
+        return h('li', null, h('button', {
+          type: 'button', class: 'msg-contact' + (c.id === box.current ? ' on' : ''), 'data-contact': c.id,
+          onclick: function () { box.current = c.id; onChange(); }
+        }, label(c), n ? h('span', { class: 'badge danger msg-unread' }, String(n)) : null));
+      }) : h('li', { class: 'empty' }, '这局里还没有别人。')),
+      current ? h('div', { class: 'msg-thread' },
+        h('div', { class: 'msg-head' }, label(current)),
+        h('ol', { class: 'msg-list' }, thread.length ? thread.map(function (m) {
+          return h('li', { class: 'msg' + (m.from === box.me ? ' mine' : '') },
+            h('div', { class: 'msg-text' }, document.createTextNode(m.text)),
+            h('div', { class: 'msg-meta' }, fmtTime(m.at)));
+        }) : h('li', { class: 'empty' }, '还没有私信。')),
+        ctx.game.status === 'finished' ? h('p', { class: 'muted small' }, '对局已结束，不能再发私信。') : h('div', { class: 'msg-compose' },
+          input, h('button', { type: 'button', class: 'btn primary', onclick: send }, '发送'))) : null);
+  }
+
+  // ---------------------------------------------------------------- 交接单（联机）
+
+  var TRANSFER_KIND = { gift: '赠予', trade: '交易', pool: '交公', scavenge: '搜刮交公', supply: '补给', opening: '开局领取', grant: '主持人发放' };
+  var TRANSFER_STATUS = { pending: ['warning', '待确认'], accepted: ['ok', '已接收'], rejected: ['info', '已拒收'], cancelled: ['info', '已撤回'] };
+  var TRANSFER_FAIL = {
+    network: '连不上服务器，请稍后再试。',
+    read_only: '对局不在进行中，现在不能处理交接。',
+    not_enough: '数量不够。',
+    in_loadout: '携带中的物品被锁定：先结束携带再转出。',
+    wants_mismatch: '交出的物品和对方要的不一致。',
+    already_resolved: '这张交接单已经处理过了。',
+    no_recipient: '对方现在不在座位上。',
+    already_sent: '这件补给已经发过了。'
+  };
+  function transferFail(e) { toast(TRANSFER_FAIL[e.code] || '交接失败：' + e.code + (e.detail ? '（' + e.detail + '）' : ''), 'warn'); }
+
+  /** 交接单里身份的显示名：主持人、公共池或座位上的人。 */
+  function partyName(ctx, who, asRecipient) {
+    if (who === 'host') return asRecipient ? '公共池' : '主持人';
+    var s = ctx.game.seats.filter(function (x) { return x.id === who; })[0];
+    return s ? (s.user ? s.user.username : '座位 ' + s.seatNo) : '已离开的座位';
+  }
+
+  function transferItems(t, list, customItems) {
+    var Core = root.ShelterCore;
+    var defs = (customItems || []).concat(t.defs || []);
+    return list.map(function (e) { return Core.describeEntry(e, defs); }).join('、');
+  }
+
+  /**
+   * 交易时由接收方选出对方要的物品：普通物品自动按数量取；带实例的物品（能量棒、地图……）逐件勾选。
+   * inventory：接收方的库存；locked：携带中被锁定的条目 id。返回 Promise<give 或 null>。
+   */
+  function pickForTrade(t, inventory, customItems, locked) {
+    var Core = root.ShelterCore;
+    var defs = (customItems || []).concat(t.defs || []);
+    var rows = t.wants.map(function (w) {
+      var def = Core.getDef(w.defId, defs);
+      var pool = inventory.filter(function (e) { return e.defId === w.defId && locked.indexOf(e.id) < 0; });
+      var have = pool.reduce(function (n, e) { return n + e.qty; }, 0);
+      var checks = [];
+      var node;
+      if (have < w.qty) node = h('p', { class: 'callout danger' }, def.name + '：需要 ' + w.qty + '，你只有 ' + have);
+      else if (Core.isStackable(def)) node = h('p', null, def.name + ' ×' + w.qty);
+      else {
+        node = h('div', { class: 'stack' }, h('b', null, def.name + '：选 ' + w.qty + ' 件'), pool.map(function (e, i) {
+          var box = h('input', { type: 'checkbox', checked: i < w.qty });
+          checks.push({ box: box, entry: e });
+          return h('label', { class: 'check' }, box, Core.describeEntry(e, defs));
+        }));
+      }
+      return { want: w, def: def, pool: pool, have: have, checks: checks, node: node };
+    });
+    return modal({
+      title: '交易：交出对方要的物品',
+      body: h('div', { class: 'stack' }, h('p', null, '收到：', transferItems(t, t.items, customItems)), h('p', null, h('b', null, '你需要交出：')), rows.map(function (r) { return r.node; })),
+      actions: [
+        { label: '取消', value: null },
+        {
+          label: '确认交易', kind: 'primary',
+          validate: function () {
+            for (var i = 0; i < rows.length; i++) {
+              var r = rows[i];
+              if (r.have < r.want.qty) return '物品不够，不能完成这笔交易';
+              if (r.checks.length && r.checks.filter(function (c) { return c.box.checked; }).length !== r.want.qty) return r.def.name + '需要正好选 ' + r.want.qty + ' 件';
+            }
+            return '';
+          },
+          value: function () {
+            var give = [];
+            rows.forEach(function (r) {
+              if (r.checks.length) { r.checks.forEach(function (c) { if (c.box.checked) give.push({ entryId: c.entry.id, qty: 1 }); }); return; }
+              var need = r.want.qty;
+              r.pool.forEach(function (e) { if (!need) return; var n = Math.min(need, e.qty); give.push({ entryId: e.id, qty: n }); need -= n; });
+            });
+            return give;
+          }
+        }
+      ]
+    });
+  }
+
+  /**
+   * 交接卡片（主持人与玩家共用）：待我处理（接收／拒收）、我发出的（撤回），以及最近的记录。
+   * opts：{ customItems, inventory, locked（携带锁定的 id）, onChange, ledger（主持人：显示全部记录）, title }
+   */
+  function transferCards(ctx, opts) {
+    var me = ctx.inbox.me;
+    var busy = false;
+    function act(t, path, body) {
+      if (busy) return;
+      busy = true;
+      ctx.transfer(t.id + '/' + path, body).then(function () { busy = false; opts.onChange(); }, function (e) { busy = false; transferFail(e); });
+    }
+    function line(t, actions) {
+      var st = TRANSFER_STATUS[t.status];
+      return h('li', { class: 'transfer', 'data-transfer': t.id },
+        h('div', { class: 'transfer-head' },
+          h('span', { class: 'badge' }, TRANSFER_KIND[t.kind] || t.kind),
+          h('b', null, document.createTextNode(partyName(ctx, t.from, false))), ' → ', h('b', null, document.createTextNode(partyName(ctx, t.to, true))),
+          sevBadge(st[0], st[1]),
+          h('span', { class: 'muted small' }, fmtTime(t.at))),
+        h('div', null, transferItems(t, t.items, opts.customItems),
+          t.wants ? h('span', null, ' ⇄ 换取 ', root.ShelterCore.formatItemList(t.wants, (opts.customItems || []).concat(t.defs || []))) : null),
+        t.given ? h('div', { class: 'muted small' }, '对方交出：', transferItems(t, t.given, opts.customItems)) : null,
+        t.note ? h('div', { class: 'muted small' }, '附言：', document.createTextNode(t.note)) : null,
+        actions ? h('div', { class: 'row' }, actions) : null);
+    }
+    var incoming = ctx.transfers.filter(function (t) { return t.status === 'pending' && t.to === me; });
+    var outgoing = ctx.transfers.filter(function (t) { return t.status === 'pending' && t.from === me; });
+    var done = ctx.transfers.filter(function (t) { return t.status !== 'pending' && (opts.ledger || t.from === me || t.to === me); }).slice().reverse();
+    var others = opts.ledger ? ctx.transfers.filter(function (t) { return t.status === 'pending' && t.from !== me && t.to !== me; }) : [];
+    return h('section', { class: 'card transfers', id: 'transfers' },
+      h('div', { class: 'card-head' }, h('h2', null, opts.title || '交接'), incoming.length ? h('span', { class: 'badge danger' }, incoming.length + ' 件待你处理') : null),
+      incoming.length ? h('div', null, h('h3', null, '待你处理'), h('ul', { class: 'list-plain' }, incoming.map(function (t) {
+        return line(t, [
+          h('button', {
+            type: 'button', class: 'btn small primary', onclick: function () {
+              if (!t.wants) return act(t, 'accept');
+              pickForTrade(t, opts.inventory || [], opts.customItems, opts.locked || []).then(function (give) { if (give) act(t, 'accept', { give: give }); });
+            }
+          }, t.wants ? '交易…' : '接收'),
+          h('button', { type: 'button', class: 'btn small', onclick: function () { act(t, 'reject'); } }, '拒收')
+        ]);
+      }))) : null,
+      outgoing.length ? h('div', null, h('h3', null, '你发出的（等对方确认）'), h('ul', { class: 'list-plain' }, outgoing.map(function (t) {
+        return line(t, [h('button', { type: 'button', class: 'btn small', onclick: function () { act(t, 'cancel'); } }, '撤回')]);
+      }))) : null,
+      others.length ? h('div', null, h('h3', null, '玩家之间待确认'), h('ul', { class: 'list-plain' }, others.map(function (t) { return line(t, null); }))) : null,
+      !incoming.length && !outgoing.length && !others.length ? h('p', { class: 'empty' }, '没有待处理的交接。') : null,
+      done.length ? h('details', { open: !!opts.ledger }, h('summary', null, (opts.ledger ? '全部记录' : '最近的记录') + '（' + done.length + '）'),
+        h('ul', { class: 'list-plain' }, (opts.ledger ? done : done.slice(0, 20)).map(function (t) { return line(t, null); }))) : null);
+  }
+
+  var MESSAGE_FAIL = {
+    network: '连不上服务器，请稍后再试。',
+    no_recipient: '这个座位现在没有人。',
+    game_closed: '对局已结束，不能再发私信。',
+    bad_text: '私信需要 1～2000 个字。'
+  };
 
   var ONLINE_RELOADED = {
     device: '另一台设备更新了存档：已载入最新',
@@ -742,6 +1054,9 @@
     stamp: stamp,
     Store: Store,
     connectOnline: connectOnline,
+    messenger: messenger,
+    transferCards: transferCards,
+    transferFail: transferFail,
     onlineBanner: onlineBanner,
     onlineFailCard: onlineFailCard,
     onlineReloadedText: onlineReloadedText,

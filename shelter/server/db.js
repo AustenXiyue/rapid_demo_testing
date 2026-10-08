@@ -49,6 +49,39 @@ const MIGRATIONS = [
    ALTER TABLE games ADD COLUMN host_version INTEGER NOT NULL DEFAULT 0;
    ALTER TABLE seats ADD COLUMN state TEXT;
    ALTER TABLE seats ADD COLUMN version INTEGER NOT NULL DEFAULT 0;`,
+  // 4：私信。sender／recipient 是身份而不是账户：'host'（主持人）或座位 ID。
+  // 座位上的私信跟着座位走：座位被释放后由接手的人继续看到。
+  `CREATE TABLE messages (
+     id         TEXT PRIMARY KEY,
+     game_id    TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+     sender     TEXT NOT NULL,
+     recipient  TEXT NOT NULL,
+     text       TEXT NOT NULL,
+     created_at INTEGER NOT NULL,
+     read_at    INTEGER
+   );
+   CREATE INDEX messages_game ON messages(game_id, created_at);`,
+  // 5：交接单（物品流转）。sender／recipient 同私信的身份；recipient 为 'host' 表示交给公共池。
+  // items：发起时已从发起方扣下（托管）的物品快照；wants：交易时向对方要的物品（种类＋数量），given：对方接收时实际交出的。
+  // source：物品从哪来，决定拒收／撤回时退回哪里（inventory 发起方库存｜pool 公共池｜batch 补给批次｜none 凭空）。
+  `CREATE TABLE transfers (
+     id          TEXT PRIMARY KEY,
+     game_id     TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+     sender      TEXT NOT NULL,
+     recipient   TEXT NOT NULL,
+     kind        TEXT NOT NULL,
+     source      TEXT NOT NULL,
+     items       TEXT NOT NULL,
+     wants       TEXT,
+     given       TEXT,
+     defs        TEXT,
+     note        TEXT,
+     status      TEXT NOT NULL,
+     created_at  INTEGER NOT NULL,
+     resolved_at INTEGER,
+     resolved_by TEXT
+   );
+   CREATE INDEX transfers_game ON transfers(game_id, created_at);`,
 ];
 
 function openDb(path) {

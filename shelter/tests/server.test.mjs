@@ -415,7 +415,8 @@ test('主持人改规则或玩家名单：自动套到所有玩家存档并推�
   host.state.rules.inventoryCapacityTicks = 24;
   await put(call, g, 'host', u.host, 2, host.state);
   const m = await ps.waitFor('state:update', (x) => x.reason);
-  assert.deepEqual(m.reason, { rules: true, roster: false });
+  assert.equal(m.reason, 'rules');
+  assert.deepEqual(m.detail, { rules: true, roster: false });
   assert.equal(m.version, 3);
   assert.equal(m.state.rules.inventoryCapacityTicks, 24);
   assert.equal(m.state.hp, 4, '库存和状态不动');
@@ -425,7 +426,7 @@ test('主持人改规则或玩家名单：自动套到所有玩家存档并推�
   host.state.players[2].name = '二狗';
   await put(call, g, 'host', u.host, 3, host.state);
   const m2 = await ps.waitFor('state:update', (x) => x.reason);
-  assert.deepEqual(m2.reason, { rules: false, roster: true });
+  assert.deepEqual(m2.detail, { rules: false, roster: true });
   assert.deepEqual(m2.state.otherNames.sort(), ['host', '二狗']);
   const p2 = (await call(`/api/games/${g.id}/state/seat`, { cookie: u.pl2.cookie })).data;
   assert.equal(p2.state.rules.inventoryCapacityTicks, 24, '不在线的玩家存档也同步了');
@@ -447,4 +448,278 @@ test('释放座位后：新人接手拿到原来座位上的玩家存档', async
   assert.equal(taken.state.playerId, seatId);
   assert.equal(taken.state.hp, 1);
   assert.deepEqual(taken.state.inventory.map((e) => [e.defId, e.qty]), [['bread', 2]]);
+});
+
+// ---------------------------------------------------------------- 公开信息与私信
+
+const seatIdOf = async (call, g, who) => (await call(`/api/games/${g.id}/state/seat`, { cookie: who.cookie })).data.state.playerId;
+const msgs = (call, g, who, as) => call(`/api/games/${g.id}/messages?as=${as}`, { cookie: who.cookie });
+const send = (call, g, who, as, to, text) => call(`/api/games/${g.id}/messages`, { body: { as, to, text }, cookie: who.cookie });
+
+test('公开信息：只含「公开展示」的内容，不漏公共池明细、补给物品、事件库、守夜与私信备注；变化时推给房间', async (t) => {
+  const { call, base } = await start(t);
+  const { u, g } = await startedGame(call);
+  assert.equal((await call(`/api/games/${g.id}/public`, { cookie: u.pl1.cookie })).data.error, 'not_started');
+  await call(`/api/games/${g.id}/status`, { body: { status: 'active' }, cookie: u.host.cookie });
+  const s1 = await sock(base, u.pl1.cookie);
+  t.after(() => s1.close());
+  await s1.emitWithAck('game:watch', g.id);
+
+  const host = (await call(`/api/games/${g.id}/state/host`, { cookie: u.host.cookie })).data;
+  const st = host.state;
+  st.started = true; st.day = 2; st.phase = 'supply';
+  st.pool = [{ id: 'x1', defId: 'jewel', qty: 3 }];
+  st.batches = [{ id: 'b1', label: '第2天补给', status: 'open', day: 2, pickOrder: st.seatOrder.slice(), picks: [], items: [{ id: 'x2', defId: 'medkit', qty: 1 }] }];
+  st.events = [{ id: 'e1', name: '秘密事件库条目', body: '不该公开', options: [] }];
+  st.dmNotes = { [st.players[0].id]: { love: st.players[1].id } };
+  st.stage = { event: { name: '停电', location: '大厅', body: '灯灭了', options: ['修', '不修'], flowId: 'f1' }, showPoolCount: false };
+  st.publicFeed = [{ id: 'p1', day: 1, kind: 'night', text: '昨夜平安', refId: 'r1', at: 1 }];
+  st.rescueProgress = 2;
+  assert.equal((await put(call, g, 'host', u.host, host.version, st)).status, 200);
+
+  const pushed = await s1.waitFor('public:update', (m) => m.view.phase === 'supply');
+  const view = (await call(`/api/games/${g.id}/public`, { cookie: u.pl1.cookie })).data.view;
+  assert.deepEqual(pushed.view, view);
+  assert.equal(view.day, 2);
+  assert.deepEqual(view.supply, [{ label: '第2天补给', pickOrder: st.seatOrder, picked: [], next: st.seatOrder[0] }]);
+  assert.deepEqual(view.event, { name: '停电', location: '大厅', body: '灯灭了', options: ['修', '不修'] });
+  assert.equal(view.poolCount, null, '主持人没打开开关时不公开池子件数');
+  assert.deepEqual(view.feed, [{ id: 'p1', day: 1, kind: 'night', text: '昨夜平安', at: 1 }]);
+  const json = JSON.stringify(view);
+  for (const secret of ['jewel', 'medkit', '秘密事件库条目', 'dmNotes', 'love', 'flowId', 'refId', '"log"']) assert.ok(!json.includes(secret), '公开信息里不该有 ' + secret);
+
+  st.stage.showPoolCount = true;
+  await put(call, g, 'host', u.host, host.version + 1, st);
+  assert.equal((await s1.waitFor('public:update', (m) => m.view.poolCount === 3)).view.poolCount, 3);
+  const other = (await users(call, 'outsider')).outsider;
+  assert.equal((await call(`/api/games/${g.id}/public`, { cookie: other.cookie })).status, 404);
+});
+
+test('私信：主持人与玩家、玩家与玩家互发；主持人看不到玩家之间的；身份不能冒用；暂停能发、结束不能发', async (t) => {
+  const { call, base } = await start(t);
+  const { u, g } = await startedGame(call);
+  assert.equal((await send(call, g, u.pl1, 'seat', 'host', '早')).data.error, 'not_started');
+  await call(`/api/games/${g.id}/status`, { body: { status: 'active' }, cookie: u.host.cookie });
+  const [hostSeat, a, b] = [await seatIdOf(call, g, u.host), await seatIdOf(call, g, u.pl1), await seatIdOf(call, g, u.pl2)];
+  const sb = await sock(base, u.pl2.cookie);
+  t.after(() => sb.close());
+
+  assert.equal((await send(call, g, u.host, 'host', a, '你的身份是……')).status, 200);
+  assert.equal((await send(call, g, u.pl1, 'seat', b, '要不要结盟？')).status, 200);
+  const pushed = await sb.waitFor('message:new');
+  assert.deepEqual([pushed.message.from, pushed.message.to, pushed.message.text], [a, b, '要不要结盟？']);
+  await send(call, g, u.pl2, 'seat', 'host', '我想换位');
+
+  const hostBox = (await msgs(call, g, u.host, 'host')).data;
+  assert.equal(hostBox.me, 'host');
+  assert.deepEqual(hostBox.messages.map((m) => m.text), ['你的身份是……', '我想换位'], '主持人看不到玩家之间的私信');
+  const aBox = (await msgs(call, g, u.pl1, 'seat')).data;
+  assert.equal(aBox.me, a);
+  assert.deepEqual(aBox.messages.map((m) => m.text), ['你的身份是……', '要不要结盟？']);
+  // 主导兼角色：以座位身份收的私信不在主持人收件箱里
+  await send(call, g, u.pl1, 'seat', hostSeat, '给主导的角色');
+  assert.deepEqual((await msgs(call, g, u.host, 'seat')).data.messages.map((m) => m.text), ['给主导的角色']);
+  assert.ok(!(await msgs(call, g, u.host, 'host')).data.messages.some((m) => m.text === '给主导的角色'));
+
+  assert.equal((await msgs(call, g, u.pl1, 'host')).status, 403, '玩家不能以主持人身份读');
+  assert.equal((await send(call, g, u.pl1, 'host', b, '冒充')).data.error, 'bad_identity');
+  assert.equal((await send(call, g, u.pl1, 'seat', a, '自己')).data.error, 'bad_recipient');
+  assert.equal((await send(call, g, u.pl1, 'seat', 'nobody', 'x')).data.error, 'no_recipient');
+  assert.equal((await send(call, g, u.pl1, 'seat', b, ' ')).data.error, 'bad_text');
+  assert.equal((await msgs(call, g, u.pl3, 'seat')).status, 404, '非成员');
+
+  // 已读
+  assert.equal((await msgs(call, g, u.pl2, 'seat')).data.messages.filter((m) => m.to === b && !m.readAt).length, 1);
+  await call(`/api/games/${g.id}/messages/read`, { body: { as: 'seat', with: a }, cookie: u.pl2.cookie });
+  assert.equal((await msgs(call, g, u.pl2, 'seat')).data.messages.filter((m) => m.to === b && !m.readAt).length, 0);
+
+  await call(`/api/games/${g.id}/status`, { body: { status: 'paused' }, cookie: u.host.cookie });
+  assert.equal((await send(call, g, u.pl1, 'seat', 'host', '暂停也能聊')).status, 200);
+  await call(`/api/games/${g.id}/status`, { body: { status: 'finished' }, cookie: u.host.cookie });
+  assert.equal((await send(call, g, u.pl1, 'seat', 'host', '结束了')).data.error, 'game_closed');
+});
+
+test('私信跟着座位走：座位被释放后原账户看不到，接手的人看得到；发给空座位被拒', async (t) => {
+  const { call } = await start(t);
+  const { u, g } = await startedGame(call);
+  await call(`/api/games/${g.id}/status`, { body: { status: 'active' }, cookie: u.host.cookie });
+  const a = await seatIdOf(call, g, u.pl1);
+  await send(call, g, u.host, 'host', a, '只给这个角色的线索');
+  await call(`/api/games/${g.id}/seats/${a}`, { body: { action: 'release' }, cookie: u.host.cookie });
+  assert.equal((await msgs(call, g, u.pl1, 'seat')).status, 404);
+  assert.equal((await send(call, g, u.host, 'host', a, '有人吗')).data.error, 'no_recipient');
+  await call(`/api/games/${g.id}/join`, { body: {}, cookie: u.pl3.cookie });
+  const box = (await msgs(call, g, u.pl3, 'seat')).data;
+  assert.equal(box.me, a);
+  assert.deepEqual(box.messages.map((m) => m.text), ['只给这个角色的线索']);
+});
+
+// ---------------------------------------------------------------- 交接单（物品流转）
+
+const C = require('../src/shared/core.js');
+const tr = (call, g, who, path, body) => call(`/api/games/${g.id}/transfers${path}`, { body, cookie: who.cookie });
+const seatState = async (call, g, who) => (await call(`/api/games/${g.id}/state/seat`, { cookie: who.cookie })).data;
+const hostState = async (call, g, who) => (await call(`/api/games/${g.id}/state/host`, { cookie: who.cookie })).data;
+const count = (list, defId) => list.filter((e) => e.defId === defId).reduce((n, e) => n + e.qty, 0);
+
+// 开局后给玩家存档里放些物品（直接写自己的存档，和玩家页面一样）
+async function stock(call, g, who, items) {
+  const cur = await seatState(call, g, who);
+  items.forEach((x) => C.addItem(cur.state.inventory, x[0], x[1], { rules: cur.state.rules }));
+  await put(call, g, 'seat', who, cur.version, cur.state);
+  return (await seatState(call, g, who)).state;
+}
+
+async function activeGame(call) {
+  const { u, g } = await startedGame(call);
+  await call(`/api/games/${g.id}/status`, { body: { status: 'active' }, cookie: u.host.cookie });
+  const ids = { a: await seatIdOf(call, g, u.pl1), b: await seatIdOf(call, g, u.pl2) };
+  return { u, g, ids };
+}
+
+test('赠予：发起时立刻从发起方扣下（托管）；接收后入对方库存，实例字段（能量棒次数、地图笔记）原样保留；推送双方存档', async (t) => {
+  const { call, base } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  let inv = (await stock(call, g, u.pl1, [['bread', 3], ['energy_bar', 1], ['map', 1]])).inventory;
+  const bar = inv.find((e) => e.defId === 'energy_bar');
+  const map = inv.find((e) => e.defId === 'map');
+  // 把能量棒用掉一次、地图写一条笔记，看交接后还在不在
+  const cur = await seatState(call, g, u.pl1);
+  cur.state.inventory.find((e) => e.id === bar.id).uses = 2;
+  cur.state.inventory.find((e) => e.id === map.id).notes = [{ id: 'n1', text: '北边有水' }];
+  await put(call, g, 'seat', u.pl1, cur.version, cur.state);
+  const bread = inv.find((e) => e.defId === 'bread');
+  const sb = await sock(base, u.pl2.cookie);
+  t.after(() => sb.close());
+
+  const sent = await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: bread.id, qty: 2 }, { entryId: bar.id, qty: 1 }, { entryId: map.id, qty: 1 }], note: '拿着' });
+  assert.equal(sent.status, 200);
+  assert.equal(sent.data.transfer.kind, 'gift');
+  inv = (await seatState(call, g, u.pl1)).state.inventory;
+  assert.deepEqual([count(inv, 'bread'), count(inv, 'energy_bar'), count(inv, 'map')], [1, 0, 0], '托管：发起方已扣下');
+  assert.equal(count((await seatState(call, g, u.pl2)).state.inventory, 'bread'), 0, '对方还没收到');
+  await sb.waitFor('transfer:update', (m) => m.transfer.id === sent.data.transfer.id);
+
+  assert.equal((await tr(call, g, u.pl1, `/${sent.data.transfer.id}/accept`, { as: 'seat' })).data.error, 'not_recipient');
+  const ok = await tr(call, g, u.pl2, `/${sent.data.transfer.id}/accept`, { as: 'seat' });
+  assert.equal(ok.data.transfer.status, 'accepted');
+  const got = (await seatState(call, g, u.pl2)).state;
+  assert.equal(count(got.inventory, 'bread'), 2);
+  assert.equal(got.inventory.find((e) => e.defId === 'energy_bar').uses, 2);
+  assert.deepEqual(got.inventory.find((e) => e.defId === 'map').notes, [{ id: 'n1', text: '北边有水' }]);
+  assert.match(got.log[0].text, /接收（来自 pl1）/);
+  const pushed = await sb.waitFor('state:update', (m) => m.reason === 'transfer');
+  assert.equal(count(pushed.state.inventory, 'bread'), 2);
+  assert.equal((await tr(call, g, u.pl2, `/${sent.data.transfer.id}/accept`, { as: 'seat' })).data.error, 'already_resolved', '不能重复处理');
+});
+
+test('拒收与撤回：物品原样退回发起方；数量不够、冒用身份、携带中的物品、暂停时都被拒', async (t) => {
+  const { call } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const inv = (await stock(call, g, u.pl1, [['water', 4]])).inventory;
+  const water = inv[0];
+  assert.equal((await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: water.id, qty: 5 }] })).data.error, 'not_enough');
+  assert.equal((await tr(call, g, u.pl1, '', { as: 'host', to: ids.b, give: [{ entryId: water.id, qty: 1 }] })).data.error, 'bad_identity');
+  assert.equal((await tr(call, g, u.pl1, '', { as: 'seat', to: ids.a, give: [{ entryId: water.id, qty: 1 }] })).data.error, 'bad_recipient');
+
+  const x = (await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: water.id, qty: 3 }] })).data.transfer;
+  await tr(call, g, u.pl2, `/${x.id}/reject`, { as: 'seat' });
+  assert.equal(count((await seatState(call, g, u.pl1)).state.inventory, 'water'), 4, '拒收后退回');
+  const y = (await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: water.id, qty: 1 }] })).data.transfer;
+  assert.equal((await tr(call, g, u.pl2, `/${y.id}/cancel`, { as: 'seat' })).data.error, 'not_sender');
+  await tr(call, g, u.pl1, `/${y.id}/cancel`, { as: 'seat' });
+  assert.equal(count((await seatState(call, g, u.pl1)).state.inventory, 'water'), 4, '撤回后退回');
+
+  // 已确认携带的物品被锁定（退回后条目换了新 id，重新取一次）
+  const cur = await seatState(call, g, u.pl1);
+  const w = cur.state.inventory.find((e) => e.defId === 'water');
+  cur.state.loadout = { context: 'event', label: '', day: 1, limitTicks: 4, items: [{ entryId: w.id, qty: 1 }], confirmed: true };
+  await put(call, g, 'seat', u.pl1, cur.version, cur.state);
+  assert.equal((await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: w.id, qty: 1 }] })).data.error, 'in_loadout');
+
+  // 暂停：发起和处理都不行
+  const cur2 = await seatState(call, g, u.pl1);
+  cur2.state.loadout = null;
+  await put(call, g, 'seat', u.pl1, cur2.version, cur2.state);
+  const z = (await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: w.id, qty: 1 }] })).data.transfer;
+  await call(`/api/games/${g.id}/status`, { body: { status: 'paused' }, cookie: u.host.cookie });
+  assert.equal((await tr(call, g, u.pl2, `/${z.id}/accept`, { as: 'seat' })).data.error, 'read_only');
+  assert.equal((await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: w.id, qty: 1 }] })).data.error, 'read_only');
+});
+
+test('交易是原子的：接收方交出的种类和数量对得上才两边同时换手；对不上或不够时什么都不变', async (t) => {
+  const { call } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const a = (await stock(call, g, u.pl1, [['ammo', 2]])).inventory;
+  const b = (await stock(call, g, u.pl2, [['water', 1], ['bread', 3]])).inventory;
+  assert.equal((await tr(call, g, u.pl1, '', { as: 'seat', to: 'host', give: [{ entryId: a[0].id, qty: 1 }], wants: [{ defId: 'water', qty: 1 }] })).data.error, 'bad_wants', '交公不能要东西');
+  const x = (await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: a[0].id, qty: 2 }], wants: [{ defId: 'water', qty: 2 }] })).data.transfer;
+  assert.equal(x.kind, 'trade');
+  const water = b.find((e) => e.defId === 'water');
+  const bread = b.find((e) => e.defId === 'bread');
+  assert.equal((await tr(call, g, u.pl2, `/${x.id}/accept`, { as: 'seat', give: [{ entryId: water.id, qty: 2 }] })).data.error, 'not_enough');
+  assert.equal((await tr(call, g, u.pl2, `/${x.id}/accept`, { as: 'seat', give: [{ entryId: water.id, qty: 1 }, { entryId: bread.id, qty: 1 }] })).data.error, 'wants_mismatch');
+  const before = await seatState(call, g, u.pl2);
+  assert.equal(count(before.state.inventory, 'water'), 1, '失败时接收方库存不变');
+  assert.equal(count(before.state.inventory, 'ammo'), 0);
+  await tr(call, g, u.pl2, `/${x.id}/reject`, { as: 'seat' });
+
+  const a2 = (await seatState(call, g, u.pl1)).state.inventory.find((e) => e.defId === 'ammo');
+  const y = (await tr(call, g, u.pl1, '', { as: 'seat', to: ids.b, give: [{ entryId: a2.id, qty: 1 }], wants: [{ defId: 'water', qty: 1 }, { defId: 'bread', qty: 2 }] })).data.transfer;
+  const ok = await tr(call, g, u.pl2, `/${y.id}/accept`, { as: 'seat', give: [{ entryId: water.id, qty: 1 }, { entryId: bread.id, qty: 2 }] });
+  assert.equal(ok.data.transfer.status, 'accepted');
+  assert.deepEqual(ok.data.transfer.given.map((e) => [e.defId, e.qty]), [['water', 1], ['bread', 2]]);
+  const sa = (await seatState(call, g, u.pl1)).state.inventory;
+  const sb2 = (await seatState(call, g, u.pl2)).state.inventory;
+  assert.deepEqual([count(sa, 'ammo'), count(sa, 'water'), count(sa, 'bread')], [1, 1, 2]);
+  assert.deepEqual([count(sb2, 'ammo'), count(sb2, 'water'), count(sb2, 'bread')], [1, 0, 1]);
+});
+
+test('公共池：玩家交公由主持人接收入池；主持人从池中发放（托管）、凭空给予；拒收回到池里；主持人看得到全部记录，玩家只看自己的', async (t) => {
+  const { call } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const inv = (await stock(call, g, u.pl1, [['jewel', 2]])).inventory;
+  const x = (await tr(call, g, u.pl1, '', { as: 'seat', to: 'host', give: [{ entryId: inv[0].id, qty: 2 }], kind: 'scavenge' })).data.transfer;
+  assert.equal(x.kind, 'scavenge');
+  assert.equal((await tr(call, g, u.pl2, `/${x.id}/accept`, { as: 'seat' })).data.error, 'not_recipient');
+  await tr(call, g, u.host, `/${x.id}/accept`, { as: 'host' });
+  assert.equal(count((await hostState(call, g, u.host)).state.pool, 'jewel'), 2, '入池');
+
+  const y = (await tr(call, g, u.host, '', { as: 'host', to: ids.b, source: 'pool', give: [{ defId: 'jewel', qty: 1 }], kind: 'grant' })).data.transfer;
+  assert.equal(count((await hostState(call, g, u.host)).state.pool, 'jewel'), 1, '从池里托管');
+  await tr(call, g, u.pl2, `/${y.id}/reject`, { as: 'seat' });
+  assert.equal(count((await hostState(call, g, u.host)).state.pool, 'jewel'), 2, '拒收回到池里');
+  assert.equal((await tr(call, g, u.host, '', { as: 'host', to: ids.b, source: 'pool', give: [{ defId: 'medkit', qty: 1 }] })).data.error, 'not_enough');
+
+  const z = (await tr(call, g, u.host, '', { as: 'host', to: ids.b, source: 'none', give: [{ defId: 'energy_bar', qty: 2 }], kind: 'opening' })).data.transfer;
+  await tr(call, g, u.pl2, `/${z.id}/accept`, { as: 'seat' });
+  const bars = (await seatState(call, g, u.pl2)).state.inventory.filter((e) => e.defId === 'energy_bar');
+  assert.equal(bars.length, 2, '实例物品逐件加入');
+  assert.ok(bars.every((e) => e.uses >= 1), '凭空给予也带实例默认值');
+
+  const all = (await call(`/api/games/${g.id}/transfers?as=host`, { cookie: u.host.cookie })).data.transfers;
+  assert.equal(all.length, 3);
+  const mine = (await call(`/api/games/${g.id}/transfers?as=seat`, { cookie: u.pl1.cookie })).data.transfers;
+  assert.deepEqual(mine.map((m) => m.id), [x.id], '玩家只看到和自己有关的');
+});
+
+test('补给批次：记录选择后登记给玩家（不重复扣池子、不能重复登记）；拒收时撤回这次选择、物品回到候选', async (t) => {
+  const { call } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const host = await hostState(call, g, u.host);
+  const s = host.state;
+  const pieces = [{ id: 'pc_bread', defId: 'bread', qty: 1 }, { id: 'pc_water', defId: 'water', qty: 1 }];
+  s.batches = [{ id: 'b1', label: '第1天补给', kind: 'supply', status: 'open', day: 1, participantIds: [ids.a, ids.b], pickOrder: [ids.a, ids.b], picks: [], items: pieces }];
+  assert.ok(C.pickFromBatch(s.batches[0], ids.a, 'pc_bread').ok);
+  await put(call, g, 'host', u.host, host.version, s);
+
+  assert.equal((await tr(call, g, u.host, '', { as: 'host', to: ids.b, source: 'batch', batchId: 'b1', pieceId: 'pc_bread' })).data.error, 'no_pick', '只能发给选了这件的人');
+  const x = (await tr(call, g, u.host, '', { as: 'host', to: ids.a, source: 'batch', batchId: 'b1', pieceId: 'pc_bread', kind: 'supply' })).data.transfer;
+  assert.equal(x.kind, 'supply');
+  assert.equal((await tr(call, g, u.host, '', { as: 'host', to: ids.a, source: 'batch', batchId: 'b1', pieceId: 'pc_bread' })).data.error, 'already_sent');
+  await tr(call, g, u.pl1, `/${x.id}/reject`, { as: 'seat' });
+  const after = (await hostState(call, g, u.host)).state;
+  assert.deepEqual(after.batches[0].picks, [], '撤回了选择');
+  assert.deepEqual(after.batches[0].items.map((p) => p.id).sort(), ['pc_bread', 'pc_water']);
+  assert.equal(after.pool.length, 0, '不会多出一份到池子里');
 });
