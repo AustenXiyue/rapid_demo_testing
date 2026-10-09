@@ -12,7 +12,8 @@ const { createServer } = require('../server/index.js');
 let browser, srv, base;
 
 before(async () => {
-  srv = createServer({ dbPath: ':memory:' });
+  // 这个文件里注册的账户很多，放宽注册／登录的频率限制（限流本身由服务端测试覆盖）
+  srv = createServer({ dbPath: ':memory:', rateLimit: { max: 1000, windowMs: 60000 } });
   await new Promise((r) => srv.server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${srv.server.address().port}/`;
   browser = await chromium.launch();
@@ -586,6 +587,100 @@ test('站内投票：主持人从事件流程发起；玩家投票、改票，�
     await m.getByRole('button', { name: '发起', exact: true }).click();
     await cat.page.locator('#polls .poll', { hasText: '今晚吃什么' }).getByRole('button', { name: 'B. 罐头' }).click();
     await host.page.locator('#polls .poll-option', { hasText: '罐头' }).getByText('1 票').waitFor();
+    assert.deepEqual([...host.errors, ...bob.errors, ...cat.errors], []);
+  } finally {
+    await host.context.close();
+    await bob.context.close();
+    await cat.context.close();
+  }
+});
+
+test('修复回归：补给候选只发给轮到的人、玩家自己选、主持人采用后入库并自动问下一位；领完自动结束；标记死亡同步到本人；接手的人显示「角色名（账户名）」', async () => {
+  const host = await openPage();
+  const bob = await openPage();
+  const cat = await openPage();
+  try {
+    await register(host.page, 'host_fix');
+    await host.page.locator('[data-entry="create"]').click();
+    await host.page.locator('.modal input').first().fill('回归局');
+    await host.page.locator('.modal').getByRole('button', { name: '只主持' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '创建', exact: true }).click();
+    await host.page.waitForURL(/#game=/);
+    const gameId = host.page.url().split('#game=')[1];
+    const code = (await host.page.locator('#invite-code').textContent()).trim();
+    for (const [p, n] of [[bob, 'bob_fix'], [cat, 'cat_fix']]) {
+      await register(p.page, n);
+      await p.page.locator('[data-entry="join"]').click();
+      await p.page.locator('.code-input').fill(code);
+      await p.page.locator('form.code-form').getByRole('button', { name: '加入', exact: true }).click();
+      await p.page.waitForURL(/#game=/);
+    }
+    await host.page.getByRole('button', { name: '开始对局' }).click();
+    await host.page.locator('#panels').getByRole('link', { name: '进入主持人面板' }).click();
+    await host.page.waitForURL(/host\.html\?game=/);
+    for (const p of [bob, cat]) {
+      await p.page.locator('#panels').getByRole('link', { name: '进入玩家面板' }).click();
+      await p.page.waitForURL(/player\.html\?game=/);
+      await tab(p.page, 'game');
+    }
+
+    // 公共池放 3 件，开一批每日补给（2 人领）
+    await host.page.locator('[data-tab="supply"]').click();
+    await host.page.locator('textarea[placeholder^="例如：面包×3"]').fill('面包，普通水，绷带');
+    await host.page.getByRole('button', { name: '解析并执行' }).click();
+    await host.page.locator('.card', { hasText: '新建发放批次' }).getByRole('button', { name: '抽取', exact: true }).click();
+
+    // 只有轮到的 bob 收到候选；cat 没有
+    const bobAsk = bob.page.locator('#asks li', { hasText: '轮到你领取' });
+    await bobAsk.waitFor();
+    assert.equal(await cat.page.locator('#asks').count(), 0, '没轮到的人看不到候选');
+    await bobAsk.getByRole('button').nth(1).click();
+    const bobRow = host.page.locator('tr[data-picker]', { hasText: 'bob_fix' });
+    await bobRow.getByText('玩家选了').waitFor();
+    const picked = (await bobRow.innerText()).match(/玩家选了：(\S+)/)[1];
+    await bobRow.getByRole('button', { name: '采用玩家的选择' }).click();
+    // bob 收到这件补给，接收入库；cat 接着被问
+    await tab(bob.page, 'inventory');
+    await bob.page.locator('#transfers .transfer', { hasText: picked }).getByRole('button', { name: '接收' }).click();
+    await bob.page.locator('.inv-card', { hasText: picked }).waitFor();
+    const catAsk = cat.page.locator('#asks li', { hasText: '轮到你领取' });
+    await catAsk.waitFor();
+    assert.ok(!(await catAsk.innerText()).includes(picked), '被选走的那件不再出现在候选里');
+    await catAsk.getByRole('button').first().click();
+    await host.page.locator('tr[data-picker]', { hasText: 'cat_fix' }).getByRole('button', { name: '采用玩家的选择' }).click();
+    // 两人都领完：批次自动结束（剩下的一件回公共池），不再有「结束批次」按钮
+    await host.page.waitForFunction(async (id) => {
+      const d = await (await fetch('api/games/' + id + '/state/host')).json();
+      const b = d.state.batches.at(-1);
+      return b.status === 'closed' && b.picks.length === 2 && d.state.pool.length === 1;
+    }, gameId);
+    assert.equal(await host.page.getByRole('button', { name: '结束批次（未选的放回公共池）' }).count(), 0);
+
+    // 标记 cat 死亡：cat 自己的页面跟着变，弹出提示
+    await host.page.locator('[data-tab="settings"]').click();
+    await host.page.locator('.card', { hasText: '玩家名单' }).locator('input[type="checkbox"]').nth(1).check();
+    await cat.page.locator('.modal', { hasText: '主持人把你标记为已死亡' }).waitFor();
+    await cat.page.locator('.modal').getByRole('button').last().click();
+    await tab(cat.page, 'dashboard');
+    await cat.page.getByText('已死亡').first().waitFor();
+
+    // 释放 bob 的座位，新账户接手：显示「角色名（账户名）」
+    const lobby = await host.context.newPage();
+    await lobby.goto(base + '#game=' + gameId);
+    await lobby.locator('#seats .seat', { hasText: 'bob_fix' }).getByRole('button', { name: '释放座位' }).click();
+    await lobby.locator('.modal').getByRole('button', { name: '释放座位' }).click();
+    const dan = await openPage();
+    try {
+      await register(dan.page, 'dan_fix');
+      await dan.page.locator('[data-entry="join"]').click();
+      await dan.page.locator('#open-games .game-row', { hasText: '回归局' }).getByRole('button', { name: '接手空座位' }).click();
+      await dan.page.waitForURL(/#game=/);
+      await dan.page.locator('#seats .seat-name', { hasText: 'bob_fix（dan_fix）' }).waitFor();
+      await tab(cat.page, 'game');
+      await cat.page.locator('.msg-contact', { hasText: 'bob_fix（dan_fix）' }).waitFor();
+    } finally {
+      await dan.context.close();
+    }
     assert.deepEqual([...host.errors, ...bob.errors, ...cat.errors], []);
   } finally {
     await host.context.close();

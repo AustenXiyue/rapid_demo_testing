@@ -1302,3 +1302,11 @@ Discord 投票	Discord vote
 至少选一位玩家	Pick at least one player
 投票已发起	Vote started
 或者手动选择结果…	Or pick the result manually…
+ 玩家选了：	 Player picked: 
+采用玩家的选择	Adopt the player's pick
+重新请他选	Ask again
+请他在面板上选	Ask them to pick on their panel
+：全部领取完毕，自动结束	: everyone has picked; closed automatically
+今天还没有人计划守夜名单。玩家在自己的页面点亮「计划守夜名单」、抽两张卡选一张后提交给你，会出现在上面，点「采用」就加入这里。	No one has planned a watch roster today. When a player lights “Plan watch roster”, draws two cards and submits one, it shows up above; press “Adopt” to add it here.
+选项名称（站内投票项）	Option name (in-app vote option)
+ 选好了补给：在「补给与公共池」确认	 picked their supply: confirm under “Supplies & pool”

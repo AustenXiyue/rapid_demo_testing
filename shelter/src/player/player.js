@@ -129,7 +129,13 @@
     if (online && online.blocked()) return;
     var item = undo.pop();
     if (!item) return;
+    var actionBefore = JSON.stringify(state.action);
     state = item.snapshot;
+    // 联机：撤销改动了今天的行动时，交给主持人的那份也跟着改（撤回或重新提交）
+    if (online && JSON.stringify(state.action) !== actionBefore) {
+      var a = state.action;
+      setTimeout(function () { submitAction(a.day === today() && a.used ? a.type : null); }, 0);
+    }
     log(state, '撤销：' + item.label);
     save();
     render();
@@ -1790,19 +1796,28 @@
       body: h('div', { class: 'stack' },
         h('p', null, h('b', null, '自留（加入库存）：'), kept.length ? C.formatItemList(kept, state.customItems) : '无'),
         h('p', null, h('b', null, '本次所得交公：'), handIn.length ? C.formatItemList(handIn, state.customItems) : '无'),
+        !kept.length && handIn.length ? h('div', { class: 'callout risk' }, '你没有自留任何物品：本次所得会全部交给公共池。') : null,
         transfers.length ? h('p', null, h('b', null, '旧物品转出（不算本次所得）：'), transfers.map(function (t) { return describe(t.entry) + (C.isStackable(defOf(t.entry)) ? '（' + t.qty + '件）' : ''); }).join('、')) : null,
         over ? h('div', { class: 'callout risk' }, (check.keepOver ? '自留超过 ' + C.fmtUnits(check.keepLimit) + ' 单位。' : '') + (check.inventoryOver ? '提交后总库存超过 ' + C.fmtUnits(check.inventoryLimit) + ' 单位。' : '') + '只警告，不阻断主持人裁定。') : null,
         over ? h('label', { class: 'check' }, override, '主持人已裁定，仍然提交') : null,
-        h('p', { class: 'muted small' }, '提交后只能提交一次：自留物品加入库存，交公清单生成交接文本给主持人手动加入公共池。')),
+        h('p', { class: 'muted small' }, online
+          ? '提交后只能提交一次：自留物品加入库存，交公的物品交给公共池，主持人接收后入池。'
+          : '提交后只能提交一次：自留物品加入库存，交公清单生成交接文本给主持人手动加入公共池。')),
       actions: [{ label: '返回修改', value: false }, { label: '确认提交', kind: 'primary', value: true, validate: function () { return over && !override.checked ? '超出额度：请先勾选「主持人已裁定」' : ''; } }]
     }).then(function (ok) {
       if (!ok) return;
       var text = '';
+      var newPicks = [];
       var done = commit('提交搜刮', function (s) {
         if (!s.scavenge || s.scavenge.id !== sc.id || s.scavenge.status !== 'organize') throw new Error('本次搜刮已提交，不会重复领取');
         kept.forEach(function (k) { C.addItem(s.inventory, k.defId, k.qty, { customItems: s.customItems, rules: s.rules }); });
-        // 联机：交公的那部分也先进库存，提交后马上作为交接单交给公共池
-        if (online) handIn.forEach(function (k) { C.addItem(s.inventory, k.defId, k.qty, { customItems: s.customItems, rules: s.rules }); });
+        // 联机：交公的那部分也先进库存，提交后马上作为交接单交给公共池。
+        // 记下这次新加进来的条目，交公时只扣它们——否则能量棒、地图这类按件保存的物品可能扣到玩家原有的那件
+        if (online) handIn.forEach(function (k) {
+          C.addItem(s.inventory, k.defId, k.qty, { customItems: s.customItems, rules: s.rules }).forEach(function (e) {
+            newPicks.push({ entryId: e.id, qty: C.isStackable(defOf(e)) ? k.qty : 1 });
+          });
+        });
         var oldOut = [];
         transfers.forEach(function (t) {
           var e = C.findEntry(s.inventory, t.entry.id);
@@ -1825,22 +1840,15 @@
       ui.keep = {};
       ui.transfer = {};
       if (!online) return showHandoff(text, '交公清单：发给主持人');
-      // 联机：本次所得先进自己的库存，再连同旧物品一起交给公共池（等主持人接收）
-      // 同一种物品可能叠在同一个条目里（旧面包＋新面包），按条目累计，不超过现有数量
+      // 联机：本次所得（刚加进库存的条目）连同要交出的旧物品，一起交给公共池（等主持人接收）。
+      // 普通物品可能和旧的叠在同一个条目里（旧面包＋新面包），按条目累计，不超过现有数量
       var byEntry = {};
-      function add(e, n) { byEntry[e.id] = Math.min(e.qty, (byEntry[e.id] || 0) + n); }
-      transfers.forEach(function (t) {
-        var e = C.findEntry(state.inventory, t.entry.id);
-        if (e) add(e, Math.min(t.qty, e.qty));
-      });
-      handIn.forEach(function (x) {
-        var need = x.qty;
-        state.inventory.filter(function (e) { return e.defId === x.defId; }).forEach(function (e) {
-          var room = e.qty - (byEntry[e.id] || 0);
-          var n = Math.min(need, room);
-          if (n > 0) { add(e, n); need -= n; }
-        });
-      });
+      function add(id, n) {
+        var e = C.findEntry(state.inventory, id);
+        if (e) byEntry[id] = Math.min(e.qty, (byEntry[id] || 0) + n);
+      }
+      transfers.forEach(function (t) { add(t.entry.id, t.qty); });
+      newPicks.forEach(function (x) { add(x.entryId, x.qty); });
       var give = Object.keys(byEntry).map(function (id) { return { entryId: id, qty: byEntry[id] }; });
       if (!give.length) return;
       online.transfer('', { to: 'host', kind: 'scavenge', give: give, note: '搜刮交公' }).then(function () {
@@ -2051,13 +2059,19 @@
     return list.length ? h('div', { class: 'stack', id: 'polls' }, list.map(function (p) { return U.pollCard(online, p, { onChange: render }); })) : null;
   }
 
-  /** 需要我回答的：别人的换位请求、末位拍板。 */
+  /** 需要我回答的：补给选择、别人的换位请求、末位拍板。 */
   function answerPanel() {
     var asks = asksForMe();
     if (!asks.length) return null;
     return h('section', { class: 'card answer-panel', id: 'asks' },
       h('div', { class: 'card-head' }, h('h2', null, '需要你回答'), h('span', { class: 'badge danger' }, String(asks.length))),
       h('ul', { class: 'list-plain' }, asks.map(function (x) {
+        if (x.kind === 'pick') {
+          return h('li', { class: 'stack' }, h('div', null, '轮到你领取「', x.payload.label, '」：选一件，主持人确认后发给你。'),
+            h('div', { class: 'row' }, x.payload.options.map(function (o, i) {
+              return h('button', { type: 'button', class: 'btn', onclick: function () { online.submit(x.id + '/answer', { index: i }).then(render, U.submitFail); } }, o.label);
+            })));
+        }
         if (x.kind === 'swap') {
           return h('li', { class: 'stack' }, h('div', null, h('b', null, document.createTextNode(U.partyName(online, x.from, false))), ' 想和你交换实际座位。'),
             h('div', { class: 'row' },
@@ -2205,7 +2219,9 @@
       h('section', { class: 'card wide action-card' },
         h('div', { class: 'card-head' }, h('h2', null, '第 ' + today() + ' 天的行动'),
           usedToday ? sevBadge('ok', '已选：' + actionName(current)) : sevBadge('info', '还没选')),
-        h('p', { class: 'muted small' }, '每天一次行动。点一个按钮点亮它，就记为今天的行动；再点一次取消，点别的就改选。只记在你自己的页面上，不会自动通知主持人。'),
+        h('p', { class: 'muted small' }, online
+          ? '每天一次行动。点一个按钮点亮它，就记为今天的行动并交给主持人；再点一次取消，点别的就改选。主持人记录后当天不能再改。'
+          : '每天一次行动。点一个按钮点亮它，就记为今天的行动；再点一次取消，点别的就改选。只记在你自己的页面上，不会自动通知主持人。'),
         h('div', { class: 'action-grid', role: 'group', 'aria-label': '今日行动' }, ACTIONS.map(function (a) {
           var on = current === a.id;
           var disabled = a.id === 'skill' && !prof;
@@ -2656,8 +2672,20 @@
         undo.clear();
         render();
         if (reason === 'rules') {
-          var title = detail && detail.rules && detail.roster ? '主持人更新了规则和玩家名单' : detail && detail.roster ? '主持人更新了玩家名单' : '主持人更新了规则';
-          U.modal({ title: title, body: h('p', null, '你的页面已经自动同步，库存和状态没有变化。') });
+          var title = detail && detail.alive === false ? '主持人把你标记为已死亡'
+            : detail && detail.alive === true ? '主持人取消了你的死亡标记'
+              : detail && detail.rules && detail.roster ? '主持人更新了规则和玩家名单' : detail && detail.roster ? '主持人更新了玩家名单' : '主持人更新了规则';
+          var text = detail && detail.alive != null ? '你的存活状态已经跟着主持人的记录改了；库存没有变化。' : '你的页面已经自动同步，库存和状态没有变化。';
+          // 已经有一个这样的弹窗开着：只更新它的内容，不再叠一个
+          var open = document.querySelector('.modal[data-sync-notice]');
+          if (open) {
+            open.querySelector('.modal-title').textContent = U.T(title);
+            open.querySelector('.modal-body').textContent = U.T(text);
+            return;
+          }
+          U.modal({ title: title, body: h('p', null, text) });
+          var m = document.querySelectorAll('.modal');
+          if (m.length) m[m.length - 1].setAttribute('data-sync-notice', '');
           return;
         }
         if (reason !== 'transfer') U.toast(U.onlineReloadedText(reason), reason === 'device' ? 'ok' : 'warn');
@@ -2680,7 +2708,7 @@
       },
       onSubmission: function (x) {
         var me = online.inbox.me;
-        if (x.to === me && x.status === 'asking') U.toast(x.kind === 'swap' ? '有人想和你换位：在「对局」页回答' : '你是末位：在「对局」页选择最终守夜名单', 'ok');
+        if (x.to === me && x.status === 'asking') U.toast(x.kind === 'pick' ? '轮到你领取补给：在「对局」页选一件' : x.kind === 'swap' ? '有人想和你换位：在「对局」页回答' : '你是末位：在「对局」页选择最终守夜名单', 'ok');
         else if (x.from === me && x.status === 'adopted') U.toast('主持人已采用：' + U.submissionText(online, x), 'ok');
         else if (x.from === me && x.status === 'dismissed') U.toast('主持人没有采用：' + U.submissionText(online, x) + (x.note ? '（' + x.note + '）' : ''), 'warn');
         else if (x.from === me && x.kind === 'swap' && x.status === 'pending' && x.answer) U.toast(x.answer.accepted ? '对方同意换位，等主持人记录' : '对方拒绝了换位', x.answer.accepted ? 'ok' : 'warn');
@@ -2762,7 +2790,8 @@
     var me = state.playerId;
     var who = function (id) { return document.createTextNode(pubName(v, id)); };
     var panels = [];
-    if (v.actions) {
+    // 和主持人的「公开展示」一样按阶段突出：个人行动只在阶段5显示；补给只在还有人没领时显示；事件在事件阶段或已公布时显示
+    if (v.actions && v.phase === 'actions') {
       panels.push(h('div', { class: 'pub-panel' },
         h('h3', null, '个人行动'),
         h('p', { class: 'pub-focus' }, v.actions.current ? ['轮到 ', h('b', { class: v.actions.current === me ? 'pub-me' : '' }, who(v.actions.current))] : '本轮行动全部完成',
@@ -2772,7 +2801,7 @@
           return h('li', { class: done ? 'done' : id === v.actions.current ? 'now' : '' }, done ? '✓ ' : id === v.actions.current ? '▶ ' : '', who(id));
         }))));
     }
-    v.supply.forEach(function (b) {
+    v.supply.filter(function (b) { return b.next || v.phase === 'supply'; }).forEach(function (b) {
       panels.push(h('div', { class: 'pub-panel' },
         h('h3', null, '补给领取 · ', b.label),
         h('p', { class: 'pub-focus' }, b.next ? ['轮到 ', h('b', { class: b.next === me ? 'pub-me' : '' }, who(b.next))] : '已全部领取',
@@ -2782,7 +2811,7 @@
           return h('li', { class: done ? 'done' : id === b.next ? 'now' : '' }, done ? '✓ ' : id === b.next ? '▶ ' : '', who(id));
         }))));
     });
-    if (v.event || v.eventCheck) {
+    if (v.event || (v.eventCheck && v.phase === 'event')) {
       panels.push(h('div', { class: 'pub-panel pub-event' },
         h('h3', null, '公共事件'),
         v.event ? [

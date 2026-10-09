@@ -312,7 +312,7 @@ test('实时：订阅房间看到在线状态与座位变化；被释放的玩�
   const seatId = (await call('/api/games/' + g.id, { cookie: host.cookie })).data.game.seats[0].id;
   s1.clearSeen();
   await call(`/api/games/${g.id}/seats/${seatId}`, { body: { action: 'release' }, cookie: host.cookie });
-  assert.deepEqual(await s1.waitFor('game:gone'), { id: g.id });
+  assert.deepEqual(await s1.waitFor('game:gone'), { id: g.id, as: null });
   await hs.waitFor('game:update', (v) => v.seats.length === 1 && v.seats[0].user === null);
   s1.clearSeen();
   await call(`/api/games/${g.id}/status`, { body: { status: 'paused' }, cookie: host.cookie });
@@ -862,4 +862,53 @@ test('投票保密：投票中玩家只看到已投人数和自己的票；结�
   const after = (await polls(call, g, u.pl2, 'seat'))[0];
   assert.deepEqual(after.counts, { fix: 1, run: 0 });
   assert.equal(after.ballots, undefined, '结束后也看不到谁投了什么');
+});
+
+// ---------------------------------------------------------------- 修复：补给选择、死亡同步、角色名、删除时只请出主持人身份
+
+test('补给选择：主持人把候选只发给轮到的人；同一批同一个人只留最新一份；玩家回答后等主持人采用', async (t) => {
+  const { call } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const payload = { batchId: 'b1', label: '每日补给', options: [{ id: 'pc1', label: '面包' }, { id: 'pc2', label: '普通水' }] };
+  assert.equal((await sub(call, g, u.pl1, '', { as: 'seat', kind: 'pick', to: ids.b, payload })).data.error, 'host_only');
+  const x = (await sub(call, g, u.host, '', { as: 'host', kind: 'pick', to: ids.a, payload })).data.submission;
+  assert.equal(x.status, 'asking');
+  assert.equal((await subs(call, g, u.pl2, 'seat')).length, 0, '没轮到的人看不到候选');
+  const y = (await sub(call, g, u.host, '', { as: 'host', kind: 'pick', to: ids.a, payload })).data.submission;
+  const list = await subs(call, g, u.pl1, 'seat');
+  assert.deepEqual(list.map((s) => [s.id, s.status]), [[x.id, 'withdrawn'], [y.id, 'asking']]);
+  assert.deepEqual((await sub(call, g, u.pl1, `/${y.id}/answer`, { as: 'seat', index: 1 })).data.submission.answer, { index: 1 });
+  assert.equal((await sub(call, g, u.host, `/${y.id}/adopt`, { as: 'host' })).data.submission.status, 'adopted');
+});
+
+test('主持人标记死亡／取消：那位玩家自己的存档跟着改并收到推送；座位信息带角色名', async (t) => {
+  const { call, base } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const s1 = await sock(base, u.pl1.cookie);
+  t.after(() => s1.close());
+  const host = await hostState(call, g, u.host);
+  host.state.players.find((p) => p.id === ids.a).alive = false;
+  await put(call, g, 'host', u.host, host.version, host.state);
+  const m = await s1.waitFor('state:update', (x) => x.reason === 'rules' && x.detail.alive === false);
+  assert.equal(m.state.alive, false);
+  assert.match(m.state.log[0].text, /标记为已死亡/);
+  assert.equal((await seatState(call, g, u.pl2)).state.alive, true, '别人不受影响');
+  host.state.players.find((p) => p.id === ids.a).alive = true;
+  await put(call, g, 'host', u.host, host.version + 1, host.state);
+  assert.equal((await s1.waitFor('state:update', (x) => x.detail && x.detail.alive === true)).state.alive, true);
+
+  host.state.players.find((p) => p.id === ids.b).name = '二狗';
+  await put(call, g, 'host', u.host, host.version + 2, host.state);
+  const view = (await call(`/api/games/${g.id}`, { cookie: u.pl1.cookie })).data.game;
+  assert.deepEqual(view.seats.map((s) => [s.user.username, s.character]).slice(1), [['pl1', 'pl1'], ['pl2', '二狗']]);
+});
+
+test('主导兼角色删除开过的对局：只请出主持人身份（game:gone 带 as）', async (t) => {
+  const { call, base } = await start(t);
+  const { u, g } = await activeGame(call);
+  const hs = await sock(base, u.host.cookie);
+  t.after(() => hs.close());
+  assert.equal((await call('/api/games/' + g.id, { method: 'DELETE', cookie: u.host.cookie })).status, 200);
+  assert.deepEqual(await hs.waitFor('game:gone'), { id: g.id, as: 'host' });
+  assert.equal((await call(`/api/games/${g.id}/state/seat`, { cookie: u.host.cookie })).status, 200, '座位存档仍能读');
 });

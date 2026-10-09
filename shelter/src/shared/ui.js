@@ -526,7 +526,8 @@
           ctx.game = g;
           handlers.onGame(g);
         });
-        socket.on('game:gone', function (m) { if (m.id === gameId) handlers.onGone(); });
+        // as：只请出某个身份（主导删除对局时只请出主持人身份，他自己的座位还在）
+        socket.on('game:gone', function (m) { if (m.id === gameId && (!m.as || m.as === ctx.inbox.as)) handlers.onGone(); });
         socket.on('public:update', function (m) {
           if (m.gameId !== gameId || kind !== 'seat') return;
           ctx.publicView = m.view;
@@ -602,7 +603,7 @@
     if (box.me !== 'host' && !g.ownerDeleted) contacts.push({ id: 'host', name: g.owner.username, tag: '主持人' });
     g.seats.forEach(function (s) {
       if (s.id === box.me) return;
-      contacts.push({ id: s.id, name: s.user ? s.user.username : null, tag: '座位 ' + s.seatNo });
+      contacts.push({ id: s.id, name: s.user ? seatName(s) : null, tag: '座位 ' + s.seatNo });
     });
     // 只有历史私信、此刻已经不在名单上的对象（如主导删除了对局）也列出来，能看记录
     box.messages.forEach(function (m) {
@@ -683,7 +684,14 @@
   function partyName(ctx, who, asRecipient) {
     if (who === 'host') return asRecipient ? '公共池' : '主持人';
     var s = ctx.game.seats.filter(function (x) { return x.id === who; })[0];
-    return s ? (s.user ? s.user.username : '座位 ' + s.seatNo) : '已离开的座位';
+    return s ? seatName(s) || '座位 ' + s.seatNo : '已离开的座位';
+  }
+
+  /** 座位上的人怎么称呼：角色名优先；换人接手后角色名和账户名不同时写成「角色名（账户名）」。空座位返回角色名或 null。 */
+  function seatName(s) {
+    var acct = s.user ? s.user.username : null;
+    if (!s.character) return acct;
+    return acct && acct !== s.character ? s.character + '（' + acct + '）' : s.character;
   }
 
   function transferItems(t, list, customItems) {
@@ -815,6 +823,7 @@
       case 'action': return '行动：' + SUB_ACTION[p.type] + (p.note ? '（' + p.note + '）' : '');
       case 'watch': return '守夜卡片：' + (p.card && p.card.all ? '全员守夜' : (p.card && p.card.names || []).join('、') || '（卡片）');
       case 'swap': return '请求与 ' + partyName(ctx, x.to, false) + ' 换位' + (a ? (a.accepted ? '：对方同意' : '：对方拒绝') : '');
+      case 'pick': return '补给选择（' + p.label + '）：' + (a ? '选了 ' + p.options[a.index].label : '从 ' + p.options.length + ' 件候选里选一件');
       case 'decide': return '末位拍板：' + (a ? '选第 ' + (a.index + 1) + ' 份（' + p.options[a.index] + '）' : '从 ' + p.options.length + ' 份名单里选一份');
       case 'score': return '分数上报：钞票 ' + (p.cash == null ? '?' : p.cash) + '、名画 ' + (p.painting == null ? '?' : p.painting) + '、珠宝 ' + (p.jewel == null ? '?' : p.jewel) +
         (p.mapNotes != null ? '、地图笔记 ' + p.mapNotes + ' 条' : '');
@@ -1206,6 +1215,7 @@
     submissionText: submissionText,
     submitFail: submitFail,
     partyName: partyName,
+    seatName: seatName,
     pollCard: pollCard,
     pollFail: pollFail,
     onlineBanner: onlineBanner,

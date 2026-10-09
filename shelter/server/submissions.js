@@ -6,6 +6,8 @@
 // - swap    玩家 → 被请求的玩家 → 主持人：换位请求，先由被请求者回答同意／拒绝（asking），再等主持人（pending）。可以有多份。
 // - decide  主持人 → 末位：从几份守夜名单里选一份（asking），末位回答后等主持人（pending）。同一天只留最新一份。
 // - score   玩家 → 主持人：分数上报（钞票、名画、珠宝件数等）。只留最新一份。
+// - pick    主持人 → 轮到领取的玩家：本批补给的剩余候选（只发给这个人），玩家选一件（asking → pending），主持人采用＝记录选择。
+//           同一批同一个人只留最新一份。
 // 天数以主持人存档为准。暂停时只读；主持人能看到全部提交，玩家只看到自己发的和发给自己的。
 
 const crypto = require('node:crypto');
@@ -69,7 +71,19 @@ function createSubmissions(db, io, { loadMember, seatOf }) {
     let to = 'host';
     let status = 'pending';
     let payload;
-    if (kind === 'decide') {
+    if (kind === 'pick') {
+      if (me !== 'host') throw new Refuse(403, 'host_only');
+      if (typeof body.to !== 'string' || !occupied(g, body.to)) throw new Refuse(404, 'no_recipient');
+      const opts = Array.isArray(p.options) ? p.options : [];
+      if (!opts.length || opts.length > 50 || typeof p.batchId !== 'string' || opts.some((o) => !o || typeof o.id !== 'string' || typeof o.label !== 'string')) throw new Refuse(400, 'bad_payload');
+      payload = { batchId: p.batchId.slice(0, 80), label: String(p.label || '').slice(0, 60), options: opts.map((o) => ({ id: o.id.slice(0, 80), label: o.label.slice(0, 200) })) };
+      to = body.to;
+      status = 'asking';
+      // 同一批同一个人：旧的问询作废
+      for (const old of db.prepare("SELECT * FROM submissions WHERE game_id = ? AND kind = 'pick' AND recipient = ? AND status IN ('asking', 'pending')").all(g.id, to)) {
+        if (parse(old.payload).batchId === payload.batchId) setStatus(g, old, 'withdrawn', { resolved_at: Date.now() });
+      }
+    } else if (kind === 'decide') {
       if (me !== 'host') throw new Refuse(403, 'host_only');
       if (typeof body.to !== 'string' || !occupied(g, body.to)) throw new Refuse(404, 'no_recipient');
       if (!Array.isArray(p.options) || p.options.length < 2 || p.options.length > 20 || !Array.isArray(p.candidateIds) || p.candidateIds.length !== p.options.length) throw new Refuse(400, 'bad_payload');

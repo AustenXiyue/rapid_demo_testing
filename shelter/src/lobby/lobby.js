@@ -91,7 +91,11 @@
       if (ui.page === 'room' && g.id === ui.gameId) { ui.game = g; render(); }
     });
     socket.on('game:gone', function (msg) {
-      if (ui.page === 'room' && msg.id === ui.gameId) { U.toast('你已经不在这局对局里了。', 'warn'); location.hash = ''; }
+      if (ui.page !== 'room' || msg.id !== ui.gameId) return;
+      // 只请出了主持人身份（主导删除了对局，但自己还有座位）：重新订阅，以玩家身份继续看
+      if (msg.as === 'host') { watch(); return; }
+      U.toast('你已经不在这局对局里了。', 'warn');
+      location.hash = '';
     });
     socket.on('connect_error', function (e) { if (e.message === 'unauthorized') signedOut(); });
   }
@@ -313,7 +317,8 @@
         return h('li', { class: 'seat' + (mine ? ' me' : '') + (s.user ? '' : ' open'), 'data-seat': s.seatNo },
           h('div', { class: 'seat-head' },
             h('span', { class: 'seat-no' }, String(s.seatNo)),
-            h('span', { class: 'seat-name' }, s.user ? raw(s.user.username) : '空座位'),
+            // 角色名（账户名）：座位换人接手后两者不同
+            h('span', { class: 'seat-name' }, s.user ? raw(U.seatName(s)) : s.character ? raw(s.character + ' · ') : null, s.user ? null : '空座位'),
             s.user ? presence(s.user.online) : null),
           h('div', { class: 'seat-foot' },
             s.user && s.user.id === g.owner.id ? h('span', { class: 'badge' }, '主导') : null,

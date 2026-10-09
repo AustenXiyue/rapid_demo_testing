@@ -804,3 +804,12 @@
 跟随主持人：第	Following the host: Day 
 有新的投票：在「对局」页投票	New vote: cast it on the “Game” page
 投票已结束：可以在「对局」页看票数	Voting has ended: see the counts on the “Game” page
+你没有自留任何物品：本次所得会全部交给公共池。	You're not keeping anything: everything you found will go to the pool.
+提交后只能提交一次：自留物品加入库存，交公的物品交给公共池，主持人接收后入池。	You can only submit once: kept items go into your inventory; handed-in items go to the pool once the host accepts them.
+轮到你领取「	Your turn to pick from “
+」：选一件，主持人确认后发给你。	”: pick one; the host confirms and sends it to you.
+每天一次行动。点一个按钮点亮它，就记为今天的行动并交给主持人；再点一次取消，点别的就改选。主持人记录后当天不能再改。	One action per day. Light a button to record it as today's action and send it to the host; press again to cancel, or pick another to change. Once the host records it, it can't be changed that day.
+主持人把你标记为已死亡	The host marked you as dead
+主持人取消了你的死亡标记	The host removed your death mark
+你的存活状态已经跟着主持人的记录改了；库存没有变化。	Your alive status now follows the host's record; your inventory is unchanged.
+轮到你领取补给：在「对局」页选一件	Your turn to pick supplies: choose one on the “Game” page

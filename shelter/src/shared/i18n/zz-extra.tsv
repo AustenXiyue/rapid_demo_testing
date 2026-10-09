@@ -95,3 +95,19 @@ lobby|加入	Join
 lobby|进入	Enter
 lobby|继续	Resume
 lobby|已结束	Ended
+发出交接（待 	Sent transfer (awaiting 
+ 确认）：	 to confirm): 
+交易完成：从 	Trade done: from 
+ 换来 	 received 
+接收入池（来自 	Added to pool (from 
+接收（来自 	Received (from 
+；交出 	; gave 
+交接未成（	Transfer not completed (
+）：物品退回库存：	): items returned to inventory: 
+）：物品回到公共池：	): items returned to the pool: 
+补给未领取（	Supply not taken (
+）：撤回选择，物品回到 	): pick withdrawn, item back among 
+ 的候选	 candidates
+联机开局：已载入主持人的规则与玩家名单	Online start: loaded the host's rules and player list
+联机开局：按座位生成玩家名单	Online start: player list generated from seats
+（自动同步）	 (synced automatically)

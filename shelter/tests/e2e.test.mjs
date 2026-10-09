@@ -307,7 +307,7 @@ test('主持人：用演示存档完整走一回合（发放、轮换、换位�
   assert.equal(batch.picks.length, 6);
   assert.equal(new Set(batch.picks.map((p) => p.piece.id)).size, 6, '每件只被选一次');
   assert.equal(pieces(s.pool) + batch.items.length + batch.picks.length, total, '公共池总量正确');
-  await btn(page, '结束批次（未选的放回公共池）').click();
+  assert.equal(batch.status, 'closed', '候选选完、人人都领了：自动结束这一批');
   await btn(page, '一键隐藏所有秘密').click();
 
   // 阶段3 → 阶段4：每日轮换只执行一次，且在交流之后
@@ -1390,6 +1390,29 @@ test('动画与音效：设置面板中英文都没有残留；全屏展示时�
   await tab(host, 'stage');
   await host.locator('.present-btn').click();
   assert.ok(!(await host.locator('.fx-pill').isVisible()), '全屏展示时不显示动画音效按钮');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('事件编辑器：填完概率直接点进结果文字继续打字，内容不会丢（不再整块重绘）', async () => {
+  const { context } = await newContext();
+  const { page, errors } = await open(context, HOST);
+  await tab(page, 'events');
+  await reveal(page, 'events');
+  await btn(page, '+ 新建事件').click();
+  const m = modal(page);
+  await m.getByLabel('名称', { exact: true }).click();
+  await page.keyboard.type('逐键输入');
+  await m.getByLabel('概率 %（留空＝待定）').first().click();
+  await page.keyboard.type('100');
+  await m.getByLabel('结果文字（公布用）').first().click();
+  await page.keyboard.type('灯亮了');
+  assert.equal(await m.getByLabel('结果文字（公布用）').first().inputValue(), '灯亮了');
+  await m.getByText('概率合计100%：允许自动抽签').first().waitFor();
+  await modalBtn(page, '保存');
+  const ev = (await read(page, HOST_KEY)).events.find((e) => e.name === '逐键输入');
+  assert.equal(ev.options[0].outcomes[0].text, '灯亮了');
+  assert.equal(ev.options[0].outcomes[0].probability, 100);
   assert.deepEqual(errors, []);
   await context.close();
 });

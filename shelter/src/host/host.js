@@ -723,7 +723,7 @@
 
   /** 需要主持人处理的（末位拍板在「守夜」页单独处理）。 */
   function hostQueue() {
-    return openSubs(function (x) { return x.kind !== 'decide'; });
+    return openSubs(function (x) { return x.kind !== 'decide' && x.kind !== 'pick'; });
   }
 
   /** 一行提交：谁、什么、状态，「采用」打开已预填的对话框，「忽略」可附一句话给玩家。 */
@@ -1702,7 +1702,8 @@
       });
       return;
     }
-    commit('抽取补给', function (s) {
+    var newId = null;
+    var made = commit('抽取补给', function (s) {
       var res = C.createBatch(s.pool, {
         participantIds: ids, seatOrder: s.seatOrder, count: n, weights: s.drawWeights, kind: kind,
         label: batchLabel(kind), day: s.started ? s.day : 0, customItems: s.customItems
@@ -1710,9 +1711,30 @@
       if (!res.ok) throw new Error(res.reason);
       s.batches.push(res.batch);
       s.today.batchIds.push(res.batch.id);
+      newId = res.batch.id;
       log(s, res.batch.label + '：抽取 ' + res.batch.items.length + ' 件 → ' + res.batch.items.map(describe).join('、'), true);
       log(s, res.batch.label + '：已抽取，按座次领取（' + names(res.batch.pickOrder) + '）');
     });
+    if (made) askNextPicker(findBatch(state, newId));
+  }
+
+  /**
+   * 联机：把本批剩余候选发给轮到领取的人（只有他能看到），他在自己的面板上选一件，主持人采用＝记录选择。
+   * 没有座位的玩家（如 NPC）仍由主持人直接记录。
+   */
+  function askNextPicker(b) {
+    if (!online || !b || b.status !== 'open' || !b.items.length) return;
+    var next = b.pickOrder.filter(function (id) { return !b.picks.some(function (p) { return p.playerId === id; }); })[0];
+    if (!next || !online.game.seats.some(function (x) { return x.id === next && x.user; })) return;
+    online.submit('', {
+      kind: 'pick', to: next,
+      payload: { batchId: b.id, label: b.label, options: b.items.map(function (p) { return { id: p.id, label: describe(p) }; }) }
+    }).then(render, U.submitFail);
+  }
+
+  /** 这一批里某人还没处理完的选择问询（联机）。 */
+  function pickAsk(b, pid) {
+    return online ? openSubs(function (x) { return x.kind === 'pick' && x.to === pid && x.payload.batchId === b.id; })[0] || null : null;
   }
 
   function batchView(b) {
@@ -1736,12 +1758,25 @@
                 // 联机：这件补给已经作为交接单发给玩家，显示状态；本机：交接文本
                 online && pickTransfer(b, picked) ? transferChip(pickTransfer(b, picked))
                   : h('button', { type: 'button', class: 'btn small', onclick: function () { showHandoff(handoffForPick(b, picked), null, picked.playerId); } }, '交接文本'),
-                h('button', { type: 'button', class: 'btn small', onclick: function () { unpick(b.id, pid); } }, '撤回'))));
+                // 玩家已经接收入库的不能再撤回，就不显示按钮
+                online && pickTransfer(b, picked) && pickTransfer(b, picked).status === 'accepted' ? null
+                  : h('button', { type: 'button', class: 'btn small', onclick: function () { unpick(b.id, pid); } }, '撤回'))));
           }
-          var sel = U.select(b.items.map(function (p, k) { return [p.id, (k + 1) + '. ' + describe(p)]; }), b.items[0] ? b.items[0].id : '', function () {});
+          // 联机：玩家在自己面板上选好的那件预先选上
+          var ask = pickAsk(b, pid);
+          var chosen = ask && ask.answer ? ask.payload.options[ask.answer.index].id : null;
+          if (chosen && !b.items.some(function (p) { return p.id === chosen; })) chosen = null;
+          var sel = U.select(b.items.map(function (p, k) { return [p.id, (k + 1) + '. ' + describe(p)]; }), chosen || (b.items[0] ? b.items[0].id : ''), function () {});
           return h('tr', { class: pid === next ? 'current' : '', 'data-picker': pid }, h('td', null, String(i + 1)), h('td', null, nameOf(pid), pid === next ? ' ▶' : ''),
-            h('td', null, b.items.length ? sel : '无可选物品'),
-            h('td', null, h('button', { type: 'button', class: 'btn small primary', disabled: !b.items.length, onclick: function () { pick(b.id, pid, sel.value); } }, '记录选择')));
+            h('td', null, b.items.length ? sel : '无可选物品',
+              ask ? h('div', { class: 'small' }, U.submissionBadge(ask), ask.answer ? h('b', null, ' 玩家选了：' + ask.payload.options[ask.answer.index].label) : null) : null),
+            h('td', null, h('div', { class: 'row tight' },
+              h('button', {
+                type: 'button', class: 'btn small primary', disabled: !b.items.length,
+                onclick: function () { pick(b.id, pid, sel.value, ask && chosen === sel.value ? function () { online.submit(ask.id + '/adopt').catch(function () {}); } : null); }
+              }, ask && ask.answer ? '采用玩家的选择' : '记录选择'),
+              online && pid === next && online.game.seats.some(function (x) { return x.id === pid && x.user; })
+                ? h('button', { type: 'button', class: 'btn small', onclick: function () { askNextPicker(b); } }, ask ? '重新请他选' : '请他在面板上选') : null)));
         })))),
       next ? h('details', null, h('summary', null, '给 ' + nameOf(next) + ' 的私信文本'), dmBlock(dm, next, { note: '暂停共享后私发' })) : null,
       h('div', { class: 'row' },
@@ -1784,9 +1819,11 @@
     return s.batches.find(function (b) { return b.id === id; });
   }
 
-  function pick(batchId, pid, pieceId) {
+  /** onDone：记录成功后调用（联机采用玩家的选择时，用来把问询标为已采用）。 */
+  function pick(batchId, pid, pieceId, onDone) {
     var text = '';
     var to = null;
+    var ask = pickAsk({ id: batchId }, pid);
     var ok = commit('记录选择', function (s) {
       var b = findBatch(s, batchId);
       var r = C.pickFromBatch(b, pid, pieceId);
@@ -1795,9 +1832,17 @@
       log(s, b.label + '：' + nameOf(pid) + ' 已领取');
       text = handoffForPick(b, r.pick);
       to = r.pick.playerId;
-      if (!b.items.length && b.picks.length === b.pickOrder.length) markOpeningDone(s, b);
+      if (!b.items.length && b.picks.length === b.pickOrder.length) {
+        markOpeningDone(s, b);
+        // 候选选完、人人都领了：自动结束这一批（不用主持人再点「结束批次」）
+        C.closeBatch(s.pool, b, s.customItems);
+        log(s, b.label + '：全部领取完毕，自动结束');
+      }
     });
     if (!ok) return;
+    if (onDone) onDone();
+    else if (ask) online.submit(ask.id + '/withdraw').catch(function () {}); // 主持人直接替他记录了：发给他的问询作废
+    askNextPicker(findBatch(state, batchId));
     // 联机：选择记录后直接作为交接单发给这位玩家（玩家接收后入库；拒收时撤回这次选择）
     var seatTarget = online && online.game.seats.some(function (x) { return x.id === to && x.user; });
     if (!seatTarget) return showHandoff(text, null, to);
@@ -2003,7 +2048,9 @@
     return h('section', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', null, '今日计划者与候选'), h('span', { class: 'muted small' }, '只统计真正消耗行动计划的人')),
       online ? h('div', { class: 'stack' }, openSubs(function (x) { return x.kind === 'watch'; }).map(subLine)) : linkReader(),
-      planners.length ? null : h('p', { class: 'empty' }, '今天还没有人计划守夜名单。玩家在自己的页面点亮「计划守夜名单」、抽两张卡选一张后，会把分享链接发给你：点开链接就会加入这里。'),
+      planners.length ? null : h('p', { class: 'empty' }, online
+        ? '今天还没有人计划守夜名单。玩家在自己的页面点亮「计划守夜名单」、抽两张卡选一张后提交给你，会出现在上面，点「采用」就加入这里。'
+        : '今天还没有人计划守夜名单。玩家在自己的页面点亮「计划守夜名单」、抽两张卡选一张后，会把分享链接发给你：点开链接就会加入这里。'),
       planners.map(function (pid) {
         var cand = t.watchCandidates.find(function (c) { return c.plannerId === pid; });
         if (!cand) {
@@ -3095,12 +3142,13 @@
       return el;
     }
 
-    function outcomeEditor(op, oc, ci) {
+    function outcomeEditor(op, oc, ci, onProbability) {
       var fx = oc.effects;
       return h('div', { class: 'outcome' },
         h('div', { class: 'row between' }, h('b', null, '结果 ' + (ci + 1)),
           h('button', { type: 'button', class: 'btn small', disabled: op.outcomes.length < 2, onclick: function () { op.outcomes.splice(ci, 1); rerender(); } }, '删除结果')),
-        h('div', { class: 'row' }, U.field('概率 %（留空＝待定）', bindNum(oc, 'probability', { after: rerender }))),
+        // 改概率只更新上面那一行「概率合计」提示，不整块重绘：整块重绘会把用户刚点进去的下一个输入框换掉，接着打的字就丢了
+        h('div', { class: 'row' }, U.field('概率 %（留空＝待定）', bindNum(oc, 'probability', { after: onProbability }))),
         U.field('结果文字（公布用）', bindArea(oc, 'text', 2)),
         h('details', null, h('summary', null, '效果（营救、公共池、个人通知）'),
           h('div', { class: 'grid2' },
@@ -3119,13 +3167,19 @@
     }
 
     function optionEditor(op, oi) {
-      var st = C.probabilityStatus(op);
+      var stEl = h('p');
+      function showStatus() {
+        var st = C.probabilityStatus(op);
+        stEl.className = 'small ' + (st.complete ? 'ok-text' : 'risk-text');
+        stEl.textContent = U.T(st.complete ? '概率合计100%：允许自动抽签' : '概率未完成（' + st.reason + '）：结算时改为手动录入结果');
+      }
+      showStatus();
       return h('div', { class: 'card inset' },
         h('div', { class: 'row between' }, h('b', null, '选项 ' + String.fromCharCode(65 + oi)),
           h('button', { type: 'button', class: 'btn small', disabled: draft.options.length < 2, onclick: function () { draft.options.splice(oi, 1); rerender(); } }, '删除选项')),
-        U.field('选项名称（Discord 投票项）', bindText(op, 'label')),
-        h('p', { class: 'small ' + (st.complete ? 'ok-text' : 'risk-text') }, st.complete ? '概率合计100%：允许自动抽签' : '概率未完成（' + st.reason + '）：结算时改为手动录入结果'),
-        op.outcomes.map(function (oc, ci) { return outcomeEditor(op, oc, ci); }),
+        U.field(online ? '选项名称（站内投票项）' : '选项名称（Discord 投票项）', bindText(op, 'label')),
+        stEl,
+        op.outcomes.map(function (oc, ci) { return outcomeEditor(op, oc, ci, showStatus); }),
         h('button', { type: 'button', class: 'btn small', onclick: function () { op.outcomes.push(C.newOutcome()); rerender(); } }, '+ 添加结果'));
     }
 
@@ -3795,8 +3849,9 @@
       },
       onPoll: function () { render(); },
       onSubmission: function (x) {
-        if (x.status === 'pending' && x.kind !== 'decide') U.toast(nameOf(x.from) + ' 提交了：' + U.submissionText(online, x), 'ok');
+        if (x.status === 'pending' && x.kind !== 'decide' && x.kind !== 'pick') U.toast(nameOf(x.from) + ' 提交了：' + U.submissionText(online, x), 'ok');
         else if (x.kind === 'decide' && x.status === 'pending') U.toast('末位已选择守夜名单：在「守夜」页确认', 'ok');
+        else if (x.kind === 'pick' && x.status === 'pending') U.toast(nameOf(x.to) + ' 选好了补给：在「补给与公共池」确认', 'ok');
         render();
       },
       onTransfer: function (t) {

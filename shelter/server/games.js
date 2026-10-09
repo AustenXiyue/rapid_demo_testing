@@ -50,12 +50,15 @@ function createGames(db, io) {
     const seats = db.prepare(
       'SELECT s.id, s.seat_no, s.user_id, u.username FROM seats s LEFT JOIN users u ON u.id = s.user_id WHERE s.game_id = ? ORDER BY s.seat_no'
     ).all(gameId);
+    // 角色名：主持人存档里的玩家名（开局后才有）。座位换人后角色名不变，账户名跟着人走
+    const players = JSON.parse(db.prepare("SELECT json_extract(host_state, '$.players') AS p FROM games WHERE id = ?").get(gameId).p || '[]');
+    const character = (id) => { const pl = players.find((x) => x.id === id); return pl ? pl.name : null; };
     return {
       id: g.id, title: g.title, code: g.code, status: g.status, maxSeats: g.max_seats,
       owner: { id: g.owner_id, username: g.owner_name, online: online.has(g.owner_id) },
       ownerDeleted: !!g.owner_deleted_at,
       seats: seats.map((s) => ({
-        id: s.id, seatNo: s.seat_no,
+        id: s.id, seatNo: s.seat_no, character: character(s.id),
         user: s.user_id ? { id: s.user_id, username: s.username, online: online.has(s.user_id) } : null,
       })),
       createdAt: g.created_at, updatedAt: g.updated_at,
@@ -82,9 +85,10 @@ function createGames(db, io) {
   }
 
   // 把某个账户从房间里请出去（被移除、座位被释放、对局被删除）
-  function kick(gameId, userId) {
-    io.in('user:' + userId).socketsLeave('game:' + gameId);
-    io.to('user:' + userId).emit('game:gone', { id: gameId });
+  // as：只对这个身份生效（主导删除对局时只请出主持人身份，他自己的座位不受影响）
+  function kick(gameId, userId, as) {
+    if (!as) io.in('user:' + userId).socketsLeave('game:' + gameId);
+    io.to('user:' + userId).emit('game:gone', { id: gameId, as: as || null });
   }
 
   // 招募阶段占一个新座位（编号取最小的空号）；满了返回 false
@@ -164,12 +168,23 @@ function createGames(db, io) {
     if (!rules && !roster) return;
     const what = rules && roster ? '规则和玩家名单' : rules ? '规则' : '玩家名单';
     const now = Date.now();
+    // 主持人改了谁的存活状态：那位玩家自己存档里的「存活」也跟着改
+    const aliveOf = (s, id) => { const pl = s.players.find((x) => x.id === id); return pl ? pl.alive !== false : null; };
     for (const seat of db.prepare('SELECT id, user_id, state, version FROM seats WHERE game_id = ? AND state IS NOT NULL').all(gameId)) {
       const p = C.applyRulesPack(JSON.parse(seat.state), b);
-      p.log.unshift({ id: C.uid('log'), at: now, day: p.publicInfo ? p.publicInfo.day : null, text: '主持人更新了' + what + '，已自动同步' });
+      const day = p.publicInfo ? p.publicInfo.day : null;
+      p.log.unshift({ id: C.uid('log'), at: now, day, text: '主持人更新了' + what + '（自动同步）' });
+      const was = aliveOf(before, seat.id);
+      const now2 = aliveOf(after, seat.id);
+      let alive;
+      if (now2 !== null && was !== now2) {
+        alive = now2;
+        p.alive = now2;
+        p.log.unshift({ id: C.uid('log'), at: now, day, text: now2 ? '主持人取消了你的死亡标记' : '主持人把你标记为已死亡' });
+      }
       db.prepare('UPDATE seats SET state = ?, version = ? WHERE id = ?').run(JSON.stringify(p), seat.version + 1, seat.id);
       if (seat.user_id) {
-        io.to('user:' + seat.user_id).emit('state:update', { gameId, kind: 'seat', version: seat.version + 1, state: p, reason: 'rules', detail: { rules, roster } });
+        io.to('user:' + seat.user_id).emit('state:update', { gameId, kind: 'seat', version: seat.version + 1, state: p, reason: 'rules', detail: { rules, roster, alive } });
       }
     }
   }
@@ -405,7 +420,7 @@ function createGames(db, io) {
     } else {
       const now = Date.now();
       db.prepare("UPDATE games SET owner_deleted_at = ?, status = 'finished', updated_at = ? WHERE id = ?").run(now, now, g.id);
-      kick(g.id, g.owner_id);
+      kick(g.id, g.owner_id, seatOf(g.id, g.owner_id) ? 'host' : null);
       push(g.id);
     }
     res.json({ ok: true });
