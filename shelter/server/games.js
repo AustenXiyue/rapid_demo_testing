@@ -16,6 +16,8 @@ const C = require('../src/shared/core.js');
 const { requireUser } = require('./auth');
 const { createMessages } = require('./messages');
 const { createTransfers } = require('./transfers');
+const { createSubmissions } = require('./submissions');
+const { createPolls } = require('./polls');
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 去掉了容易看混的 I、L、O、0、1
 const MAX_SEATS = 12;
@@ -365,6 +367,8 @@ function createGames(db, io) {
 
   r.use('/:id/messages', createMessages(db, io, { loadMember, seatOf }));
   r.use('/:id/transfers', createTransfers(db, io, { loadMember, seatOf, pushPublic }));
+  r.use('/:id/submissions', createSubmissions(db, io, { loadMember, seatOf }));
+  r.use('/:id/polls', createPolls(db, io, { loadMember, seatOf }));
 
   r.get('/:id/state/seat', (req, res) => {
     const g = loadMember(req, res);

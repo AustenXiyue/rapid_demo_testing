@@ -723,3 +723,143 @@ test('补给批次：记录选择后登记给玩家（不重复扣池子、不�
   assert.deepEqual(after.batches[0].items.map((p) => p.id).sort(), ['pc_bread', 'pc_water']);
   assert.equal(after.pool.length, 0, '不会多出一份到池子里');
 });
+
+// ---------------------------------------------------------------- 玩家提交
+
+const sub = (call, g, who, path, body) => call(`/api/games/${g.id}/submissions${path}`, { body, cookie: who.cookie });
+const subs = async (call, g, who, as) => (await call(`/api/games/${g.id}/submissions?as=${as}`, { cookie: who.cookie })).data.submissions;
+
+test('行动提交：同一天只留最新一份；主持人采用后当天不能再交；天数以主持人存档为准；玩家只看自己的', async (t) => {
+  const { call, base } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const hs = await sock(base, u.host.cookie);
+  t.after(() => hs.close());
+  const host = await hostState(call, g, u.host);
+  host.state.day = 3;
+  await put(call, g, 'host', u.host, host.version, host.state);
+
+  assert.equal((await sub(call, g, u.pl1, '', { as: 'seat', kind: 'action', payload: { type: 'fly' } })).data.error, 'bad_payload');
+  assert.equal((await sub(call, g, u.pl1, '', { as: 'host', kind: 'action', payload: { type: 'plan' } })).data.error, 'bad_identity');
+  const a = (await sub(call, g, u.pl1, '', { as: 'seat', kind: 'action', payload: { type: 'plan' } })).data.submission;
+  assert.deepEqual([a.from, a.to, a.day, a.status], [ids.a, 'host', 3, 'pending']);
+  await hs.waitFor('submission:update', (m) => m.submission.id === a.id);
+  const b = (await sub(call, g, u.pl1, '', { as: 'seat', kind: 'action', payload: { type: 'skill', note: '修门' } })).data.submission;
+  const list = await subs(call, g, u.host, 'host');
+  assert.deepEqual(list.map((x) => [x.payload.type, x.status]), [['plan', 'withdrawn'], ['skill', 'pending']], '改选时旧的自动撤回');
+
+  assert.equal((await sub(call, g, u.pl1, `/${b.id}/adopt`, { as: 'seat' })).data.error, 'host_only');
+  assert.equal((await sub(call, g, u.host, `/${b.id}/adopt`, { as: 'host' })).data.submission.status, 'adopted');
+  assert.equal((await sub(call, g, u.host, `/${b.id}/dismiss`, { as: 'host' })).data.error, 'already_resolved');
+  assert.equal((await sub(call, g, u.pl1, '', { as: 'seat', kind: 'action', payload: { type: 'pass' } })).data.error, 'already_adopted');
+  assert.equal((await subs(call, g, u.pl2, 'seat')).length, 0, '别的玩家看不到');
+});
+
+test('换位：被请求者先回答，才进入主持人的待处理；只有被请求者能回答；发起者可以撤回；暂停时只读', async (t) => {
+  const { call } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  assert.equal((await sub(call, g, u.pl1, '', { as: 'seat', kind: 'swap', to: ids.a })).data.error, 'no_recipient');
+  const s1 = (await sub(call, g, u.pl1, '', { as: 'seat', kind: 'swap', to: ids.b })).data.submission;
+  assert.equal(s1.status, 'asking');
+  assert.equal((await subs(call, g, u.pl2, 'seat')).length, 1, '被请求者看得到');
+  assert.equal((await sub(call, g, u.pl1, `/${s1.id}/answer`, { as: 'seat', accepted: true })).data.error, 'not_recipient');
+  assert.equal((await sub(call, g, u.pl2, `/${s1.id}/answer`, { as: 'seat', accepted: 'yes' })).data.error, 'bad_answer');
+  const answered = (await sub(call, g, u.pl2, `/${s1.id}/answer`, { as: 'seat', accepted: false })).data.submission;
+  assert.deepEqual([answered.status, answered.answer], ['pending', { accepted: false }]);
+
+  const s2 = (await sub(call, g, u.pl1, '', { as: 'seat', kind: 'swap', to: ids.b })).data.submission;
+  assert.equal((await subs(call, g, u.host, 'host')).filter((x) => x.kind === 'swap' && x.status !== 'withdrawn').length, 2, '换位可以有多份');
+  assert.equal((await sub(call, g, u.pl2, `/${s2.id}/withdraw`, { as: 'seat' })).data.error, 'not_sender');
+  assert.equal((await sub(call, g, u.pl1, `/${s2.id}/withdraw`, { as: 'seat' })).data.submission.status, 'withdrawn');
+
+  const s3 = (await sub(call, g, u.pl1, '', { as: 'seat', kind: 'swap', to: ids.b })).data.submission;
+  assert.equal((await sub(call, g, u.host, `/${s3.id}/adopt`, { as: 'host' })).data.submission.status, 'adopted', '对方没回答时主持人也能直接处理');
+  await call(`/api/games/${g.id}/status`, { body: { status: 'paused' }, cookie: u.host.cookie });
+  assert.equal((await sub(call, g, u.pl1, '', { as: 'seat', kind: 'swap', to: ids.b })).data.error, 'read_only');
+});
+
+test('末位拍板：只有主持人能发起、只有末位能回答；守夜卡片与分数上报带上内容', async (t) => {
+  const { call } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const payload = { options: ['阿珍、老陈', '全员守夜'], candidateIds: ['c1', 'c2'] };
+  assert.equal((await sub(call, g, u.pl1, '', { as: 'seat', kind: 'decide', to: ids.b, payload })).data.error, 'host_only');
+  assert.equal((await sub(call, g, u.host, '', { as: 'host', kind: 'decide', to: ids.b, payload: { options: ['x'], candidateIds: ['c1'] } })).data.error, 'bad_payload');
+  const d = (await sub(call, g, u.host, '', { as: 'host', kind: 'decide', to: ids.b, payload })).data.submission;
+  assert.equal(d.status, 'asking');
+  assert.equal((await sub(call, g, u.pl1, `/${d.id}/answer`, { as: 'seat', index: 0 })).data.error, 'not_recipient');
+  assert.equal((await sub(call, g, u.pl2, `/${d.id}/answer`, { as: 'seat', index: 2 })).data.error, 'bad_answer');
+  assert.deepEqual((await sub(call, g, u.pl2, `/${d.id}/answer`, { as: 'seat', index: 1 })).data.submission.answer, { index: 1 });
+
+  const card = { v: 2, id: 'wc_1', all: true, names: [], skill: false, plan: false, tendency: null, total: 3 };
+  const w = (await sub(call, g, u.pl1, '', { as: 'seat', kind: 'watch', payload: { card, from: 'pl1' } })).data.submission;
+  assert.deepEqual(w.payload, { card, from: 'pl1' });
+  const sc = (await sub(call, g, u.pl1, '', { as: 'seat', kind: 'score', payload: { cash: 3, painting: 1, jewel: -1, mapNotes: 2, text: '上报' } })).data.submission;
+  assert.deepEqual(sc.payload, { cash: 3, painting: 1, jewel: null, mapNotes: 2, text: '上报' }, '件数不对的记为空');
+  const sc2 = (await sub(call, g, u.pl1, '', { as: 'seat', kind: 'score', payload: { cash: 4 } })).data.submission;
+  const mine = await subs(call, g, u.pl1, 'seat');
+  assert.equal(mine.find((x) => x.id === sc.id).status, 'withdrawn', '分数只留最新一份');
+  assert.equal(mine.find((x) => x.id === sc2.id).status, 'pending');
+  const dismissed = (await sub(call, g, u.host, `/${sc2.id}/dismiss`, { as: 'host', note: '请先清点珠宝' })).data.submission;
+  assert.deepEqual([dismissed.status, dismissed.note], ['dismissed', '请先清点珠宝']);
+});
+
+// ---------------------------------------------------------------- 站内投票
+
+const poll = (call, g, who, path, body) => call(`/api/games/${g.id}/polls${path}`, { body, cookie: who.cookie });
+const polls = async (call, g, who, as) => (await call(`/api/games/${g.id}/polls?as=${as}`, { cookie: who.cookie })).data.polls;
+const OPTS = [{ id: 'fix', label: '修发电机' }, { id: 'run', label: '离开' }];
+
+test('投票：只有主持人能发起和结束；名单里的人才能投，可以改票；结束后不能再投；采用结果只能在结束后', async (t) => {
+  const { call } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  assert.equal((await poll(call, g, u.pl1, '', { as: 'seat', title: 'x', options: OPTS, voters: [ids.a] })).data.error, 'host_only');
+  assert.equal((await poll(call, g, u.host, '', { as: 'host', title: 'x', options: [OPTS[0]], voters: [ids.a] })).data.error, 'bad_options');
+  assert.equal((await poll(call, g, u.host, '', { as: 'host', title: 'x', options: OPTS, voters: ['nobody'] })).data.error, 'bad_voters');
+  const p = (await poll(call, g, u.host, '', { as: 'host', title: '停电', body: '灯灭了', options: OPTS, voters: [ids.a, ids.b], flowRef: 'f1' })).data.poll;
+  assert.deepEqual([p.status, p.total, p.voted], ['open', 2, 0]);
+
+  assert.equal((await poll(call, g, u.pl1, `/${p.id}/vote`, { as: 'seat', option: 'nope' })).data.error, 'bad_option');
+  assert.equal((await poll(call, g, u.pl1, `/${p.id}/vote`, { as: 'seat', option: 'fix' })).data.poll.myVote, 'fix');
+  assert.equal((await poll(call, g, u.pl1, `/${p.id}/vote`, { as: 'seat', option: 'run' })).data.poll.myVote, 'run', '改票');
+  await poll(call, g, u.pl2, `/${p.id}/vote`, { as: 'seat', option: 'run' });
+  const hv = (await polls(call, g, u.host, 'host'))[0];
+  assert.deepEqual([hv.voted, hv.counts], [2, { fix: 0, run: 2 }], '改票覆盖，不重复计');
+  assert.equal((await poll(call, g, u.host, `/${p.id}/adopt`, { as: 'host', option: 'run' })).data.error, 'poll_not_closed');
+  assert.equal((await poll(call, g, u.pl1, `/${p.id}/close`, { as: 'seat' })).data.error, 'host_only');
+  assert.equal((await poll(call, g, u.host, `/${p.id}/close`, { as: 'host' })).data.poll.status, 'closed');
+  assert.equal((await poll(call, g, u.pl1, `/${p.id}/vote`, { as: 'seat', option: 'fix' })).data.error, 'poll_closed');
+  assert.equal((await poll(call, g, u.host, `/${p.id}/adopt`, { as: 'host', option: 'run' })).data.poll.result, 'run');
+
+  // 名单外（主导自己的座位不在名单里）不能投；同一个事件流程重新发起时旧的取消
+  const hostSeat = await seatIdOf(call, g, u.host);
+  const q = (await poll(call, g, u.host, '', { as: 'host', title: '再来', options: OPTS, voters: [ids.a], flowRef: 'f2' })).data.poll;
+  assert.equal((await poll(call, g, u.host, `/${q.id}/vote`, { as: 'seat', option: 'fix' })).data.error, 'not_voter');
+  assert.ok(hostSeat);
+  const q2 = (await poll(call, g, u.host, '', { as: 'host', title: '再来一次', options: OPTS, voters: [ids.a], flowRef: 'f2' })).data.poll;
+  const all = await polls(call, g, u.host, 'host');
+  assert.equal(all.find((x) => x.id === q.id).status, 'cancelled');
+  assert.equal(all.find((x) => x.id === q2.id).status, 'open');
+  await call(`/api/games/${g.id}/status`, { body: { status: 'paused' }, cookie: u.host.cookie });
+  assert.equal((await poll(call, g, u.pl1, `/${q2.id}/vote`, { as: 'seat', option: 'fix' })).data.error, 'read_only');
+});
+
+test('投票保密：投票中玩家只看到已投人数和自己的票；结束后看到各选项票数；谁投了什么只有主持人看得到；推送按身份裁剪', async (t) => {
+  const { call, base } = await start(t);
+  const { u, g, ids } = await activeGame(call);
+  const s2 = await sock(base, u.pl2.cookie);
+  const hs = await sock(base, u.host.cookie);
+  t.after(() => { s2.close(); hs.close(); });
+  const p = (await poll(call, g, u.host, '', { as: 'host', title: '停电', options: OPTS, voters: [ids.a, ids.b] })).data.poll;
+  await poll(call, g, u.pl1, `/${p.id}/vote`, { as: 'seat', option: 'fix' });
+
+  const seen = (await polls(call, g, u.pl2, 'seat'))[0];
+  assert.deepEqual([seen.voted, seen.myVote, seen.counts, seen.ballots], [1, null, undefined, undefined]);
+  const pushed = await s2.waitFor('poll:update', (m) => m.as === 'seat' && m.poll.voted === 1);
+  assert.equal(pushed.poll.counts, undefined, '推给玩家的也没有票数');
+  const hostPushed = await hs.waitFor('poll:update', (m) => m.as === 'host' && m.poll.voted === 1);
+  assert.deepEqual(hostPushed.poll.ballots, [{ seat: ids.a, option: 'fix' }]);
+
+  await poll(call, g, u.host, `/${p.id}/close`, { as: 'host' });
+  const after = (await polls(call, g, u.pl2, 'seat'))[0];
+  assert.deepEqual(after.counts, { fix: 1, run: 0 });
+  assert.equal(after.ballots, undefined, '结束后也看不到谁投了什么');
+});

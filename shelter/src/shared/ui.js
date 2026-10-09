@@ -341,6 +341,8 @@
    *   onPublic(view) 公开信息变化（玩家面板用；ctx.publicView 是最新的一份）
    *   onMessage(msg) 收到或发出了一条私信（ctx.inbox 里已经加上）
    *   onTransfer(t)  交接单新建或状态变化（ctx.transfers 里已经更新）
+   *   onSubmission(s) 玩家提交新建或状态变化（ctx.submissions 里已经更新）
+   *   onPoll(p)      投票新建、有人投票或状态变化（ctx.polls 里已经更新；主持人拿到完整计票，玩家拿到裁剪后的）
    * onState 的 reason 还可能是 transfer：服务端处理交接时改了这份存档（页面静默重载）
    * 同一时间只有一个保存请求在路上，期间的修改合并成最新一份再发。
    */
@@ -357,6 +359,10 @@
       inbox: { as: kind === 'host' ? 'host' : 'seat', me: null, messages: [], current: null, drafts: {}, focus: false },
       // 交接单：玩家看到和自己有关的，主持人看到全部
       transfers: [],
+      // 玩家提交（行动、守夜卡片、换位、末位拍板、分数）：同上
+      submissions: [],
+      // 站内投票：主持人看到完整计票；玩家看到自己的票和已投人数，结束后才有票数
+      polls: [],
       readOnly: function () { return !ctx.game || ctx.game.status !== 'active'; },
       /** 只读时拦下修改并提示（提示最多 5 秒一次）。 */
       blocked: function () {
@@ -408,6 +414,32 @@
         upsertTransfer(d.transfer);
         if (handlers.onTransfer) handlers.onTransfer(d.transfer);
         return d.transfer;
+      });
+    };
+
+    function upsertSubmission(x) {
+      var i = ctx.submissions.findIndex(function (y) { return y.id === x.id; });
+      if (i >= 0) ctx.submissions[i] = x; else ctx.submissions.push(x);
+    }
+    function upsertPoll(p) {
+      var i = ctx.polls.findIndex(function (y) { return y.id === p.id; });
+      if (i >= 0) ctx.polls[i] = p; else ctx.polls.push(p);
+    }
+    /** 投票操作（发起、投票、结束、取消、采用结果）：path 相对 polls/，body 自动带上身份。 */
+    ctx.poll = function (path, body) {
+      return call('POST', 'polls' + (path ? '/' + path : ''), Object.assign({ as: ctx.inbox.as }, body || {})).then(function (d) {
+        upsertPoll(d.poll);
+        if (handlers.onPoll) handlers.onPoll(d.poll);
+        return d.poll;
+      });
+    };
+
+    /** 玩家提交的操作（发起、回答、采用、忽略、撤回）：path 相对 submissions/，body 自动带上身份。 */
+    ctx.submit = function (path, body) {
+      return call('POST', 'submissions' + (path ? '/' + path : ''), Object.assign({ as: ctx.inbox.as }, body || {})).then(function (d) {
+        upsertSubmission(d.submission);
+        if (handlers.onSubmission) handlers.onSubmission(d.submission);
+        return d.submission;
       });
     };
 
@@ -500,6 +532,16 @@
           ctx.publicView = m.view;
           if (handlers.onPublic) handlers.onPublic(m.view);
         });
+        socket.on('poll:update', function (m) {
+          if (m.gameId !== gameId || m.as !== ctx.inbox.as) return;
+          upsertPoll(m.poll);
+          if (handlers.onPoll) handlers.onPoll(m.poll);
+        });
+        socket.on('submission:update', function (m) {
+          if (m.gameId !== gameId) return;
+          upsertSubmission(m.submission);
+          if (handlers.onSubmission) handlers.onSubmission(m.submission);
+        });
         socket.on('transfer:update', function (m) {
           if (m.gameId !== gameId) return;
           upsertTransfer(m.transfer);
@@ -533,13 +575,17 @@
       return Promise.all([
         call('GET', 'messages?as=' + ctx.inbox.as),
         kind === 'seat' ? call('GET', 'public') : null,
-        call('GET', 'transfers?as=' + ctx.inbox.as)
+        call('GET', 'transfers?as=' + ctx.inbox.as),
+        call('GET', 'submissions?as=' + ctx.inbox.as),
+        call('GET', 'polls?as=' + ctx.inbox.as)
       ]);
     }).then(function (r) {
       ctx.inbox.me = r[0].me;
       ctx.inbox.messages = r[0].messages;
       if (r[1]) ctx.publicView = r[1].view;
       ctx.transfers = r[2].transfers;
+      ctx.submissions = r[3].submissions;
+      ctx.polls = r[4].polls;
       connectSocket();
       return ctx;
     });
@@ -749,6 +795,105 @@
       !incoming.length && !outgoing.length && !others.length ? h('p', { class: 'empty' }, '没有待处理的交接。') : null,
       done.length ? h('details', { open: !!opts.ledger }, h('summary', null, (opts.ledger ? '全部记录' : '最近的记录') + '（' + done.length + '）'),
         h('ul', { class: 'list-plain' }, (opts.ledger ? done : done.slice(0, 20)).map(function (t) { return line(t, null); }))) : null);
+  }
+
+  // ---------------------------------------------------------------- 玩家提交（联机）
+
+  var SUB_STATUS = { asking: ['info', '等对方回答'], pending: ['warning', '等主持人'], adopted: ['ok', '主持人已采用'], dismissed: ['info', '主持人没有采用'], withdrawn: ['info', '已撤回'] };
+  var SUB_ACTION = { plan: '计划守夜名单', skill: '使用职业技能', other: '其他行动', pass: '放弃行动' };
+
+  function submissionBadge(x) {
+    var st = SUB_STATUS[x.status] || SUB_STATUS.pending;
+    return sevBadge(st[0], st[1]);
+  }
+
+  /** 一份提交的内容（一句话）。 */
+  function submissionText(ctx, x) {
+    var p = x.payload || {};
+    var a = x.answer;
+    switch (x.kind) {
+      case 'action': return '行动：' + SUB_ACTION[p.type] + (p.note ? '（' + p.note + '）' : '');
+      case 'watch': return '守夜卡片：' + (p.card && p.card.all ? '全员守夜' : (p.card && p.card.names || []).join('、') || '（卡片）');
+      case 'swap': return '请求与 ' + partyName(ctx, x.to, false) + ' 换位' + (a ? (a.accepted ? '：对方同意' : '：对方拒绝') : '');
+      case 'decide': return '末位拍板：' + (a ? '选第 ' + (a.index + 1) + ' 份（' + p.options[a.index] + '）' : '从 ' + p.options.length + ' 份名单里选一份');
+      case 'score': return '分数上报：钞票 ' + (p.cash == null ? '?' : p.cash) + '、名画 ' + (p.painting == null ? '?' : p.painting) + '、珠宝 ' + (p.jewel == null ? '?' : p.jewel) +
+        (p.mapNotes != null ? '、地图笔记 ' + p.mapNotes + ' 条' : '');
+      default: return x.kind;
+    }
+  }
+
+  var SUBMIT_FAIL = {
+    network: '连不上服务器，请稍后再试。',
+    read_only: '对局不在进行中，现在不能提交。',
+    already_adopted: '主持人已经记录了你今天的行动。',
+    already_resolved: '这份提交已经处理过了。',
+    no_recipient: '对方现在不在座位上。',
+    not_started: '对局还没开始。'
+  };
+  function submitFail(e) { toast(SUBMIT_FAIL[e.code] || '提交失败：' + e.code, 'warn'); }
+
+  // ---------------------------------------------------------------- 站内投票（联机）
+
+  var POLL_STATUS = { open: ['warning', '投票中'], closed: ['ok', '已结束'], cancelled: ['info', '已取消'] };
+  var POLL_FAIL = {
+    network: '连不上服务器，请稍后再试。',
+    read_only: '对局不在进行中，现在不能投票。',
+    poll_closed: '投票已经结束了。',
+    not_voter: '你不在这次投票的名单里。',
+    poll_not_closed: '先结束投票，再采用结果。'
+  };
+  function pollFail(e) { toast(POLL_FAIL[e.code] || '投票失败：' + e.code, 'warn'); }
+
+  /** 票数最多的选项（平票时有多个）。 */
+  function pollLeaders(p) {
+    if (!p.counts) return [];
+    var max = Math.max.apply(null, p.options.map(function (o) { return p.counts[o.id] || 0; }));
+    return max > 0 ? p.options.filter(function (o) { return (p.counts[o.id] || 0) === max; }).map(function (o) { return o.id; }) : [];
+  }
+
+  /**
+   * 投票卡片（主持人与玩家共用）。玩家：点选项投票（结束前可以改）；主持人：实时计票、谁投了什么、结束／取消、采用结果。
+   * opts：{ onChange, onAdopt(optionId)（主持人采用结果；不传就只标记结果） }
+   */
+  function pollCard(ctx, p, opts) {
+    var host = ctx.inbox.as === 'host';
+    var me = ctx.inbox.me;
+    var st = POLL_STATUS[p.status];
+    var canVote = !host && p.status === 'open' && p.voters.indexOf(me) >= 0;
+    var leaders = pollLeaders(p);
+    function act(path, body) { ctx.poll(p.id + '/' + path, body).then(opts.onChange, pollFail); }
+    function adopt(optionId) {
+      if (opts.onAdopt) opts.onAdopt(optionId, p);
+      else ctx.poll(p.id + '/adopt', { option: optionId }).then(opts.onChange, pollFail);
+    }
+    return h('section', { class: 'card poll', 'data-poll': p.id },
+      h('div', { class: 'card-head' }, h('h2', null, document.createTextNode(p.title)), sevBadge(st[0], st[1])),
+      p.body ? h('p', { class: 'small' }, document.createTextNode(p.body)) : null,
+      h('ul', { class: 'poll-options' }, p.options.map(function (o, i) {
+        var n = p.counts ? p.counts[o.id] || 0 : null;
+        var who = host && p.ballots ? p.ballots.filter(function (b) { return b.option === o.id; }).map(function (b) { return partyName(ctx, b.seat, false); }) : [];
+        var picked = !host && p.myVote === o.id;
+        return h('li', { class: 'poll-option' + (picked ? ' mine' : '') + (p.result === o.id ? ' result' : '') },
+          canVote
+            ? h('button', { type: 'button', class: 'btn ' + (picked ? 'primary' : ''), 'aria-pressed': picked ? 'true' : 'false', onclick: function () { act('vote', { option: o.id }); } },
+              String.fromCharCode(65 + i) + '. ', document.createTextNode(o.label))
+            : h('span', { class: 'poll-label' }, String.fromCharCode(65 + i) + '. ', document.createTextNode(o.label), picked ? ' ✓' : ''),
+          n != null ? h('span', { class: 'poll-count' }, n + ' 票') : null,
+          p.counts ? meter(n, Math.max(1, p.voted), leaders.indexOf(o.id) >= 0 ? 'ok' : 'info', o.label) : null,
+          who.length ? h('span', { class: 'muted small' }, document.createTextNode(who.join('、'))) : null,
+          p.result === o.id ? h('b', { class: 'poll-result' }, '最终采用') : null);
+      })),
+      h('p', { class: 'muted small' }, '已投 ' + p.voted + '／' + p.total + ' 人',
+        !host && p.status === 'open' ? (canVote ? '　结束前可以改票；票数在投票结束后公开。' : '　你不在这次投票的名单里。') : ''),
+      host && p.status === 'open' ? h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn primary', onclick: function () { act('close'); } }, '结束投票'),
+        h('button', { type: 'button', class: 'btn', onclick: function () { act('cancel'); } }, '取消投票')) : null,
+      host && p.status === 'closed' && !p.result ? h('div', { class: 'row' },
+        leaders.length > 1 ? h('span', { class: 'small' }, '平票：请选一项') : leaders.length ? null : h('span', { class: 'small' }, '没有人投票：请主持人决定'),
+        (leaders.length ? leaders : p.options.map(function (o) { return o.id; })).map(function (id) {
+          var o = p.options.filter(function (x) { return x.id === id; })[0];
+          return h('button', { type: 'button', class: 'btn primary', onclick: function () { adopt(id); } }, '采用「', document.createTextNode(o.label), '」');
+        })) : null);
   }
 
   var MESSAGE_FAIL = {
@@ -1057,6 +1202,12 @@
     messenger: messenger,
     transferCards: transferCards,
     transferFail: transferFail,
+    submissionBadge: submissionBadge,
+    submissionText: submissionText,
+    submitFail: submitFail,
+    partyName: partyName,
+    pollCard: pollCard,
+    pollFail: pollFail,
     onlineBanner: onlineBanner,
     onlineFailCard: onlineFailCard,
     onlineReloadedText: onlineReloadedText,

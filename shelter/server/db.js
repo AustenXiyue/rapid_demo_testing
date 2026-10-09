@@ -82,6 +82,48 @@ const MIGRATIONS = [
      resolved_by TEXT
    );
    CREATE INDEX transfers_game ON transfers(game_id, created_at);`,
+  // 6：玩家提交（行动、守夜卡片、换位、末位拍板、分数上报）。系统只负责送达，主持人「采用」才写进主持人存档。
+  // status：asking 等对方回答（换位的被请求者、拍板的末位）｜pending 等主持人｜adopted｜dismissed｜withdrawn。
+  `CREATE TABLE submissions (
+     id          TEXT PRIMARY KEY,
+     game_id     TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+     sender      TEXT NOT NULL,
+     recipient   TEXT NOT NULL,
+     kind        TEXT NOT NULL,
+     day         INTEGER NOT NULL,
+     payload     TEXT NOT NULL,
+     answer      TEXT,
+     note        TEXT,
+     status      TEXT NOT NULL,
+     created_at  INTEGER NOT NULL,
+     answered_at INTEGER,
+     resolved_at INTEGER
+   );
+   CREATE INDEX submissions_game ON submissions(game_id, created_at);`,
+  // 7：站内投票。options：[{id, label}]；voters：可以投票的座位 ID；flow_ref：关联的事件流程（通用投票为空）。
+  // status：open｜closed｜cancelled；result：主持人最终采用的选项。每个座位每次投票一张票，改票即覆盖。
+  `CREATE TABLE polls (
+     id         TEXT PRIMARY KEY,
+     game_id    TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+     day        INTEGER NOT NULL,
+     title      TEXT NOT NULL,
+     body       TEXT,
+     options    TEXT NOT NULL,
+     voters     TEXT NOT NULL,
+     flow_ref   TEXT,
+     status     TEXT NOT NULL,
+     result     TEXT,
+     created_at INTEGER NOT NULL,
+     closed_at  INTEGER
+   );
+   CREATE INDEX polls_game ON polls(game_id, created_at);
+   CREATE TABLE ballots (
+     poll_id   TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+     seat_id   TEXT NOT NULL,
+     option_id TEXT NOT NULL,
+     at        INTEGER NOT NULL,
+     PRIMARY KEY (poll_id, seat_id)
+   );`,
 ];
 
 function openDb(path) {

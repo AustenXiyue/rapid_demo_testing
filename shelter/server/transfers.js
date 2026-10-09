@@ -10,25 +10,15 @@
 const crypto = require('node:crypto');
 const express = require('express');
 const C = require('../src/shared/core.js');
+const { Refuse, identityOf, guarded, usersOf } = require('./scope');
 
 const KINDS_FROM_HOST = ['supply', 'opening', 'grant'];
 const MAX_LINES = 30;
 
 function createTransfers(db, io, { loadMember, seatOf, pushPublic }) {
   const r = express.Router({ mergeParams: true });
-
-  class Refuse extends Error {
-    constructor(status, code, detail) { super(code); this.status = status; this.code = code; this.detail = detail; }
-  }
-
-  function identity(req, g, as) {
-    if (as === 'host' && g.owner_id === req.user.id && !g.owner_deleted_at) return 'host';
-    if (as === 'seat') {
-      const seat = seatOf(g.id, req.user.id);
-      if (seat) return seat.id;
-    }
-    throw new Refuse(403, 'bad_identity');
-  }
+  const identity = (req, g, as) => identityOf(seatOf, req, g, as);
+  const handle = (fn) => guarded(loadMember, fn);
 
   // ---------------------------------------------------------------- 存档读写
 
@@ -131,14 +121,8 @@ function createTransfers(db, io, { loadMember, seatOf, pushPublic }) {
 
   // 交接单变化推给：发起方、收件方、主持人（主持人能看到全部记录）
   function announce(g, t) {
-    const users = new Set([g.owner_deleted_at ? null : g.owner_id]);
-    for (const who of [t.sender, t.recipient]) {
-      if (who === 'host') continue;
-      const seat = db.prepare('SELECT user_id FROM seats WHERE id = ?').get(who);
-      if (seat) users.add(seat.user_id);
-    }
     const v = view(t);
-    for (const u of users) if (u) io.to('user:' + u).emit('transfer:update', { gameId: g.id, transfer: v });
+    for (const u of usersOf(db, g, [t.sender, t.recipient])) io.to('user:' + u).emit('transfer:update', { gameId: g.id, transfer: v });
     return v;
   }
 
@@ -148,31 +132,13 @@ function createTransfers(db, io, { loadMember, seatOf, pushPublic }) {
     return list.map((x) => ({ [field]: x[field], qty: x.qty }));
   }
 
-  // 统一处理：检查对局、身份，出错时按 Refuse 回应
-  function handle(fn) {
-    return (req, res) => {
-      const g = loadMember(req, res);
-      if (!g) return;
-      try {
-        if (g.status !== 'active') throw new Refuse(409, 'read_only');
-        fn(req, res, g);
-      } catch (e) {
-        if (!(e instanceof Refuse)) throw e;
-        res.status(e.status).json({ error: e.code, detail: e.detail });
-      }
-    };
-  }
-
-  r.get('/', (req, res) => {
-    const g = loadMember(req, res);
-    if (!g) return;
-    let me;
-    try { me = identity(req, g, req.query.as); } catch (e) { return res.status(e.status).json({ error: e.code }); }
+  r.get('/', guarded(loadMember, (req, res, g) => {
+    const me = identity(req, g, req.query.as);
     const rows = me === 'host'
       ? db.prepare('SELECT * FROM transfers WHERE game_id = ? ORDER BY created_at, rowid').all(g.id)
       : db.prepare('SELECT * FROM transfers WHERE game_id = ? AND (sender = ? OR recipient = ?) ORDER BY created_at, rowid').all(g.id, me, me);
     res.json({ me, transfers: rows.map(view) });
-  });
+  }, { active: false }));
 
   r.post('/', handle((req, res, g) => {
     const body = req.body || {};

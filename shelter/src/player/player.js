@@ -167,6 +167,8 @@
   }
 
   function today() {
+    // 联机：天数跟随主持人（行动和提交都按天记，两边要一致）
+    if (online && online.publicView && online.publicView.started) return online.publicView.day;
     return state.publicInfo.day;
   }
 
@@ -251,9 +253,9 @@
       h('div', { class: 'p-top-row' },
         h('div', { class: 'p-name' }, h('b', null, state.name || '未命名玩家'), state.alive ? null : chip('已死亡', 'danger')),
         h('div', { class: 'p-day' },
-          h('button', { type: 'button', class: 'btn small icon-btn', 'aria-label': '前一天', onclick: function () { setDay(today() - 1); } }, '‹'),
+          online ? null : h('button', { type: 'button', class: 'btn small icon-btn', 'aria-label': '前一天', onclick: function () { setDay(today() - 1); } }, '‹'),
           h('span', null, '第 ', h('b', null, String(today())), ' 天'),
-          h('button', { type: 'button', class: 'btn small icon-btn', 'aria-label': '后一天', onclick: function () { setDay(today() + 1); } }, '›')),
+          online ? null : h('button', { type: 'button', class: 'btn small icon-btn', 'aria-label': '后一天', onclick: function () { setDay(today() + 1); } }, '›')),
         h('div', { class: 'p-top-tools' },
           U.langToggle(onLangChange),
           h('button', { type: 'button', class: 'btn small', onclick: undoLast, disabled: !undo.peek(), title: undo.peek() ? '撤销：' + undo.peek().label : '' }, U.icon('undo'), '撤销'))),
@@ -293,7 +295,7 @@
   function tabButton(t) {
     // 手机底栏用短名，平板和电脑用全名
     // 英文短名另取（Home／Items／Loot），手机底栏 6 格放得下
-    var unread = !online ? 0 : t.id === 'game' ? online.unread() : t.id === 'inventory' ? pendingIncoming() : 0;
+    var unread = !online ? 0 : t.id === 'game' ? online.unread() + asksForMe().length + pollsToVote().length : t.id === 'inventory' ? pendingIncoming() : 0;
     return h('button', { type: 'button', class: 'tab ' + (ui.tab === t.id ? 'on' : ''), 'data-tab': t.id, 'aria-current': ui.tab === t.id ? 'page' : null, onclick: function () { setTab(t.id); } },
       h('span', { class: 'tab-short' }, U.TC('tab-short', t.name)), h('span', { class: 'tab-full' }, t.full || t.name),
       unread ? h('span', { class: 'badge danger tab-unread', 'aria-label': unread + ' 条未读私信' }, String(unread)) : null);
@@ -350,6 +352,7 @@
   function renderDashboard() {
     return h('div', { class: 'dash' },
       online ? publicStrip() : null,
+      online ? answerPanel() : null,
       online && pendingIncoming() ? transferSection() : null,
       vitalsSection(),
       quickActions(),
@@ -1954,6 +1957,12 @@
 
   function chooseAction(type) {
     var cur = state.action.day === today() && state.action.used ? state.action.type || null : null;
+    if (online) {
+      if (online.blocked()) return;
+      if (mySubs('action').some(function (x) { return x.status === 'adopted'; })) { U.toast('主持人已经记录了你今天的行动，不能再改', 'warn'); return; }
+      // 换位：先选对象，再点亮行动并把请求发给对方
+      if (type === 'swap' && cur !== 'swap') return swapTargetDialog();
+    }
     var prof = state.rules.professionsEnabled ? C.getProfession(state.professionId) : null;
     commit('今日行动', function (s) {
       var old = s.action.day === today() ? s.action : null;
@@ -1971,6 +1980,95 @@
       }
       log(s, '今日行动：' + actionName(type) + (cur ? '（改选，原为' + actionName(cur) + '）' : ''));
     });
+    if (online) submitAction(cur === type ? null : type);
+  }
+
+  // ---------------------------------------------------------------- 提交给主持人（联机）
+
+  /** 今天我发出的某类提交（不含已撤回）。 */
+  function mySubs(kind) {
+    return online.submissions.filter(function (x) { return x.kind === kind && x.from === online.inbox.me && x.day === today() && x.status !== 'withdrawn'; });
+  }
+
+  /** 发给我、等我回答的（换位请求、末位拍板）。 */
+  function asksForMe() {
+    return online.submissions.filter(function (x) { return x.to === online.inbox.me && x.status === 'asking'; });
+  }
+
+  /** 行动按钮点亮／改选／取消后：把今天的行动交给主持人（换位另走 swap）；取消时撤回还没处理的那份。 */
+  function submitAction(type) {
+    if (!type || type === 'swap') {
+      mySubs('action').filter(function (x) { return x.status === 'pending'; }).forEach(function (x) { online.submit(x.id + '/withdraw').catch(function () {}); });
+      return;
+    }
+    online.submit('', { kind: 'action', payload: { type: type, note: state.action.note || '' } }).then(render, U.submitFail);
+  }
+
+  function swapTargetDialog() {
+    var seats = otherSeats();
+    if (!seats.length) { U.toast('没有可以换位的对象', 'warn'); return; }
+    var to = seats[0].id;
+    U.modal({
+      title: '尝试换位',
+      body: h('div', { class: 'stack' },
+        U.field('想和谁换', U.select(seats.map(function (x) { return [x.id, x.user.username]; }), to, function (v) { to = v; })),
+        h('p', { class: 'muted small' }, '对方会在自己的面板上回答同意或拒绝，然后由主持人记录。换位只改变实际座次，不改变本轮行动顺序。')),
+      actions: [{ label: '取消', value: false }, { label: '发出请求', kind: 'primary', value: true }]
+    }).then(function (ok) {
+      if (!ok) return;
+      if ((state.action.day !== today() || !state.action.used || state.action.type !== 'swap')) {
+        commit('今日行动', function (s) {
+          s.action = { day: today(), used: true, type: 'swap', note: s.action.day === today() ? s.action.note || '' : '' };
+          log(s, '今日行动：尝试换位');
+        });
+      }
+      submitAction(null);
+      online.submit('', { kind: 'swap', to: to }).then(function () { U.toast('换位请求已发给对方', 'ok'); render(); }, U.submitFail);
+    });
+  }
+
+  /** 行动卡下面：今天交给主持人的东西和处理状态。 */
+  function submissionStatus() {
+    var list = mySubs('action').concat(mySubs('swap'), mySubs('watch'));
+    if (!list.length) return null;
+    return h('ul', { class: 'list-plain sub-status' }, list.map(function (x) {
+      return h('li', { class: 'row' }, U.submissionBadge(x), h('span', null, U.submissionText(online, x)),
+        x.status === 'dismissed' && x.note ? h('span', { class: 'muted small' }, '主持人：', document.createTextNode(x.note)) : null,
+        x.status === 'asking' || x.status === 'pending' ? h('button', { type: 'button', class: 'btn small ghost', onclick: function () { online.submit(x.id + '/withdraw').then(render, U.submitFail); } }, '撤回') : null);
+    }));
+  }
+
+  /** 进行中、我能投但还没投的投票。 */
+  function pollsToVote() {
+    return online.polls.filter(function (p) { return p.status === 'open' && p.voters.indexOf(online.inbox.me) >= 0 && !p.myVote; });
+  }
+
+  /** 「对局」页：进行中的投票，以及今天已经结束的（看票数）。 */
+  function pollCards() {
+    // 投票按主持人的天数记（开局前是第 0 天）
+    var hostDay = online.publicView ? online.publicView.day : today();
+    var list = online.polls.filter(function (p) { return p.status === 'open' || (p.status === 'closed' && p.day === hostDay); });
+    return list.length ? h('div', { class: 'stack', id: 'polls' }, list.map(function (p) { return U.pollCard(online, p, { onChange: render }); })) : null;
+  }
+
+  /** 需要我回答的：别人的换位请求、末位拍板。 */
+  function answerPanel() {
+    var asks = asksForMe();
+    if (!asks.length) return null;
+    return h('section', { class: 'card answer-panel', id: 'asks' },
+      h('div', { class: 'card-head' }, h('h2', null, '需要你回答'), h('span', { class: 'badge danger' }, String(asks.length))),
+      h('ul', { class: 'list-plain' }, asks.map(function (x) {
+        if (x.kind === 'swap') {
+          return h('li', { class: 'stack' }, h('div', null, h('b', null, document.createTextNode(U.partyName(online, x.from, false))), ' 想和你交换实际座位。'),
+            h('div', { class: 'row' },
+              h('button', { type: 'button', class: 'btn small primary', onclick: function () { online.submit(x.id + '/answer', { accepted: true }).then(render, U.submitFail); } }, '同意'),
+              h('button', { type: 'button', class: 'btn small', onclick: function () { online.submit(x.id + '/answer', { accepted: false }).then(render, U.submitFail); } }, '拒绝')));
+        }
+        return h('li', { class: 'stack' }, h('div', null, '你是末位：请从以下守夜名单里选一份作为今晚的最终名单。'),
+          h('div', { class: 'stack' }, x.payload.options.map(function (o, i) {
+            return h('button', { type: 'button', class: 'btn', onclick: function () { online.submit(x.id + '/answer', { index: i }).then(render, U.submitFail); } }, '第 ' + (i + 1) + ' 份：', o);
+          })));
+      })));
   }
 
   // ---------------------------------------------------------------- 守夜名单（只负责抽取、选择与分享）
@@ -2041,7 +2139,17 @@
       parts.push(h('div', { class: 'wcards', role: 'group', 'aria-label': '两张守夜卡' }, plan.cards.map(function (c, i) {
         return U.watchCardFace(C.watchCardFace(c), { id: c.id, selected: plan.chosen === i, caption: '第 ' + (i + 1) + ' 张', onclick: function () { choosePlanCard(i); } });
       })));
-      if (plan.chosen != null) {
+      if (plan.chosen != null && online) {
+        // 联机：直接把选中的卡交给主持人（卡面原样）
+        var sent = mySubs('watch').filter(function (x) { return x.payload.card.id === plan.cards[plan.chosen].id; })[0];
+        parts.push(h('div', { class: 'row' },
+          sent ? U.submissionBadge(sent) : null,
+          h('button', {
+            type: 'button', class: 'btn primary', disabled: !!sent && sent.status !== 'dismissed', onclick: function () {
+              online.submit('', { kind: 'watch', payload: { card: plan.cards[plan.chosen], from: myName() } }).then(function () { U.toast('守夜卡片已交给主持人', 'ok'); render(); }, U.submitFail);
+            }
+          }, sent ? '已提交' : '提交给主持人')));
+      } else if (plan.chosen != null) {
         var link = watchShareLink(plan);
         parts.push(h('div', { class: 'share-row' },
           h('input', { type: 'text', readonly: true, value: link, 'aria-label': '分享链接', onclick: function (e) { e.target.select(); } }),
@@ -2112,7 +2220,8 @@
             h('span', { class: 'action-desc' }, desc));
         })),
         usedToday && !current ? h('p', { class: 'small' }, '今天已标记使用行动（旧记录，未注明类型）。点一个按钮可补上类型。') : null,
-        usedToday ? U.field('备注', note) : null),
+        usedToday ? U.field('备注', note) : null,
+        online ? submissionStatus() : null),
       watchSection(current),
       h('section', { class: 'card' },
         h('div', { class: 'card-head' }, h('h2', null, '职业技能'), U.ruleBadge('draft')),
@@ -2260,7 +2369,22 @@
         h('p', null, '合计（已知部分）：', h('b', null, String(tot.total)), tot.partial ? h('span', { class: 'pending-tag' }, '部分分数／待裁定：' + tot.missing.join('、')) : null)),
       h('section', { class: 'card' },
         h('h2', null, '上报给主持人'),
-        U.copyBlock(report, { label: '复制分数上报', note: '主持人手动录入，不会自动同步' })));
+        online ? scoreSubmit(counts, mapNotes, report) : U.copyBlock(report, { label: '复制分数上报', note: '主持人手动录入，不会自动同步' })));
+  }
+
+  /** 联机：分数上报直接交给主持人（主持人采用后填进分数表的件数）。 */
+  function scoreSubmit(counts, mapNotes, report) {
+    var last = online.submissions.filter(function (x) { return x.kind === 'score' && x.from === online.inbox.me && x.status !== 'withdrawn'; }).pop();
+    return h('div', { class: 'stack' },
+      h('p', { class: 'small' }, report),
+      last ? h('div', { class: 'row' }, U.submissionBadge(last), h('span', { class: 'muted small' }, U.fmtTime(last.at)),
+        last.status === 'dismissed' && last.note ? h('span', { class: 'muted small' }, '主持人：', document.createTextNode(last.note)) : null) : null,
+      h('div', { class: 'row' }, h('button', {
+        type: 'button', class: 'btn primary', onclick: function () {
+          online.submit('', { kind: 'score', payload: { cash: counts.cash, painting: counts.painting, jewel: counts.jewel, mapNotes: mapNotes, text: report } })
+            .then(function () { U.toast('分数已上报给主持人', 'ok'); render(); }, U.submitFail);
+        }
+      }, last ? '重新上报' : '提交给主持人')));
   }
 
   // ================================================================ 记录与存档
@@ -2546,7 +2670,22 @@
         render();
       },
       onGame: function () { render(); },
-      onPublic: function () { if (ui.tab === 'game' || ui.tab === 'dashboard') render(); },
+      onPublic: function () { syncDay(); render(); },
+      onPoll: function (p) {
+        ui.pollSeen = ui.pollSeen || {};
+        if (p.status === 'open' && p.voters.indexOf(online.inbox.me) >= 0 && !p.myVote && !ui.pollSeen[p.id]) U.toast('有新的投票：在「对局」页投票', 'ok');
+        if (p.status === 'closed' && ui.pollSeen[p.id] !== 'closed') U.toast('投票已结束：可以在「对局」页看票数', 'ok');
+        ui.pollSeen[p.id] = p.status === 'closed' ? 'closed' : true;
+        render();
+      },
+      onSubmission: function (x) {
+        var me = online.inbox.me;
+        if (x.to === me && x.status === 'asking') U.toast(x.kind === 'swap' ? '有人想和你换位：在「对局」页回答' : '你是末位：在「对局」页选择最终守夜名单', 'ok');
+        else if (x.from === me && x.status === 'adopted') U.toast('主持人已采用：' + U.submissionText(online, x), 'ok');
+        else if (x.from === me && x.status === 'dismissed') U.toast('主持人没有采用：' + U.submissionText(online, x) + (x.note ? '（' + x.note + '）' : ''), 'warn');
+        else if (x.from === me && x.kind === 'swap' && x.status === 'pending' && x.answer) U.toast(x.answer.accepted ? '对方同意换位，等主持人记录' : '对方拒绝了换位', x.answer.accepted ? 'ok' : 'warn');
+        render();
+      },
       onMessage: function (m) {
         // 别人发来的、而且不在正看着的对话里：提示一下
         if (m && m.to === online.inbox.me && !(ui.tab === 'game' && online.inbox.current === m.from)) U.toast('收到新私信', 'ok');
@@ -2560,6 +2699,10 @@
       online = ctx;
       store = ctx.store;
       state = C.normalizeSave(ctx.state, 'shelter-player');
+      // 载入时已有的投票不再弹提示
+      ui.pollSeen = {};
+      ctx.polls.forEach(function (p) { ui.pollSeen[p.id] = p.status === 'closed' ? 'closed' : true; });
+      syncDay();
       start();
     }, function (e) {
       U.clear(document.getElementById('main')).appendChild(U.onlineFailCard(e.code));
@@ -2577,6 +2720,13 @@
     if (!tm) return '';
     var rem = tm.running && tm.endsAt ? Math.max(0, tm.endsAt - Date.now()) : Math.max(0, tm.remainingMs);
     return U.fmtClock(rem);
+  }
+
+  /** 联机：主持人推进到新的一天时，把自己存档里的天数也跟上（不进撤销栈）。 */
+  function syncDay() {
+    var v = online.publicView;
+    if (!v || !v.started || v.day === state.publicInfo.day || online.readOnly()) return;
+    commit('跟随主持人的天数', function (s) { s.publicInfo.day = v.day; log(s, '跟随主持人：第' + v.day + '天'); }, { undo: false });
   }
 
   /** 计时每半秒刷新一次数字（只改那一个元素，不重绘页面）。 */
@@ -2599,7 +2749,7 @@
 
   function renderGame() {
     var v = online.publicView;
-    return h('div', { class: 'stack game-page' }, v ? publicBoard(v) : null,
+    return h('div', { class: 'stack game-page' }, answerPanel(), pollCards(), v ? publicBoard(v) : null,
       h('section', { class: 'card', id: 'messages' },
         h('div', { class: 'card-head' }, h('h2', null, '私信'), h('span', { class: 'muted small' }, '只有收发双方看得到')),
         U.messenger(online, render)));

@@ -401,12 +401,191 @@ test('物品流转：玩家之间赠予与交易需要对方确认；交公由�
     await cat.page.locator('.modal').getByRole('button', { name: '发起', exact: true }).click();
     await host.page.locator('[data-tab="supply"] .tab-unread').waitFor();
     await host.page.locator('#transfers .transfer', { hasText: '交公' }).getByRole('button', { name: '接收' }).click();
-    await host.page.locator('.card', { hasText: '公共池' }).getByText('子弹').first().waitFor();
+    await host.page.locator('.card').filter({ has: host.page.locator('h2', { hasText: /^公共池$/ }) }).getByText('子弹').first().waitFor();
 
     // 主持人能在「记录与结算」看到全部交接
     await host.page.locator('[data-tab="records"]').click();
     const ledger = host.page.locator('#transfers', { hasText: '交接记录（全部）' });
     await ledger.locator('.transfer', { hasText: '交易' }).first().waitFor();
+    assert.deepEqual([...host.errors, ...bob.errors, ...cat.errors], []);
+  } finally {
+    await host.context.close();
+    await bob.context.close();
+    await cat.context.close();
+  }
+});
+
+test('玩家提交：行动、守夜卡片、换位、分数交给主持人，主持人「采用」打开预填的对话框后写进主持人存档；玩家天数跟随主持人', async () => {
+  const host = await openPage();
+  const bob = await openPage();
+  const cat = await openPage();
+  try {
+    await register(host.page, 'host_sub');
+    await host.page.locator('[data-entry="create"]').click();
+    await host.page.locator('.modal input').first().fill('提交局');
+    await host.page.locator('.modal').getByRole('button', { name: '只主持' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '创建', exact: true }).click();
+    await host.page.waitForURL(/#game=/);
+    const code = (await host.page.locator('#invite-code').textContent()).trim();
+    for (const [p, n] of [[bob, 'bob_sub'], [cat, 'cat_sub']]) {
+      await register(p.page, n);
+      await p.page.locator('[data-entry="join"]').click();
+      await p.page.locator('.code-input').fill(code);
+      await p.page.locator('form.code-form').getByRole('button', { name: '加入', exact: true }).click();
+      await p.page.waitForURL(/#game=/);
+    }
+    await host.page.getByRole('button', { name: '开始对局' }).click();
+    await host.page.locator('#panels').getByRole('link', { name: '进入主持人面板' }).click();
+    await host.page.waitForURL(/host\.html\?game=/);
+    for (const p of [bob, cat]) {
+      await p.page.locator('#panels').getByRole('link', { name: '进入玩家面板' }).click();
+      await p.page.waitForURL(/player\.html\?game=/);
+    }
+
+    // 主持人开始第 1 天并推进到「个人行动」；玩家页的天数跟着变
+    await host.page.getByRole('button', { name: '开始第 1 天 →' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '开始', exact: true }).click();
+    for (let i = 0; i < 4; i++) {
+      await host.page.getByRole('button', { name: '下一阶段 →' }).click();
+      const m = host.page.locator('.modal');
+      if (await m.count()) await m.getByRole('button').last().click();
+    }
+    const gen = host.page.getByRole('button', { name: '按当前座次生成行动顺序' });
+    if (await gen.count()) await gen.click();
+    await bob.page.locator('.p-day', { hasText: '第 1 天' }).waitFor();
+    assert.equal(await bob.page.locator('.p-day button').count(), 0, '联机时玩家不能自己改天数');
+
+    // 行动：bob 点亮「计划守夜名单」→ 主持人在「玩家提交」里采用 → 记录行动对话框已选好类型
+    await tab(bob.page, 'action');
+    await bob.page.locator('[data-action="plan"]').click();
+    const subCard = host.page.locator('#submissions');
+    await subCard.locator('.sub-line', { hasText: '计划守夜名单' }).getByRole('button', { name: '采用' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '计划守夜名单', pressed: true }).waitFor();
+    await host.page.locator('.modal').getByRole('button', { name: '记录', exact: true }).click();
+    await bob.page.locator('.toast', { hasText: '主持人已采用' }).last().waitFor();
+    await host.page.locator('tr[data-player]', { hasText: 'bob_sub' }).getByText('✓ 已行动').waitFor();
+    await bob.page.locator('[data-action="pass"]').click();
+    await bob.page.locator('.toast', { hasText: '不能再改' }).waitFor();
+
+    // 守夜卡片：bob 抽卡、选一张、提交；主持人在「守夜」页采用 → 进入候选池
+    await bob.page.getByRole('button', { name: '确认抽取守夜名单' }).click();
+    await bob.page.locator('.wcard').first().click();
+    await bob.page.getByRole('button', { name: '提交给主持人' }).click();
+    await host.page.locator('[data-tab="watch"]').click();
+    await host.page.locator('.sub-line', { hasText: '守夜卡片' }).getByRole('button', { name: '采用' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '加入今天的候选池' }).click();
+    await host.page.locator('[data-planner]', { hasText: 'bob_sub' }).waitFor();
+
+    // 换位：cat 请求和 bob 换 → bob 同意 → 主持人采用（结果已按 bob 的回答填好）→ 座次交换
+    await tab(cat.page, 'action');
+    await cat.page.locator('[data-action="swap"]').click();
+    await cat.page.locator('.modal select').selectOption({ label: 'bob_sub' });
+    await cat.page.locator('.modal').getByRole('button', { name: '发出请求' }).click();
+    await bob.page.locator('.toast', { hasText: '有人想和你换位' }).waitFor();
+    await tab(bob.page, 'game');
+    const seatsBefore = await bob.page.evaluate(() => [...document.querySelectorAll('#public-board .pub-seats li')].map((li) => li.textContent.replace(/(末位|你)/g, '')).join('|'));
+    await bob.page.locator('#asks').getByRole('button', { name: '同意' }).click();
+    await host.page.locator('[data-tab="flow"]').click();
+    await host.page.locator('tr[data-player]', { hasText: 'cat_sub' }).locator('.sub-line', { hasText: '对方同意' }).getByRole('button', { name: '采用' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '对方同意', pressed: true }).waitFor();
+    await host.page.locator('.modal').getByRole('button', { name: '记录，行动结束' }).click();
+    // 座次里 bob 与 cat 的先后对调了
+    await bob.page.waitForFunction((before) => {
+      const order = [...document.querySelectorAll('#public-board .pub-seats li')].map((li) => li.textContent.replace(/(末位|你)/g, ''));
+      return order.join('|') !== before;
+    }, seatsBefore);
+
+    // 分数：bob 上报 → 主持人采用 → 分数表里填好件数
+    await tab(bob.page, 'score');
+    await bob.page.getByRole('button', { name: '提交给主持人' }).click();
+    await subCard.locator('.sub-line', { hasText: '分数上报' }).getByRole('button', { name: '采用' }).click();
+    await bob.page.locator('.toast', { hasText: '主持人已采用' }).last().waitFor();
+    await host.page.locator('[data-tab="records"]').click();
+    const row = host.page.locator('table.scores tr', { hasText: 'bob_sub' });
+    assert.equal(await row.locator('input[aria-label="cash"]').inputValue(), '0');
+    assert.deepEqual([...host.errors, ...bob.errors, ...cat.errors], []);
+  } finally {
+    await host.context.close();
+    await bob.context.close();
+    await cat.context.close();
+  }
+});
+
+test('站内投票：主持人从事件流程发起；玩家投票、改票，投票中看不到票数；主持人实时计票、结束后采用结果＝录入投票结果；通用投票', async () => {
+  const host = await openPage();
+  const bob = await openPage();
+  const cat = await openPage();
+  try {
+    await register(host.page, 'host_poll');
+    await host.page.locator('[data-entry="create"]').click();
+    await host.page.locator('.modal input').first().fill('投票局');
+    await host.page.locator('.modal').getByRole('button', { name: '只主持' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '创建', exact: true }).click();
+    await host.page.waitForURL(/#game=/);
+    const gameId = host.page.url().split('#game=')[1];
+    const code = (await host.page.locator('#invite-code').textContent()).trim();
+    for (const [p, n] of [[bob, 'bob_poll'], [cat, 'cat_poll']]) {
+      await register(p.page, n);
+      await p.page.locator('[data-entry="join"]').click();
+      await p.page.locator('.code-input').fill(code);
+      await p.page.locator('form.code-form').getByRole('button', { name: '加入', exact: true }).click();
+      await p.page.waitForURL(/#game=/);
+    }
+    await host.page.getByRole('button', { name: '开始对局' }).click();
+    // 事件库里放一件带两个投票选项的事件（等于主持人事先录入，这里直接写主持人存档）
+    await host.page.evaluate(async (id) => {
+      const cur = await (await fetch('api/games/' + id + '/state/host')).json();
+      const fx = () => ({ rescue: null, pool: [], personal: { target: '', hp: null, hunger: null, thirst: '', status: '', items: [], mapNotes: null, note: '' } });
+      cur.state.events.push({ id: 'ev_gen', name: '发电机', body: '要不要修？', location: '', tags: [], isDraft: false, isDemo: false,
+        participants: '', carryTicks: null, conditions: '', itemUses: '', modifiers: '', options: [
+          { id: 'op_fix', label: '修', outcomes: [{ id: 'oc1', text: '灯亮了', probability: 100, effects: fx() }] },
+          { id: 'op_run', label: '不修', outcomes: [{ id: 'oc2', text: '一片漆黑', probability: 100, effects: fx() }] }] });
+      await fetch('api/games/' + id + '/state/host', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: cur.version, state: cur.state }) });
+    }, gameId);
+    await host.page.locator('#panels').getByRole('link', { name: '进入主持人面板' }).click();
+    await host.page.waitForURL(/host\.html\?game=/);
+    for (const p of [bob, cat]) {
+      await p.page.locator('#panels').getByRole('link', { name: '进入玩家面板' }).click();
+      await p.page.waitForURL(/player\.html\?game=/);
+      await tab(p.page, 'game');
+    }
+
+    // 主持人：公共事件页手动选事件 → 第 2 步「发起站内投票」
+    await host.page.locator('[data-tab="events"]').click();
+    await host.page.locator('select').filter({ hasText: '手动选择事件' }).selectOption('ev_gen');
+    await host.page.getByRole('button', { name: '使用所选事件' }).click();
+    await host.page.getByRole('button', { name: '发起站内投票' }).click();
+    await host.page.locator('.modal').getByRole('button', { name: '发起', exact: true }).click();
+
+    // 玩家：投票（bob 先投「修」再改「不修」），投票中看不到票数
+    await bob.page.locator('.toast', { hasText: '有新的投票' }).waitFor();
+    const bobPoll = bob.page.locator('#polls .poll');
+    await bobPoll.getByRole('button', { name: 'A. 修' }).click();
+    await bobPoll.getByRole('button', { name: 'A. 修', pressed: true }).waitFor();
+    await bobPoll.getByRole('button', { name: 'B. 不修' }).click();
+    await bobPoll.getByRole('button', { name: 'B. 不修', pressed: true }).waitFor();
+    await cat.page.locator('#polls .poll').getByRole('button', { name: 'B. 不修' }).click();
+    await bob.page.locator('#polls .poll', { hasText: '已投 2／2 人' }).waitFor();
+    assert.equal(await bobPoll.locator('.poll-count').count(), 0, '投票中玩家看不到票数');
+
+    // 主持人：实时计票（谁投了什么）→ 结束 → 采用「不修」→ 事件流程的投票结果已录入
+    const hostPoll = host.page.locator('.poll', { hasText: '发电机' });
+    await hostPoll.locator('.poll-option', { hasText: '不修' }).getByText('2 票').waitFor();
+    await hostPoll.locator('.poll-option', { hasText: '不修' }).getByText('bob_poll、cat_poll').waitFor();
+    await hostPoll.getByRole('button', { name: '结束投票' }).click();
+    await bob.page.locator('#polls .poll-option', { hasText: '不修' }).getByText('2 票').waitFor();
+    await host.page.getByRole('button', { name: '采用「不修」' }).click();
+    await host.page.getByText('投票结果：不修').waitFor();
+
+    // 通用投票：主持台「发起投票…」
+    await host.page.locator('[data-tab="flow"]').click();
+    await host.page.locator('#polls').getByRole('button', { name: '发起投票…' }).click();
+    const m = host.page.locator('.modal');
+    await m.locator('input[type="text"]').first().fill('今晚吃什么');
+    await m.locator('textarea[placeholder="每行一个选项"]').fill('面包\n罐头');
+    await m.getByRole('button', { name: '发起', exact: true }).click();
+    await cat.page.locator('#polls .poll', { hasText: '今晚吃什么' }).getByRole('button', { name: 'B. 罐头' }).click();
+    await host.page.locator('#polls .poll-option', { hasText: '罐头' }).getByText('1 票').waitFor();
     assert.deepEqual([...host.errors, ...bob.errors, ...cat.errors], []);
   } finally {
     await host.context.close();

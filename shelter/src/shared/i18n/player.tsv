@@ -777,3 +777,30 @@
 发来物品，请在库存页确认	 sent you items; confirm on the inventory page
 对方已接收你的交接	They accepted your transfer
 对方拒收了你的交接：物品已退回	They declined your transfer: items returned
+主持人已经记录了你今天的行动，不能再改	The host has recorded your action for today; it can't be changed
+想和谁换	Swap with
+对方会在自己的面板上回答同意或拒绝，然后由主持人记录。换位只改变实际座次，不改变本轮行动顺序。	They'll agree or decline on their own panel, then the host records it. Swapping only changes the actual seating, not this round's action order.
+发出请求	Send request
+今日行动：尝试换位	Today's action: try to swap seats
+换位请求已发给对方	Swap request sent
+主持人：	Host: 
+需要你回答	Waiting for your answer
+ 想和你交换实际座位。	 wants to swap seats with you.
+同意	Agree
+你是末位：请从以下守夜名单里选一份作为今晚的最终名单。	You're in the last seat: pick one of these rosters as tonight's final watch.
+ 份：	: 
+守夜卡片已交给主持人	Watch card sent to the host
+已提交	Submitted
+提交给主持人	Submit to host
+分数已上报给主持人	Score reported to the host
+重新上报	Report again
+有人想和你换位：在「对局」页回答	Someone wants to swap seats: answer on the “Game” page
+你是末位：在「对局」页选择最终守夜名单	You're in the last seat: choose the final watch roster on the “Game” page
+主持人已采用：	Adopted by host: 
+主持人没有采用：	Not adopted by host: 
+对方同意换位，等主持人记录	They agreed to swap; waiting for the host to record it
+对方拒绝了换位	They declined the swap
+跟随主持人的天数	Follow host's day
+跟随主持人：第	Following the host: Day 
+有新的投票：在「对局」页投票	New vote: cast it on the “Game” page
+投票已结束：可以在「对局」页看票数	Voting has ended: see the counts on the “Game” page
